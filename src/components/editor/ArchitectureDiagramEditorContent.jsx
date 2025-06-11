@@ -679,45 +679,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         saveToHistory();
     }, [selectedElements, nodes, edges, saveToHistory]);
 
-    // Keyboard shortcuts
-    useEffect(() => {
-        const handleKeyDown = (event) => {
-            const target = event.target;
-            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-                return; // allow default behavior inside inputs and editable areas
-            }
-
-            if (event.ctrlKey || event.metaKey) {
-                switch (event.key) {
-                    case 'c':
-                        event.preventDefault();
-                        copySelected();
-                        break;
-                    case 'v':
-                        event.preventDefault();
-                        pasteElements();
-                        break;
-                    case 'z':
-                        event.preventDefault();
-                        if (event.shiftKey) {
-                            redo();
-                        } else {
-                            undo();
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            } else if (event.key === 'Delete' || event.key === 'Backspace') {
-                event.preventDefault();
-                deleteSelected();
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [copySelected, pasteElements, deleteSelected]);
-
     // Undo/Redo functions
     const undo = useCallback(() => {
         setHistory((prev) => {
@@ -754,6 +715,43 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
             };
         });
     }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.target.closest('input, textarea, [contenteditable="true"]')) {
+                return; // allow default behavior inside inputs and editable areas
+            }
+
+            if (event.ctrlKey || event.metaKey) {
+                switch (event.key) {
+                    case 'c':
+                        event.preventDefault();
+                        copySelected();
+                        break;
+                    case 'v':
+                        event.preventDefault();
+                        pasteElements();
+                        break;
+                    case 'z':
+                        event.preventDefault();
+                        if (event.shiftKey) {
+                            redo();
+                        } else {
+                            undo();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            } else if (event.key === 'Delete' || event.key === 'Backspace') {
+                event.preventDefault();
+                deleteSelected();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [copySelected, pasteElements, deleteSelected, undo, redo]);
 
     // Export and import functions (same as before but with z-index)
     const exportDiagram = useCallback(() => {
@@ -1094,17 +1092,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         saveToHistory();
     }, [jsonToReactFlow, saveToHistory]);
 
-    const resetDiagram = useCallback(() => {
-        showConfirmModal(
-            'Reset Diagram',
-            'Are you sure you want to clear the diagram? All unsaved changes will be lost.',
-            () => {
-                setNodes([]);
-                setEdges([]);
-                saveToHistory();
-            }
-        );
-    }, [saveToHistory, showConfirmModal]);
 
     const handleJsonPasteImport = useCallback((data) => {
         importDiagramObject(data);
@@ -1230,8 +1217,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         }
 
         const containers = selectedElements.nodes.filter(n => n.type === 'container');
-        const others = selectedElements.nodes.filter(n => n.type !== 'container');
-
 
         let parent = containers[0] || selectedElements.nodes[0];
         const children = selectedElements.nodes.filter(n => n.id !== parent.id);
@@ -1261,7 +1246,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
             setEdges(edges.filter(edge => !selectedEdgeIds.includes(edge.id)));
             saveToHistory();
         } else if (selectedElements.nodes.length > 0) {
-            const containers = selectedElements.nodes.filter(n => n.type === 'container');
 
             setNodes((nds) => nds.map((node) => {
                 if (selectedElements.nodes.find(n => n.id === node.id) && node.parentNode) {
@@ -1309,7 +1293,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
 
         // Optionally show a toast notification
         // toast.success(`Copied ${selectedElements.nodes.length} nodes and ${connectedEdges.length} connections`);
-    }, [selectedElements, edges]);
+    }, [selectedElements, edges, nodes]);
 
     // Enhanced paste function that preserves links between pasted elements
     const pasteElementsWithLinks = useCallback(() => {

@@ -117,36 +117,6 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 </div>
 
                 {/* Connection handles */}
-                <Handle
-                    type="source"
-                    id="container-source"
-                    position={Position.Bottom}
-                    style={{
-                        opacity: 0,
-                        border: 'none',
-                        width: '100%',
-                        height: '100%',
-                        left: 0,
-                        top: 0,
-                        transform: 'none',
-                        pointerEvents: 'all',
-                    }}
-                />
-                <Handle
-                    type="target"
-                    id="container-target"
-                    position={Position.Bottom}
-                    style={{
-                        opacity: 0,
-                        border: 'none',
-                        width: '100%',
-                        height: '100%',
-                        left: 0,
-                        top: 0,
-                        transform: 'none',
-                        pointerEvents: 'all',
-                    }}
-                />
                 <Handle type="source" id="right-source" position={Position.Right} style={{ background: '#555', width: 6, height: 6 }} />
                 <Handle type="target" id="right-target" position={Position.Right} style={{ background: '#555', width: 6, height: 6 }} />
                 <Handle type="source" id="left-source" position={Position.Left} style={{ background: '#555', width: 6, height: 6 }} />
