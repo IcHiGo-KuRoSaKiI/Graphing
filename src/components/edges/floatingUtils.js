@@ -6,13 +6,21 @@ function getNodeIntersection(intersectionNode, targetNode) {
     ? { width: intersectionNode.__rf.width, height: intersectionNode.__rf.height }
     : intersectionNode.measured || {};
 
-  const targetPosition = targetNode.positionAbsolute || targetNode.position;
+  const intersectionPos =
+    intersectionNode.positionAbsolute || intersectionNode.position || { x: 0, y: 0 };
+
+  const targetPosition = targetNode.positionAbsolute || targetNode.position || { x: 0, y: 0 };
 
   const w = sourceWidth / 2;
   const h = sourceHeight / 2;
 
-  const x2 = intersectionNode.positionAbsolute.x + w;
-  const y2 = intersectionNode.positionAbsolute.y + h;
+  if (w === 0 || h === 0) {
+    // Node dimensions not yet available
+    return intersectionPos;
+  }
+
+  const x2 = intersectionPos.x + w;
+  const y2 = intersectionPos.y + h;
   const x1 = targetPosition.x + w;
   const y1 = targetPosition.y + h;
 
