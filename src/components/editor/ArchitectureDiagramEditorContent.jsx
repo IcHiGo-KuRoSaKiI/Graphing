@@ -24,11 +24,81 @@ import PromptModal from '../modals/PromptModal';
 import ConfirmModal from '../modals/ConfirmModal';
 import ContainerSelectorModal from '../modals/ContainerSelectorModal';
 import ShapeSelectorModal from '../modals/ShapeSelectorModal';
+import JsonPasteModal from '../modals/JsonPasteModal';
+import JsonValidatorModal from '../modals/JsonValidatorModal';
 
 // Import editor components
 import TailwindPropertyEditor from './TailwindPropertyEditor';
 
 import EnhancedMenuBar from './EnhancedMenuBar';
+import Ajv from 'ajv';
+import dagre from 'dagre';
+
+const diagramSchema = {
+    type: 'object',
+    properties: {
+        containers: {
+            type: 'array',
+            items: {
+                type: 'object',
+                required: ['id', 'label', 'position', 'size'],
+                properties: {
+                    id: { type: 'string' },
+                    label: { type: 'string' },
+                    position: {
+                        type: 'object',
+                        required: ['x', 'y'],
+                        properties: {
+                            x: { type: 'number' },
+                            y: { type: 'number' }
+                        }
+                    },
+                    size: {
+                        type: 'object',
+                        required: ['width', 'height'],
+                        properties: {
+                            width: { type: 'number' },
+                            height: { type: 'number' }
+                        }
+                    }
+                }
+            }
+        },
+        nodes: {
+            type: 'array',
+            items: {
+                type: 'object',
+                required: ['id', 'label', 'type', 'position'],
+                properties: {
+                    id: { type: 'string' },
+                    label: { type: 'string' },
+                    type: { type: 'string' },
+                    position: {
+                        type: 'object',
+                        required: ['x', 'y'],
+                        properties: { x: { type: 'number' }, y: { type: 'number' } }
+                    }
+                }
+            }
+        },
+        connections: {
+            type: 'array',
+            items: {
+                type: 'object',
+                required: ['id', 'source', 'target'],
+                properties: {
+                    id: { type: 'string' },
+                    source: { type: 'string' },
+                    target: { type: 'string' }
+                }
+            }
+        }
+    },
+    required: ['containers', 'nodes', 'connections']
+};
+
+const ajv = new Ajv();
+const validateDiagram = ajv.compile(diagramSchema);
 
 
 const ArchitectureDiagramEditorContent = () => {
@@ -48,6 +118,8 @@ const ArchitectureDiagramEditorContent = () => {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
     const [containerSelectorModal, setContainerSelectorModal] = useState({ isOpen: false, title: '', message: '', containers: [], onSelect: null });
     const [shapeSelectorModal, setShapeSelectorModal] = useState({ isOpen: false });
+    const [jsonPasteModal, setJsonPasteModal] = useState({ isOpen: false, onConfirm: null });
+    const [jsonValidatorModal, setJsonValidatorModal] = useState({ isOpen: false });
 
     // Refs
     const reactFlowWrapper = useRef(null);
@@ -362,6 +434,14 @@ const ArchitectureDiagramEditorContent = () => {
         setShapeSelectorModal({
             isOpen: true,
         });
+    }, []);
+
+    const showJsonPasteModal = useCallback((onConfirm) => {
+        setJsonPasteModal({ isOpen: true, onConfirm });
+    }, []);
+
+    const showJsonValidatorModal = useCallback(() => {
+        setJsonValidatorModal({ isOpen: true });
     }, []);
 
     // Optimized change handlers
@@ -1081,6 +1161,17 @@ const ArchitectureDiagramEditorContent = () => {
         inputElement.click();
     }, [jsonToReactFlow, saveToHistory]);
 
+    const importDiagramObject = useCallback((data) => {
+        if (!validateDiagram(data)) {
+            alert('Invalid diagram JSON');
+            return;
+        }
+        const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
+        setNodes(importedNodes);
+        setEdges(importedEdges);
+        saveToHistory();
+    }, [jsonToReactFlow, saveToHistory]);
+
     const resetDiagram = useCallback(() => {
         showConfirmModal(
             'Reset Diagram',
@@ -1093,6 +1184,17 @@ const ArchitectureDiagramEditorContent = () => {
             }
         );
     }, [jsonToReactFlow, defaultConfig, saveToHistory, showConfirmModal]);
+
+    const handleJsonPasteImport = useCallback((data) => {
+        importDiagramObject(data);
+        setJsonPasteModal({ isOpen: false, onConfirm: null });
+    }, [importDiagramObject]);
+
+    const validateJson = useCallback((data) => {
+        const valid = validateDiagram(data);
+        const errors = valid ? [] : (validateDiagram.errors || []).map(e => `${e.instancePath} ${e.message}`);
+        return { valid, errors };
+    }, []);
 
     // Clean up timeout on unmount
     useEffect(() => {
@@ -1139,6 +1241,30 @@ const ArchitectureDiagramEditorContent = () => {
         console.log('Export as SVG - to be implemented');
         alert('SVG export coming soon!');
     }, []);
+
+    const autoLayout = useCallback(() => {
+        const g = new dagre.graphlib.Graph();
+        g.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 50 });
+        g.setDefaultEdgeLabel(() => ({}));
+
+        nodes.forEach(node => {
+            const width = node.style?.width || 150;
+            const height = node.style?.height || 80;
+            g.setNode(node.id, { width, height });
+        });
+        edges.forEach(edge => {
+            g.setEdge(edge.source, edge.target);
+        });
+
+        dagre.layout(g);
+
+        const laidOut = nodes.map(n => {
+            const pos = g.node(n.id);
+            return pos ? { ...n, position: { x: pos.x, y: pos.y } } : n;
+        });
+        setNodes(laidOut);
+        saveToHistory();
+    }, [nodes, edges, saveToHistory]);
 
     // Enhanced selection operations
     const selectAllElements = useCallback(() => {
@@ -1349,6 +1475,7 @@ const ArchitectureDiagramEditorContent = () => {
                     onSave={saveDiagram}
                     onSaveAs={saveAsDiagram}
                     onImportJSON={importDiagram}
+                    onImportJSONText={() => showJsonPasteModal(handleJsonPasteImport)}
                     onImportDrawio={importFromDrawioXML}
                     onExportJSON={exportDiagram}
                     onExportDrawio={exportToDrawioXML}
@@ -1373,6 +1500,9 @@ const ArchitectureDiagramEditorContent = () => {
                     // Link operations
                     onLinkNodes={linkSelectedNodes}
                     onUnlinkNodes={unlinkSelectedNodes}
+
+                    onValidateJSON={showJsonValidatorModal}
+                    onAutoLayout={autoLayout}
 
                     // State props
                     canUndo={history.past.length > 0}
@@ -1546,6 +1676,16 @@ const ArchitectureDiagramEditorContent = () => {
                     addShapeNode(shapeType);
                 }}
                 onCancel={() => setShapeSelectorModal({ isOpen: false })}
+            />
+            <JsonPasteModal
+                isOpen={jsonPasteModal.isOpen}
+                onConfirm={handleJsonPasteImport}
+                onCancel={() => setJsonPasteModal({ isOpen: false, onConfirm: null })}
+            />
+            <JsonValidatorModal
+                isOpen={jsonValidatorModal.isOpen}
+                onValidate={validateJson}
+                onClose={() => setJsonValidatorModal({ isOpen: false })}
             />
         </div>
     );
