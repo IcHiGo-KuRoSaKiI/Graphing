@@ -16,5 +16,38 @@ body {
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  monospace;
+}
+
+/* Basic modal styling */
+.modal-overlay {
+  @apply fixed inset-0 flex items-center justify-center bg-black/50 z-50;
+}
+
+.modal-container {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-lg w-11/12 max-w-md overflow-hidden;
+}
+
+.modal-header {
+  @apply px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700;
+}
+
+.modal-body {
+  @apply p-4;
+}
+
+.modal-footer {
+  @apply px-4 py-3 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2;
+}
+
+.modal-button {
+  @apply px-4 py-2 rounded-md font-medium transition-colors;
+}
+
+.modal-button.cancel {
+  @apply bg-gray-500 text-white hover:bg-gray-600;
+}
+
+.modal-button.confirm {
+  @apply bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50;
 }
