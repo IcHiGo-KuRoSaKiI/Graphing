@@ -25,6 +25,7 @@ const EnhancedMenuBar = ({
   onAddShape,
   onLinkNodes,
   onUnlinkNodes,
+  onTogglePropertiesPanel,
   canUndo = false,
   canRedo = false,
   hasSelection = false,
@@ -176,9 +177,7 @@ const EnhancedMenuBar = ({
         <MenuItem onClick={onDeselectAll} disabled={!hasSelection}>
           Deselect All
         </MenuItem>
-      </MenuButton>
-
-      <MenuButton name="Add" icon={Plus}>
+        <MenuItem separator />
         <MenuItem onClick={onAddContainer} icon={Plus}>
           Add Container
         </MenuItem>
@@ -220,7 +219,7 @@ const EnhancedMenuBar = ({
         <MenuItem onClick={() => { }}>
           Toggle Minimap
         </MenuItem>
-        <MenuItem onClick={() => { }}>
+        <MenuItem onClick={onTogglePropertiesPanel}>
           Toggle Properties Panel
         </MenuItem>
       </MenuButton>

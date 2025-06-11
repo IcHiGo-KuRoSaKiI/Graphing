@@ -27,6 +27,11 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
         style: true,
         advanced: false
     });
+    const [minimized, setMinimized] = useState(false);
+
+    const toggleMinimized = useCallback(() => {
+        setMinimized((prev) => !prev);
+    }, []);
 
     // Common emojis with categories
     const emojiCategories = {
@@ -141,10 +146,12 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
     }
 
     return (
-        <div className="w-72 max-h-[calc(100vh-200px)] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-            <div className="py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
-                {selectedNode ? `${selectedNode.type || 'Node'} Properties` : 'Edge Properties'}
+        <div className={`w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg ${minimized ? 'overflow-hidden' : 'max-h-[calc(100vh-200px)] overflow-y-auto'}` }>
+            <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
+                <span>{selectedNode ? `${selectedNode.type || 'Node'} Properties` : 'Edge Properties'}</span>
+                <button className="text-xs" onClick={toggleMinimized}>{minimized ? 'Expand' : 'Minimize'}</button>
             </div>
+            {!minimized && (
             <div className="p-4">
 
                 {/* Basic Properties Section */}
