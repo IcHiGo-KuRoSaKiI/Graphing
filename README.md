@@ -1,4 +1,4 @@
-# React Diagram Editor
+# Graphing
 
 This project is a lightweight UML-style editor built with React Flow and Tailwind CSS. It supports creating diagrams composed of containers and components that can be linked together.
 
@@ -24,4 +24,19 @@ Run tests:
 
 ```bash
 npm test
+```
+
+## Using as a package
+
+Build the library files before publishing or installing from a local checkout:
+
+```bash
+npm run lib:build
+```
+
+Once built, you can install this project in another React application and
+import the editor components:
+
+```javascript
+import { ArchitectureDiagramEditor } from 'graphing';
 ```
