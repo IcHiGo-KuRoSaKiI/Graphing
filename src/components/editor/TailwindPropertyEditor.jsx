@@ -20,6 +20,8 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
     const [edgeStrokeColor, setEdgeStrokeColor] = useState('#999999');
     const [edgeStrokeDasharray, setEdgeStrokeDasharray] = useState('');
     const [edgeZIndex, setEdgeZIndex] = useState(5);
+    const [edgeMarkerOption, setEdgeMarkerOption] = useState('end');
+    const [edgeIntersection, setEdgeIntersection] = useState('none');
 
     // UI State
     const [expandedSections, setExpandedSections] = useState({
@@ -63,6 +65,13 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
             setEdgeStrokeColor(selectedEdge.style?.stroke || '#999999');
             setEdgeStrokeDasharray(selectedEdge.style?.strokeDasharray || '');
             setEdgeZIndex(selectedEdge.zIndex || selectedEdge.style?.zIndex || 5);
+            const start = selectedEdge.markerStart?.type !== undefined ? selectedEdge.markerStart.type : 'none';
+            const end = selectedEdge.markerEnd?.type !== undefined ? selectedEdge.markerEnd.type : 'none';
+            if (start !== 'none' && end !== 'none') setEdgeMarkerOption('both');
+            else if (start !== 'none') setEdgeMarkerOption('start');
+            else if (end !== 'none') setEdgeMarkerOption('end');
+            else setEdgeMarkerOption('none');
+            setEdgeIntersection(selectedEdge.data?.intersection || 'none');
         }
     }, [selectedNode, selectedEdge]);
 
@@ -201,6 +210,35 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
         onElementPropertyChange('edge', 'animated', checked);
     }, [onElementPropertyChange]);
 
+    const handleEdgeMarkerChange = useCallback((e) => {
+        const value = e.target.value;
+        setEdgeMarkerOption(value);
+        switch (value) {
+            case 'both':
+                onElementPropertyChange('edge', 'markerStart', { type: 'arrow' });
+                onElementPropertyChange('edge', 'markerEnd', { type: 'arrow' });
+                break;
+            case 'start':
+                onElementPropertyChange('edge', 'markerStart', { type: 'arrow' });
+                onElementPropertyChange('edge', 'markerEnd', undefined);
+                break;
+            case 'end':
+                onElementPropertyChange('edge', 'markerStart', undefined);
+                onElementPropertyChange('edge', 'markerEnd', { type: 'arrow' });
+                break;
+            default:
+                onElementPropertyChange('edge', 'markerStart', undefined);
+                onElementPropertyChange('edge', 'markerEnd', undefined);
+                break;
+        }
+    }, [onElementPropertyChange]);
+
+    const handleEdgeIntersectionChange = useCallback((e) => {
+        const value = e.target.value;
+        setEdgeIntersection(value);
+        onElementPropertyChange('edge', 'intersection', value);
+    }, [onElementPropertyChange]);
+
     if (!selectedNode && !selectedEdge) {
         return (
             <div className="w-72 max-h-[calc(100vh-200px)] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg">
@@ -313,6 +351,35 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
                                             <option value="step">Step</option>
                                             <option value="smoothstep">Smooth Step</option>
                                             <option value="straight">Direct</option>
+                                        </select>
+                                    </div>
+                                )}
+                                {selectedEdge && (
+                                    <div className="mb-4">
+                                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Arrowheads:</label>
+                                        <select
+                                            value={edgeMarkerOption}
+                                            onChange={handleEdgeMarkerChange}
+                                            className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        >
+                                            <option value="end">Pointing to Target</option>
+                                            <option value="start">Pointing from Target</option>
+                                            <option value="both">Both Ends</option>
+                                            <option value="none">None</option>
+                                        </select>
+                                    </div>
+                                )}
+                                {selectedEdge && (
+                                    <div className="mb-4">
+                                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Intersection Style:</label>
+                                        <select
+                                            value={edgeIntersection}
+                                            onChange={handleEdgeIntersectionChange}
+                                            className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        >
+                                            <option value="none">None</option>
+                                            <option value="join">Join lines</option>
+                                            <option value="curve">Curve</option>
                                         </select>
                                     </div>
                                 )}

@@ -247,10 +247,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     zIndex: connection.zIndex || 5
                 },
                 zIndex: connection.zIndex || 5,
+                markerStart: connection.markerStart,
+                markerEnd: connection.markerEnd || { type: 'arrow' },
                 data: {
                     label: connection.label,
                     description: connection.description || '',
-                    control: connection.control
+                    control: connection.control,
+                    intersection: connection.intersection || 'none'
                 }
             });
         });
@@ -369,7 +372,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
             animated: true,
             style: { strokeWidth: 2, zIndex: 5 },
             zIndex: 5,
-            data: { label: '', description: '' }
+            markerEnd: { type: 'arrow' },
+            data: { label: '', description: '', intersection: 'none' }
         };
         setEdges((eds) => addEdge(newEdge, eds));
         saveToHistory();
@@ -438,6 +442,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                                 zIndex: parseInt(value)
                             };
                         } else if (property === 'type' || property === 'animated') {
+                            return { ...edge, [property]: value };
+                        } else if (property === 'markerStart' || property === 'markerEnd') {
                             return { ...edge, [property]: value };
                         } else if (property.startsWith('style.')) {
                             const styleProp = property.replace('style.', '');
@@ -792,6 +798,9 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                 animated: edge.animated,
                 description: edge.data?.description,
                 control: edge.data?.control,
+                markerStart: edge.markerStart,
+                markerEnd: edge.markerEnd,
+                intersection: edge.data?.intersection,
                 style: {
                     strokeWidth: edge.style?.strokeWidth || 2,
                     strokeDasharray: edge.style?.strokeDasharray,

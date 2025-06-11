@@ -1,7 +1,19 @@
 import React, { useCallback } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, useReactFlow } from 'reactflow';
 
-const AdjustableEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, data }) => {
+const AdjustableEdge = ({
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    style = {},
+    markerStart,
+    markerEnd,
+    data,
+}) => {
     const { project, setEdges } = useReactFlow();
 
     const control = data?.control || {
@@ -9,7 +21,9 @@ const AdjustableEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition
         y: (sourceY + targetY) / 2,
     };
 
-    const [edgePath] = getSmoothStepPath({
+    const intersection = data?.intersection || 'none';
+
+    const [smoothPath, labelX, labelY] = getSmoothStepPath({
         sourceX,
         sourceY,
         sourcePosition,
@@ -19,7 +33,16 @@ const AdjustableEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition
         offset: 50,
     });
 
-    const path = `M ${sourceX},${sourceY} Q ${control.x},${control.y} ${targetX},${targetY}`;
+    const quadraticPath = `M ${sourceX},${sourceY} Q ${control.x},${control.y} ${targetX},${targetY}`;
+
+    const path = intersection === 'curve' ? smoothPath : quadraticPath;
+
+    const labelPosition = intersection === 'curve'
+        ? { x: labelX, y: labelY }
+        : {
+            x: 0.25 * sourceX + 0.5 * control.x + 0.25 * targetX,
+            y: 0.25 * sourceY + 0.5 * control.y + 0.25 * targetY,
+        };
 
     const updateControl = useCallback((event) => {
         const flowBounds = document.querySelector('.react-flow');
@@ -45,10 +68,40 @@ const AdjustableEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition
         window.addEventListener('mouseup', onMouseUp);
     }, [updateControl]);
 
+    const edgeStyle = intersection === 'join'
+        ? { ...style, strokeLinejoin: 'round' }
+        : style;
+
+    const label = data?.label || '';
+
     return (
         <>
-            <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} />
+            <BaseEdge
+                id={id}
+                path={path}
+                style={edgeStyle}
+                markerStart={markerStart}
+                markerEnd={markerEnd}
+            />
             <EdgeLabelRenderer>
+                {label && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            pointerEvents: 'none',
+                            transform: `translate(-50%, -50%) translate(${labelPosition.x}px, ${labelPosition.y}px)`,
+                            fontSize: 12,
+                            padding: '2px 4px',
+                            background: 'white',
+                            border: '1px solid #999',
+                            borderRadius: 4,
+                            color: '#333',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        {label}
+                    </div>
+                )}
                 <circle
                     className="cursor-move fill-white stroke-gray-600"
                     cx={control.x}
