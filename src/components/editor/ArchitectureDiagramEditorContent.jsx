@@ -19,7 +19,7 @@ import HexagonNode from '../nodes/HexagonNode';
 import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
-import { AdjustableEdge } from '../edges';
+import { AdjustableEdge, FloatingEdge, FloatingConnectionLine } from '../edges';
 
 // Import modal components
 import PromptModal from '../modals/PromptModal';
@@ -144,7 +144,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
     }), []);
 
     const edgeTypes = useMemo(() => ({
-        adjustable: AdjustableEdge
+        adjustable: AdjustableEdge,
+        floating: FloatingEdge
     }), []);
 
     // Stable node label change handler
@@ -241,7 +242,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                 source: connection.source,
                 target: connection.target,
                 label: connection.label,
-                type: connection.type || 'adjustable',
+                type: connection.type || 'floating',
                 animated: connection.animated || false,
                 style: {
                     strokeWidth: 2,
@@ -367,7 +368,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
     }, []);
 
     const defaultEdgeOptions = useMemo(() => ({
-        type: 'adjustable',
+        type: 'floating',
         animated: false,
         style: { strokeWidth: 2 }
     }), []);
@@ -377,7 +378,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         const newEdge = {
             ...params,
             id: `edge-${Date.now()}`,
-            type: 'adjustable',
+            type: 'floating',
             animated: true,
             style: { strokeWidth: 2, zIndex: 5 },
             zIndex: 5,
@@ -1508,6 +1509,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
+                    connectionLineComponent={FloatingConnectionLine}
                     fitView
                     snapToGrid={false}
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}
