@@ -8,6 +8,7 @@ const ShapeSelectorModal = ({ isOpen, onSelect, onCancel }) => {
         { id: 'circle', label: 'Circle', icon: '⭕', color: 'bg-green-100 dark:bg-green-900/30' },
         { id: 'diamond', label: 'Diamond', icon: '♦️', color: 'bg-red-100 dark:bg-red-900/30' },
         { id: 'hexagon', label: 'Hexagon', icon: '⬢', color: 'bg-yellow-100 dark:bg-yellow-900/30' },
+        { id: 'triangle', label: 'Triangle', icon: '🔺', color: 'bg-orange-100 dark:bg-orange-900/30' },
     ];
 
     return (

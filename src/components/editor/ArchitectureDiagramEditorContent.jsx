@@ -15,6 +15,7 @@ import 'reactflow/dist/style.css';
 import DiamondNode from '../nodes/DiamondNode';
 import CircleNode from '../nodes/CircleNode';
 import HexagonNode from '../nodes/HexagonNode';
+import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
 
@@ -73,8 +74,7 @@ const ArchitectureDiagramEditorContent = () => {
                 bgColor: '#f5f5f5',
                 borderColor: '#ddd',
                 icon: '🖥️',
-                zIndex: 1,
-                linkedTo: []
+                zIndex: 1
             },
             {
                 id: 'container-2',
@@ -85,8 +85,7 @@ const ArchitectureDiagramEditorContent = () => {
                 bgColor: '#f5f5f5',
                 borderColor: '#ddd',
                 icon: '⚙️',
-                zIndex: 1,
-                linkedTo: []
+                zIndex: 1
             }
         ],
         nodes: [
@@ -175,6 +174,7 @@ const ArchitectureDiagramEditorContent = () => {
         diamond: DiamondNode,
         circle: CircleNode,
         hexagon: HexagonNode,
+        triangle: TriangleNode,
         container: ContainerNode,
         component: ComponentNode,
     }), []);
@@ -227,7 +227,6 @@ const ArchitectureDiagramEditorContent = () => {
                     borderColor: container.borderColor || '#ddd',
                     icon: container.icon,
                     description: container.description,
-                    linkedTo: container.linkedTo || [],
                     onLabelChange: handleNodeLabelChange
                 },
                 style: {
@@ -605,8 +604,8 @@ const ArchitectureDiagramEditorContent = () => {
                 position: { x: Math.random() * 300 + 100, y: Math.random() * 200 + 100 },
                 data: {
                     label: name,
-                    icon: shapeType === 'diamond' ? '♦️' : shapeType === 'circle' ? '⭕' : '⬢',
-                    color: shapeType === 'diamond' ? '#81D4FA' : shapeType === 'circle' ? '#C5E1A5' : '#FFCC80',
+                    icon: shapeType === 'diamond' ? '♦️' : shapeType === 'circle' ? '⭕' : shapeType === 'triangle' ? '🔺' : '⬢',
+                    color: shapeType === 'diamond' ? '#81D4FA' : shapeType === 'circle' ? '#C5E1A5' : shapeType === 'triangle' ? '#FFD54F' : '#FFCC80',
                     borderColor: '#ddd',
                     description: '',
                     onLabelChange: handleNodeLabelChange,
@@ -781,7 +780,6 @@ const ArchitectureDiagramEditorContent = () => {
                     bgColor: container.data.bgColor,
                     borderColor: container.data.borderColor,
                     icon: container.data.icon,
-                    linkedTo: container.data.linkedTo || [],
                     description: container.data.description,
                     zIndex: container.zIndex || 1
                 })),
@@ -900,24 +898,25 @@ const ArchitectureDiagramEditorContent = () => {
                             else if (n.style.includes('rhombus')) nodeType = 'diamond';
                             else if (n.style.includes('ellipse')) nodeType = 'circle';
                             else if (n.style.includes('hexagon')) nodeType = 'hexagon';
+                            else if (n.style.includes('triangle')) nodeType = 'triangle';
 
                             const fillColorMatch = n.style.match(/fillColor=([^;]+)/);
                             const strokeColorMatch = n.style.match(/strokeColor=([^;]+)/);
                             const fillColor = fillColorMatch ? fillColorMatch[1] : '#ffffff';
                             const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
 
+                            const [firstLine, ...restLines] = n.value.split('\n');
                             importedNodes.push({
                                 id: newId,
                                 type: nodeType,
                                 position: { x: n.x, y: n.y },
                                 data: {
-                                    label: n.value,
+                                    label: firstLine,
                                     color: fillColor,
                                     borderColor: strokeColor,
                                     icon: nodeType === 'container' ? '📦' : '🔹',
-                                    description: '',
-                                    onLabelChange: handleNodeLabelChange,
-                                    linkedTo: []
+                                    description: restLines.join('\n'),
+                                    onLabelChange: handleNodeLabelChange
                                 },
                                 style: {
                                     width: n.width,
@@ -964,17 +963,23 @@ const ArchitectureDiagramEditorContent = () => {
                         });
 
                         const nodeMap = Object.fromEntries(importedNodes.map(n => [n.id, n]));
+                        const filteredEdges = [];
                         importedEdges.forEach(edge => {
                             const s = nodeMap[edge.source];
                             const t = nodeMap[edge.target];
                             if (s && t && s.type === 'container' && t.type === 'container') {
-                                s.data.linkedTo = Array.from(new Set([...(s.data.linkedTo || []), t.id]));
-                                t.data.linkedTo = Array.from(new Set([...(t.data.linkedTo || []), s.id]));
+                                t.parentNode = s.id;
+                                t.position = {
+                                    x: t.position.x - s.position.x,
+                                    y: t.position.y - s.position.y
+                                };
+                            } else {
+                                filteredEdges.push(edge);
                             }
                         });
 
                         setNodes(importedNodes);
-                        setEdges(importedEdges);
+                        setEdges(filteredEdges);
                         saveToHistory();
 
                     } catch (error) {
@@ -999,6 +1004,7 @@ const ArchitectureDiagramEditorContent = () => {
                 case 'diamond': return 'rhombus;whiteSpace=wrap;html=1;';
                 case 'circle': return 'ellipse;whiteSpace=wrap;html=1;';
                 case 'hexagon': return 'hexagon;whiteSpace=wrap;html=1;';
+                case 'triangle': return 'triangle;whiteSpace=wrap;html=1;';
                 default: return 'rounded=1;whiteSpace=wrap;html=1;';
             }
         };
@@ -1014,35 +1020,15 @@ const ArchitectureDiagramEditorContent = () => {
         // Add nodes
         nodes.forEach(node => {
             const shape = getDrawioShape(node.type);
+            const valueText = [node.data.label || '', node.data.description || ''].filter(Boolean).join('\n');
 
             xml += `
-        <mxCell id="${node.id}" value="${node.data.label || ''}" style="${shape}fillColor=${node.data.color || '#ffffff'};strokeColor=${node.data.borderColor || '#000000'};strokeWidth=2;" vertex="1" parent="${node.parentNode || '1'}">
+        <mxCell id="${node.id}" value="${valueText}" style="${shape}fillColor=${node.data.color || '#ffffff'};strokeColor=${node.data.borderColor || '#000000'};strokeWidth=2;" vertex="1" parent="${node.parentNode || '1'}">
           <mxGeometry x="${node.position.x}" y="${node.position.y}" width="${node.style?.width || 120}" height="${node.style?.height || 80}" as="geometry"/>
         </mxCell>`;
         });
 
-        // Collect container linking edges
-        const containerLinkEdges = [];
-        const seenPairs = new Set();
-        nodes.forEach(node => {
-            if (node.type === 'container' && Array.isArray(node.data.linkedTo)) {
-                node.data.linkedTo.forEach(otherId => {
-                    const pairKey = [node.id, otherId].sort().join('~');
-                    if (!seenPairs.has(pairKey)) {
-                        seenPairs.add(pairKey);
-                        containerLinkEdges.push({
-                            id: `link-${pairKey}`,
-                            source: node.id,
-                            target: otherId,
-                            data: { label: '' },
-                            style: {}
-                        });
-                    }
-                });
-            }
-        });
-
-        const allEdges = [...edges, ...containerLinkEdges];
+        const allEdges = edges;
 
         // Add edges
         allEdges.forEach(edge => {
@@ -1182,23 +1168,9 @@ const ArchitectureDiagramEditorContent = () => {
         const containers = selectedElements.nodes.filter(n => n.type === 'container');
         const others = selectedElements.nodes.filter(n => n.type !== 'container');
 
-        // Only containers selected -> record linking instead of parent/child
-        if (containers.length >= 2 && others.length === 0) {
-            setNodes(nds => nds.map(node => {
-                const isSel = containers.find(c => c.id === node.id);
-                if (isSel) {
-                    const otherIds = containers.filter(c => c.id !== node.id).map(c => c.id);
-                    const linked = Array.from(new Set([...(node.data.linkedTo || []), ...otherIds]));
-                    return { ...node, data: { ...node.data, linkedTo: linked } };
-                }
-                return node;
-            }));
-            saveToHistory();
-            return;
-        }
 
         let parent = containers[0] || selectedElements.nodes[0];
-        const children = selectedElements.nodes.filter(n => n.id !== parent.id && n.type !== 'container');
+        const children = selectedElements.nodes.filter(n => n.id !== parent.id);
 
         setNodes((nds) => nds.map((node) => {
             const child = children.find(c => c.id === node.id);
@@ -1226,19 +1198,6 @@ const ArchitectureDiagramEditorContent = () => {
             saveToHistory();
         } else if (selectedElements.nodes.length > 0) {
             const containers = selectedElements.nodes.filter(n => n.type === 'container');
-
-            if (containers.length >= 2 && containers.length === selectedElements.nodes.length) {
-                setNodes(nds => nds.map(node => {
-                    if (containers.find(c => c.id === node.id)) {
-                        const removeIds = containers.filter(c => c.id !== node.id).map(c => c.id);
-                        const linked = (node.data.linkedTo || []).filter(id => !removeIds.includes(id));
-                        return { ...node, data: { ...node.data, linkedTo: linked } };
-                    }
-                    return node;
-                }));
-                saveToHistory();
-                return;
-            }
 
             setNodes((nds) => nds.map((node) => {
                 if (selectedElements.nodes.find(n => n.id === node.id) && node.parentNode) {
