@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
 
-const TriangleNode = ({ data, id, selected }) => {
+const TriangleNode = ({ data, id, selected, isConnectable }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [label, setLabel] = useState(data.label || 'Triangle');
 
