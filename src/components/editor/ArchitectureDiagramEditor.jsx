@@ -3,11 +3,14 @@ import { ReactFlowProvider } from 'reactflow';
 import ArchitectureDiagramEditorContent from './ArchitectureDiagramEditorContent';
 import 'reactflow/dist/style.css';
 
-const ArchitectureDiagramEditor = () => {
+const ArchitectureDiagramEditor = ({ diagram, style = {}, className }) => {
+    const combinedStyle = { width: '100%', height: '100%', ...style };
     return (
-        <ReactFlowProvider>
-            <ArchitectureDiagramEditorContent />
-        </ReactFlowProvider>
+        <div style={combinedStyle} className={className}>
+            <ReactFlowProvider>
+                <ArchitectureDiagramEditorContent initialDiagram={diagram} />
+            </ReactFlowProvider>
+        </div>
     );
 };
 

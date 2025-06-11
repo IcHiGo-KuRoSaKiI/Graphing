@@ -67,7 +67,7 @@ const diagramSchema = {
             type: 'array',
             items: {
                 type: 'object',
-                required: ['id', 'label', 'type', 'position'],
+                required: ['id', 'label', 'position'],
                 properties: {
                     id: { type: 'string' },
                     label: { type: 'string' },
@@ -75,7 +75,10 @@ const diagramSchema = {
                     position: {
                         type: 'object',
                         required: ['x', 'y'],
-                        properties: { x: { type: 'number' }, y: { type: 'number' } }
+                        properties: {
+                            x: { type: 'number' },
+                            y: { type: 'number' }
+                        }
                     }
                 }
             }
@@ -100,7 +103,7 @@ const ajv = new Ajv();
 const validateDiagram = ajv.compile(diagramSchema);
 
 
-const ArchitectureDiagramEditorContent = () => {
+const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
     // State for nodes and edges
     const [nodes, setNodes] = useState([]);
     const [edges, setEdges] = useState([]);
@@ -127,118 +130,6 @@ const ArchitectureDiagramEditorContent = () => {
     const togglePropertyPanel = useCallback(() => {
         setPropertyPanelOpen((prev) => !prev);
     }, []);
-
-    // Stable default configuration with z-index
-    const defaultConfig = useMemo(() => ({
-        metadata: {
-            name: 'Architecture Diagram',
-            description: 'A sample architecture diagram',
-            version: '1.0'
-        },
-        containers: [
-            {
-                id: 'container-1',
-                label: 'Frontend',
-                position: { x: 100, y: 100 },
-                size: { width: 400, height: 300 },
-                color: '#f5f5f5',
-                bgColor: '#f5f5f5',
-                borderColor: '#ddd',
-                icon: '🖥️',
-                zIndex: 1
-            },
-            {
-                id: 'container-2',
-                label: 'Backend',
-                position: { x: 600, y: 100 },
-                size: { width: 400, height: 300 },
-                color: '#f5f5f5',
-                bgColor: '#f5f5f5',
-                borderColor: '#ddd',
-                icon: '⚙️',
-                zIndex: 1
-            }
-        ],
-        nodes: [
-            {
-                id: 'component-1',
-                label: 'React UI',
-                position: { x: 150, y: 150 },
-                size: { width: 150, height: 80 },
-                color: '#E3F2FD',
-                borderColor: '#90CAF9',
-                icon: '⚛️',
-                description: 'Frontend React components',
-                parentContainer: 'container-1',
-                zIndex: 10
-            },
-            {
-                id: 'component-2',
-                label: 'State Management',
-                position: { x: 320, y: 150 },
-                size: { width: 150, height: 80 },
-                color: '#E3F2FD',
-                borderColor: '#90CAF9',
-                icon: '🔄',
-                description: 'Redux state management',
-                parentContainer: 'container-1',
-                zIndex: 10
-            },
-            {
-                id: 'component-3',
-                label: 'API Server',
-                position: { x: 650, y: 150 },
-                size: { width: 150, height: 80 },
-                color: '#E8F5E9',
-                borderColor: '#A5D6A7',
-                icon: '🌐',
-                description: 'Express.js API server',
-                parentContainer: 'container-2',
-                zIndex: 10
-            },
-            {
-                id: 'component-4',
-                label: 'Database',
-                position: { x: 820, y: 150 },
-                size: { width: 150, height: 80 },
-                color: '#E8F5E9',
-                borderColor: '#A5D6A7',
-                icon: '💾',
-                description: 'MongoDB database',
-                parentContainer: 'container-2',
-                zIndex: 10
-            }
-        ],
-        connections: [
-            {
-                id: 'edge-1-3',
-                source: 'component-1',
-                target: 'component-3',
-                label: 'API Calls',
-                type: 'smoothstep',
-                animated: true,
-                zIndex: 5
-            },
-            {
-                id: 'edge-2-1',
-                source: 'component-2',
-                target: 'component-1',
-                label: 'State Updates',
-                type: 'smoothstep',
-                animated: false,
-                zIndex: 5
-            },
-            {
-                id: 'edge-3-4',
-                source: 'component-3',
-                target: 'component-4',
-                label: 'Queries',
-                type: 'smoothstep',
-                animated: false,
-                zIndex: 5
-            }
-        ]
-    }), []);
 
     // Custom node types
     const nodeTypes = useMemo(() => ({
@@ -361,10 +252,11 @@ const ArchitectureDiagramEditorContent = () => {
         return { nodes: flowNodes, edges: flowEdges };
     }, [handleNodeLabelChange]);
 
-    // Initialize diagram with default configuration - only once
+    // Initialize diagram from the provided configuration
     useEffect(() => {
         if (!isInitialized) {
-            const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(defaultConfig);
+            const config = initialDiagram || { containers: [], nodes: [], connections: [] };
+            const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(config);
             setNodes(initialNodes);
             setEdges(initialEdges);
             setHistory({
@@ -374,7 +266,7 @@ const ArchitectureDiagramEditorContent = () => {
             });
             setIsInitialized(true);
         }
-    }, [isInitialized, jsonToReactFlow, defaultConfig]);
+    }, [isInitialized, jsonToReactFlow, initialDiagram]);
 
     // Optimized save to history function
     const saveToHistory = useCallback(() => {
@@ -768,6 +660,11 @@ const ArchitectureDiagramEditorContent = () => {
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (event) => {
+            const target = event.target;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+                return; // allow default behavior inside inputs and editable areas
+            }
+
             if (event.ctrlKey || event.metaKey) {
                 switch (event.key) {
                     case 'c':
@@ -1174,15 +1071,14 @@ const ArchitectureDiagramEditorContent = () => {
     const resetDiagram = useCallback(() => {
         showConfirmModal(
             'Reset Diagram',
-            'Are you sure you want to reset the diagram to the default template? All unsaved changes will be lost.',
+            'Are you sure you want to clear the diagram? All unsaved changes will be lost.',
             () => {
-                const { nodes: defaultNodes, edges: defaultEdges } = jsonToReactFlow(defaultConfig);
-                setNodes(defaultNodes);
-                setEdges(defaultEdges);
+                setNodes([]);
+                setEdges([]);
                 saveToHistory();
             }
         );
-    }, [jsonToReactFlow, defaultConfig, saveToHistory, showConfirmModal]);
+    }, [saveToHistory, showConfirmModal]);
 
     const handleJsonPasteImport = useCallback((data) => {
         importDiagramObject(data);
@@ -1209,14 +1105,13 @@ const ArchitectureDiagramEditorContent = () => {
             'New Diagram',
             'Are you sure you want to create a new diagram? All unsaved changes will be lost.',
             () => {
-                const { nodes: defaultNodes, edges: defaultEdges } = jsonToReactFlow(defaultConfig);
-                setNodes(defaultNodes);
-                setEdges(defaultEdges);
+                setNodes([]);
+                setEdges([]);
                 setSelectedElements({ nodes: [], edges: [] });
                 saveToHistory();
             }
         );
-    }, [jsonToReactFlow, defaultConfig, saveToHistory, showConfirmModal]);
+    }, [saveToHistory, showConfirmModal]);
 
     const saveDiagram = useCallback(() => {
         exportDiagram();
