@@ -21,3 +21,12 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+/*.zip
+/diagram.md
+
+/src/ComplexArchitectureDiagram copy.jsx
+/src/ComplexArchitectureDiagram works-lightweight.jsx
+/src/ComplexArchitectureDiagram_native_good.jsx
+/src/ComplexArchitectureDiagram_react_flow_working.jsx
+/src/ComplexArchitectureDiagram.jsx
