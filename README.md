@@ -41,7 +41,7 @@ import the editor components:
 import { ArchitectureDiagramEditor } from 'graphing';
 ```
 
-Pass a JSON diagram object to render your own data. Size the editor by wrapping it in a container with the desired width and height:
+Pass a JSON diagram object to render your own data. The editor fills its parent container so be sure to give that element a size:
 
 ```javascript
 const exampleDiagram = {
@@ -77,6 +77,8 @@ function Example() {
 ### Complex example
 
 Below is a larger JSON snippet demonstrating two containers with several components and their connections. You can paste this JSON into the import dialog or pass it to the editor via the `diagram` prop.
+
+Node objects do not need a `type` field; components are assumed by default.
 
 ```json
 {

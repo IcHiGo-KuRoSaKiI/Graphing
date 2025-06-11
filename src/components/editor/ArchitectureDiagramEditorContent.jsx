@@ -67,7 +67,7 @@ const diagramSchema = {
             type: 'array',
             items: {
                 type: 'object',
-                required: ['id', 'label', 'type', 'position'],
+                required: ['id', 'label', 'position'],
                 properties: {
                     id: { type: 'string' },
                     label: { type: 'string' },
@@ -75,7 +75,10 @@ const diagramSchema = {
                     position: {
                         type: 'object',
                         required: ['x', 'y'],
-                        properties: { x: { type: 'number' }, y: { type: 'number' } }
+                        properties: {
+                            x: { type: 'number' },
+                            y: { type: 'number' }
+                        }
                     }
                 }
             }
