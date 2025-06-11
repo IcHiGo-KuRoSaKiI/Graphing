@@ -1254,7 +1254,7 @@ const ArchitectureDiagramEditorContent = () => {
 
 
     return (
-        <div className="architecture-diagram-editor">
+        <div className="architecture-diagram-editor h-full flex flex-col">
             {/* Modals */}
             <PromptModal
                 isOpen={promptModal.isOpen}
@@ -1381,7 +1381,7 @@ const ArchitectureDiagramEditorContent = () => {
             </div>
 
             {/* Main Editor */}
-            <div className="flex-1 relative bg-white dark:bg-gray-800" ref={reactFlowWrapper}>
+            <div className="flex-1 w-full h-full relative bg-white dark:bg-gray-800" ref={reactFlowWrapper}>
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}

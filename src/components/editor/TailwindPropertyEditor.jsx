@@ -159,6 +159,22 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
     const handleEdgeStrokeDasharrayChange = () => { };
     const handleEdgeAnimatedChange = () => { };
 
+    // Temporary stub handlers
+    const handleEdgeLabel = () => { };
+    const handleNodeDescriptionChange = () => { };
+    const handleEdgeDescriptionChange = () => { };
+    const handleNodeZIndexChange = () => { };
+    const handleEdgeZIndexChange = () => { };
+    const handleEdgeTypeChange = () => { };
+    const handleNodeColorChange = () => { };
+    const handleNodeBorderColorChange = () => { };
+    const handleNodeTextColorChange = () => { };
+    const handleEdgeStrokeColorChange = () => { };
+    const handleEdgeStrokeWidthChange = () => { };
+    const handleEdgeStrokeDasharrayChange = () => { };
+    const handleEdgeAnimatedChange = () => { };
+
+
     return (
         <div className={`w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg ${minimized ? 'overflow-hidden' : 'max-h-[calc(100vh-200px)] overflow-y-auto'}`}>
             <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
