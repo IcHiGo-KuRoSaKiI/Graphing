@@ -378,8 +378,8 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
                                             className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                         >
                                             <option value="none">None</option>
-                                            <option value="join">Join lines</option>
-                                            <option value="curve">Curve</option>
+                                            <option value="arc">Arc Jump</option>
+                                            <option value="sharp">Sharp Jump</option>
                                         </select>
                                     </div>
                                 )}

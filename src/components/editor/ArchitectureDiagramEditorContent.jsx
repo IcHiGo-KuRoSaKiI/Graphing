@@ -3,6 +3,7 @@ import ReactFlow, {
     Controls,
     Background,
     addEdge,
+    reconnectEdge,
     MiniMap,
     Panel,
     applyNodeChanges,
@@ -356,6 +357,14 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
     const onNodeDragStop = useCallback(() => {
         saveToHistory();
     }, [saveToHistory]);
+
+    const onEdgeUpdateStart = useCallback(() => {}, []);
+    const onEdgeUpdateEnd = useCallback(() => {
+        saveToHistory();
+    }, [saveToHistory]);
+    const onEdgeUpdate = useCallback((oldEdge, newConnection) => {
+        setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
+    }, []);
 
     const defaultEdgeOptions = useMemo(() => ({
         type: 'adjustable',
@@ -1486,6 +1495,9 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     onConnect={onConnect}
                     onSelectionChange={onSelectionChange}
                     onEdgeClick={onEdgeClick}
+                    onEdgeUpdate={onEdgeUpdate}
+                    onEdgeUpdateStart={onEdgeUpdateStart}
+                    onEdgeUpdateEnd={onEdgeUpdateEnd}
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
