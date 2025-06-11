@@ -73,7 +73,7 @@ const ArchitectureDiagramEditorContent = () => {
                 bgColor: '#f5f5f5',
                 borderColor: '#ddd',
                 icon: '🖥️',
-                zIndex: 1
+                zIndex: 1,
                 linkedTo: []
             },
             {
@@ -85,8 +85,8 @@ const ArchitectureDiagramEditorContent = () => {
                 bgColor: '#f5f5f5',
                 borderColor: '#ddd',
                 icon: '⚙️',
+                zIndex: 1,
                 linkedTo: []
-                zIndex: 1
             }
         ],
         nodes: [
@@ -248,7 +248,6 @@ const ArchitectureDiagramEditorContent = () => {
                 type: 'component',
                 position: node.position,
                 parentNode: node.parentContainer,
-                extent: 'parent',
                 data: {
                     label: node.label,
                     color: node.color || '#E3F2FD',
@@ -544,7 +543,6 @@ const ArchitectureDiagramEditorContent = () => {
                             type: 'component',
                             position,
                             parentNode: containerId,
-                            extent: 'parent',
                             data: {
                                 label: name,
                                 icon: '🔹',
@@ -916,7 +914,6 @@ const ArchitectureDiagramEditorContent = () => {
                                 // Handle parent relationships
                                 if (parent && parent !== '1' && cellIdMap.has(parent)) {
                                     node.parentNode = cellIdMap.get(parent);
-                                    node.extent = 'parent';
                                 }
 
                                 importedNodes.push(node);
@@ -970,9 +967,6 @@ const ArchitectureDiagramEditorContent = () => {
 
     // Convert to draw.io XML format
     const exportToDrawioXML = useCallback(() => {
-        let cellId = 0;
-        const getCellId = () => `cell-${cellId++}`;
-
         // Map node types to draw.io shapes
         const getDrawioShape = (nodeType) => {
             switch (nodeType) {
@@ -995,25 +989,22 @@ const ArchitectureDiagramEditorContent = () => {
 
         // Add nodes
         nodes.forEach(node => {
-            const id = getCellId();
             const shape = getDrawioShape(node.type);
-            const isContainer = node.type === 'container';
 
             xml += `
-        <mxCell id="${id}" value="${node.data.label || ''}" style="${shape}fillColor=${node.data.color || '#ffffff'};strokeColor=${node.data.borderColor || '#000000'};strokeWidth=2;" vertex="1" ${node.parentNode ? `parent="${node.parentNode}"` : 'parent="1"'}>
+        <mxCell id="${node.id}" value="${node.data.label || ''}" style="${shape}fillColor=${node.data.color || '#ffffff'};strokeColor=${node.data.borderColor || '#000000'};strokeWidth=2;" vertex="1" parent="${node.parentNode || '1'}">
           <mxGeometry x="${node.position.x}" y="${node.position.y}" width="${node.style?.width || 120}" height="${node.style?.height || 80}" as="geometry"/>
         </mxCell>`;
         });
 
         // Add edges
         edges.forEach(edge => {
-            const id = getCellId();
             const strokeWidth = edge.style?.strokeWidth || 2;
             const strokeColor = edge.style?.stroke || '#000000';
             const strokeDash = edge.style?.strokeDasharray ? 'dashed=1;' : '';
 
             xml += `
-        <mxCell id="${id}" value="${edge.data?.label || ''}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=${strokeWidth};strokeColor=${strokeColor};${strokeDash}" edge="1" parent="1" source="${edge.source}" target="${edge.target}">
+        <mxCell id="${edge.id}" value="${edge.data?.label || ''}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=${strokeWidth};strokeColor=${strokeColor};${strokeDash}" edge="1" parent="1" source="${edge.source}" target="${edge.target}">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>`;
         });
@@ -1170,7 +1161,7 @@ const ArchitectureDiagramEditorContent = () => {
                     x: node.position.x - parentNode.position.x,
                     y: node.position.y - parentNode.position.y
                 } : node.position;
-                return { ...node, parentNode: parent.id, extent: 'parent', position: offset };
+                return { ...node, parentNode: parent.id, position: offset };
             }
             return node;
         }));
