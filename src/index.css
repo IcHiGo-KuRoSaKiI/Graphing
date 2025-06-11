@@ -77,3 +77,8 @@ code {
   animation: dash 1s linear infinite;
   stroke-dasharray: 5;
 }
+
+.react-flow__edges {
+  position: relative;
+  z-index: 5;
+}
