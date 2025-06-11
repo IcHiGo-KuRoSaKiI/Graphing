@@ -7,6 +7,7 @@ import ReactFlow, {
     Panel,
     applyNodeChanges,
     applyEdgeChanges,
+    useUpdateNodeInternals,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -38,6 +39,8 @@ const ArchitectureDiagramEditorContent = () => {
     const [isInitialized, setIsInitialized] = useState(false);
     const [clipboardData, setClipboardData] = useState(null);
     const [propertyPanelOpen, setPropertyPanelOpen] = useState(true);
+
+    const updateNodeInternals = useUpdateNodeInternals();
 
     // State for modals
     const [promptModal, setPromptModal] = useState({ isOpen: false, title: '', message: '', defaultValue: '', onConfirm: null });
@@ -1134,20 +1137,30 @@ const ArchitectureDiagramEditorContent = () => {
             return;
         }
 
-        const [parent, ...children] = selectedElements.nodes;
+        let parent = selectedElements.nodes[0];
+        const containers = selectedElements.nodes.filter(n => n.type === 'container');
+        if (containers.length > 0) {
+            parent = containers[0];
+        }
+        const children = selectedElements.nodes.filter(n => n.id !== parent.id);
 
         setNodes((nds) => nds.map((node) => {
             const child = children.find(c => c.id === node.id);
             if (child) {
                 const parentNode = nds.find(n => n.id === parent.id);
-                const offset = parentNode ? { x: node.position.x - parentNode.position.x, y: node.position.y - parentNode.position.y } : node.position;
+                const offset = parentNode ? {
+                    x: node.position.x - parentNode.position.x,
+                    y: node.position.y - parentNode.position.y
+                } : node.position;
                 return { ...node, parentNode: parent.id, extent: 'parent', position: offset };
             }
             return node;
         }));
 
+        children.forEach(c => updateNodeInternals(c.id));
+        updateNodeInternals(parent.id);
         saveToHistory();
-    }, [selectedElements, saveToHistory]);
+    }, [selectedElements, saveToHistory, updateNodeInternals]);
 
     // Unlink selected nodes function
     const unlinkSelectedNodes = useCallback(() => {
@@ -1164,9 +1177,11 @@ const ArchitectureDiagramEditorContent = () => {
                 }
                 return node;
             }));
+
+            selectedElements.nodes.forEach(n => updateNodeInternals(n.id));
             saveToHistory();
         }
-    }, [selectedElements, edges, saveToHistory]);
+    }, [selectedElements, edges, saveToHistory, updateNodeInternals]);
 
     // Enhanced copy function that includes linked elements
     const copySelectedWithLinks = useCallback(() => {
@@ -1393,8 +1408,7 @@ const ArchitectureDiagramEditorContent = () => {
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     fitView
-                    snapToGrid
-                    snapGrid={[10, 10]}
+                    snapToGrid={false}
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}
                     attributionPosition="bottom-right"
                     deleteKeyCode={null}
