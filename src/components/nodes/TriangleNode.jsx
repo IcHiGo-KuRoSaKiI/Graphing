@@ -1,6 +1,24 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
 
+const sourceHandleStyle = {
+    background: '#3b82f6',
+    border: '2px solid #fff',
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    zIndex: 10,
+};
+
+const targetHandleStyle = {
+    background: '#1e40af',
+    border: '2px solid #fff',
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    zIndex: 10,
+};
+
 const TriangleNode = ({ data, id, selected }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [label, setLabel] = useState(data.label || 'Triangle');
@@ -85,14 +103,14 @@ const TriangleNode = ({ data, id, selected }) => {
                 )}
                 
                 {/* Connection handles */}
-                <Handle type="source" id="right-source" position={Position.Right} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="target" id="right-target" position={Position.Right} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="source" id="left-source" position={Position.Left} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="target" id="left-target" position={Position.Left} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="source" id="bottom-source" position={Position.Bottom} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="target" id="bottom-target" position={Position.Bottom} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="source" id="top-source" position={Position.Top} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="target" id="top-target" position={Position.Top} style={{ background: '#555', width: 6, height: 6 }} />
+                <Handle className="custom-handle" type="source" id="right-source" position={Position.Right} style={sourceHandleStyle} />
+                <Handle className="custom-handle" type="target" id="right-target" position={Position.Right} style={targetHandleStyle} />
+                <Handle className="custom-handle" type="source" id="left-source" position={Position.Left} style={sourceHandleStyle} />
+                <Handle className="custom-handle" type="target" id="left-target" position={Position.Left} style={targetHandleStyle} />
+                <Handle className="custom-handle" type="source" id="bottom-source" position={Position.Bottom} style={sourceHandleStyle} />
+                <Handle className="custom-handle" type="target" id="bottom-target" position={Position.Bottom} style={targetHandleStyle} />
+                <Handle className="custom-handle" type="source" id="top-source" position={Position.Top} style={sourceHandleStyle} />
+                <Handle className="custom-handle" type="target" id="top-target" position={Position.Top} style={targetHandleStyle} />
             </div>
         </>
     );

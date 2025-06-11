@@ -19,7 +19,7 @@ import HexagonNode from '../nodes/HexagonNode';
 import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
-import { AdjustableEdge, FloatingEdge, FloatingConnectionLine } from '../edges';
+import { AdjustableEdge } from '../edges';
 
 // Import modal components
 import PromptModal from '../modals/PromptModal';
@@ -144,8 +144,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
     }), []);
 
     const edgeTypes = useMemo(() => ({
-        adjustable: AdjustableEdge,
-        floating: FloatingEdge
+        adjustable: AdjustableEdge
     }), []);
 
     // Stable node label change handler
@@ -367,10 +366,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
     }, []);
 
+    const onConnectStart = useCallback(() => {}, []);
+    const onConnectEnd = useCallback(() => {}, []);
+
     const defaultEdgeOptions = useMemo(() => ({
-        type: 'floating',
-        animated: false,
-        style: { strokeWidth: 2 }
+        type: 'adjustable',
+        animated: true,
+        style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5' }
     }), []);
 
     // Handle new connections
@@ -378,9 +380,9 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         const newEdge = {
             ...params,
             id: `edge-${Date.now()}`,
-            type: 'floating',
+            type: 'adjustable',
             animated: true,
-            style: { strokeWidth: 2, zIndex: 5 },
+            style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5', zIndex: 5 },
             zIndex: 5,
             markerEnd: { type: 'arrow' },
             data: { label: '', description: '', intersection: 'none' }
@@ -1485,6 +1487,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     onNodesChange={handleNodesChange}
                     onEdgesChange={onEdgesChange}
                     onConnect={onConnect}
+                    onConnectStart={onConnectStart}
+                    onConnectEnd={onConnectEnd}
                     onSelectionChange={onSelectionChange}
                     onEdgeClick={onEdgeClick}
                     onEdgeUpdate={onEdgeUpdate}
@@ -1493,7 +1497,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
-                    connectionLineComponent={FloatingConnectionLine}
+                    connectionMode="strict"
+                    connectionLineStyle={{ stroke: '#2563eb', strokeDasharray: '5 5', strokeWidth: 2 }}
                     fitView
                     snapToGrid={false}
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}

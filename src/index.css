@@ -51,3 +51,29 @@ code {
 .modal-button.confirm {
   @apply bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50;
 }
+
+/* Node connection handle styling */
+.custom-handle {
+  @apply cursor-pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.custom-handle:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 2px #fff, 0 0 6px rgba(59, 130, 246, 0.8);
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.react-flow__connection-path {
+  stroke-dasharray: 5;
+}
+
+.react-flow__edge-path.animated {
+  animation: dash 1s linear infinite;
+  stroke-dasharray: 5;
+}
