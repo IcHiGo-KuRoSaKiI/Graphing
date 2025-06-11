@@ -7,6 +7,7 @@ const EnhancedMenuBar = ({
   onSave,
   onSaveAs,
   onImportJSON,
+  onImportJSONText,
   onImportDrawio,
   onExportJSON,
   onExportDrawio,
@@ -25,6 +26,8 @@ const EnhancedMenuBar = ({
   onAddShape,
   onLinkNodes,
   onUnlinkNodes,
+  onValidateJSON,
+  onAutoLayout,
   onTogglePropertiesPanel,
   canUndo = false,
   canRedo = false,
@@ -130,6 +133,9 @@ const EnhancedMenuBar = ({
         <MenuItem onClick={onImportJSON}>
           Import JSON...
         </MenuItem>
+        <MenuItem onClick={onImportJSONText}>
+          Paste JSON...
+        </MenuItem>
         <MenuItem onClick={onImportDrawio}>
           Import Draw.io XML...
         </MenuItem>
@@ -228,11 +234,11 @@ const EnhancedMenuBar = ({
         <MenuItem onClick={() => { }}>
           Diagram Templates...
         </MenuItem>
-        <MenuItem onClick={() => { }}>
+        <MenuItem onClick={onValidateJSON}>
           JSON Schema Validator
         </MenuItem>
         <MenuItem separator />
-        <MenuItem onClick={() => { }}>
+        <MenuItem onClick={onAutoLayout}>
           Auto-Layout
         </MenuItem>
         <MenuItem onClick={() => { }}>
