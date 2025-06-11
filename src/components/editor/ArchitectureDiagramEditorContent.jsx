@@ -32,7 +32,6 @@ import TailwindPropertyEditor from './TailwindPropertyEditor';
 
 import EnhancedMenuBar from './EnhancedMenuBar';
 import Ajv from 'ajv';
-import dagre from 'dagre';
 
 const diagramSchema = {
     type: 'object',
@@ -1233,38 +1232,49 @@ const ArchitectureDiagramEditorContent = () => {
 
     // Enhanced export functions (placeholders for future)
     const exportAsPNG = useCallback(async () => {
-        console.log('Export as PNG - to be implemented');
         alert('PNG export coming soon!');
     }, []);
 
     const exportAsSVG = useCallback(async () => {
-        console.log('Export as SVG - to be implemented');
         alert('SVG export coming soon!');
     }, []);
 
     const autoLayout = useCallback(() => {
-        const g = new dagre.graphlib.Graph();
-        g.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 50 });
-        g.setDefaultEdgeLabel(() => ({}));
+        const updated = [...nodes];
+        const containers = updated.filter(n => n.type === 'container');
+        let currentX = 50;
+        const containerSpacing = 50;
 
-        nodes.forEach(node => {
-            const width = node.style?.width || 150;
-            const height = node.style?.height || 80;
-            g.setNode(node.id, { width, height });
-        });
-        edges.forEach(edge => {
-            g.setEdge(edge.source, edge.target);
+        containers.forEach(container => {
+            const width = container.style?.width || 400;
+            const height = container.style?.height || 300;
+            const containerY = 50;
+
+            container.position = { x: currentX, y: containerY };
+
+            const children = updated.filter(n => n.parentNode === container.id);
+            const childSpacingX = 20;
+            const childSpacingY = 20;
+            const padding = 40;
+            const cols = Math.max(1, Math.floor((width - padding) / (150 + childSpacingX)));
+
+            children.forEach((child, index) => {
+                const childWidth = child.style?.width || 150;
+                const childHeight = child.style?.height || 80;
+                const col = index % cols;
+                const row = Math.floor(index / cols);
+                child.position = {
+                    x: container.position.x + padding / 2 + col * (childWidth + childSpacingX),
+                    y: container.position.y + padding / 2 + row * (childHeight + childSpacingY)
+                };
+            });
+
+            currentX += width + containerSpacing;
         });
 
-        dagre.layout(g);
-
-        const laidOut = nodes.map(n => {
-            const pos = g.node(n.id);
-            return pos ? { ...n, position: { x: pos.x, y: pos.y } } : n;
-        });
-        setNodes(laidOut);
+        setNodes(updated);
         saveToHistory();
-    }, [nodes, edges, saveToHistory]);
+    }, [nodes, saveToHistory]);
 
     // Enhanced selection operations
     const selectAllElements = useCallback(() => {
