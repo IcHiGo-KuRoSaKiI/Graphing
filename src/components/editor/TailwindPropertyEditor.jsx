@@ -144,20 +144,85 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
             </div>
         );
     }
-    // Temporary stub handlers
-    const handleEdgeLabel = () => { };
-    const handleNodeDescriptionChange = () => { };
-    const handleEdgeDescriptionChange = () => { };
-    const handleNodeZIndexChange = () => { };
-    const handleEdgeZIndexChange = () => { };
-    const handleEdgeTypeChange = () => { };
-    const handleNodeColorChange = () => { };
-    const handleNodeBorderColorChange = () => { };
-    const handleNodeTextColorChange = () => { };
-    const handleEdgeStrokeColorChange = () => { };
-    const handleEdgeStrokeWidthChange = () => { };
-    const handleEdgeStrokeDasharrayChange = () => { };
-    const handleEdgeAnimatedChange = () => { };
+    // Node handlers
+    const handleNodeDescriptionChange = useCallback((e) => {
+        const value = e.target.value;
+        setNodeDescription(value);
+        onElementPropertyChange('node', 'description', value);
+    }, [onElementPropertyChange]);
+
+    const handleNodeZIndexChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 0;
+        setNodeZIndex(value);
+        onElementPropertyChange('node', 'zIndex', value);
+    }, [onElementPropertyChange]);
+
+    const handleNodeColorChange = useCallback((e) => {
+        const value = e.target.value;
+        setNodeColor(value);
+        onElementPropertyChange('node', 'color', value);
+    }, [onElementPropertyChange]);
+
+    const handleNodeBorderColorChange = useCallback((e) => {
+        const value = e.target.value;
+        setNodeBorderColor(value);
+        onElementPropertyChange('node', 'borderColor', value);
+    }, [onElementPropertyChange]);
+
+    const handleNodeTextColorChange = useCallback((e) => {
+        const value = e.target.value;
+        setNodeTextColor(value);
+        onElementPropertyChange('node', 'textColor', value);
+    }, [onElementPropertyChange]);
+
+    // Edge handlers
+    const handleEdgeLabel = useCallback((e) => {
+        const value = e.target.value;
+        setEdgeLabel(value);
+        onElementPropertyChange('edge', 'label', value);
+    }, [onElementPropertyChange]);
+
+    const handleEdgeDescriptionChange = useCallback((e) => {
+        const value = e.target.value;
+        setEdgeDescription(value);
+        onElementPropertyChange('edge', 'description', value);
+    }, [onElementPropertyChange]);
+
+    const handleEdgeZIndexChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 0;
+        setEdgeZIndex(value);
+        onElementPropertyChange('edge', 'zIndex', value);
+    }, [onElementPropertyChange]);
+
+    const handleEdgeTypeChange = useCallback((e) => {
+        const value = e.target.value;
+        setEdgeType(value);
+        onElementPropertyChange('edge', 'type', value);
+    }, [onElementPropertyChange]);
+
+    const handleEdgeStrokeColorChange = useCallback((e) => {
+        const value = e.target.value;
+        setEdgeStrokeColor(value);
+        onElementPropertyChange('edge', 'style.stroke', value);
+    }, [onElementPropertyChange]);
+
+    const handleEdgeStrokeWidthChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 1;
+        setEdgeStrokeWidth(value);
+        onElementPropertyChange('edge', 'style.strokeWidth', value);
+    }, [onElementPropertyChange]);
+
+    const handleEdgeStrokeDasharrayChange = useCallback((e) => {
+        const value = e.target.value;
+        setEdgeStrokeDasharray(value);
+        onElementPropertyChange('edge', 'style.strokeDasharray', value);
+    }, [onElementPropertyChange]);
+
+    const handleEdgeAnimatedChange = useCallback((e) => {
+        const checked = e.target.checked;
+        setEdgeAnimated(checked);
+        onElementPropertyChange('edge', 'animated', checked);
+    }, [onElementPropertyChange]);
 
 
     return (
@@ -243,6 +308,7 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
                                             onChange={handleEdgeTypeChange}
                                             className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                         >
+                                            <option value="adjustable">Adjustable</option>
                                             <option value="default">Straight</option>
                                             <option value="step">Step</option>
                                             <option value="smoothstep">Smooth Step</option>

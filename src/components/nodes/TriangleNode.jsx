@@ -1,9 +1,13 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
 
 const TriangleNode = ({ data, id, selected }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [label, setLabel] = useState(data.label || 'Triangle');
+
+    useEffect(() => {
+        setLabel(data.label || 'Triangle');
+    }, [data.label]);
     const inputRef = useRef(null);
 
     const handleDoubleClick = useCallback((e) => {
