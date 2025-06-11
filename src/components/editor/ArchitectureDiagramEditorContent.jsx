@@ -37,6 +37,7 @@ const ArchitectureDiagramEditorContent = () => {
     const [history, setHistory] = useState({ past: [], present: { nodes: [], edges: [] }, future: [] });
     const [isInitialized, setIsInitialized] = useState(false);
     const [clipboardData, setClipboardData] = useState(null);
+    const [propertyPanelOpen, setPropertyPanelOpen] = useState(true);
 
     // State for modals
     const [promptModal, setPromptModal] = useState({ isOpen: false, title: '', message: '', defaultValue: '', onConfirm: null });
@@ -47,6 +48,10 @@ const ArchitectureDiagramEditorContent = () => {
     // Refs
     const reactFlowWrapper = useRef(null);
     const saveTimeoutRef = useRef(null);
+
+    const togglePropertyPanel = useCallback(() => {
+        setPropertyPanelOpen((prev) => !prev);
+    }, []);
 
     // Stable default configuration with z-index
     const defaultConfig = useMemo(() => ({
@@ -1126,51 +1131,39 @@ const ArchitectureDiagramEditorContent = () => {
 
     const linkSelectedNodes = useCallback(() => {
         if (selectedElements.nodes.length < 2) {
-            // Need at least 2 nodes to create a link
             return;
         }
 
-        // Get the first two selected nodes
-        const sourceNode = selectedElements.nodes[0];
-        const targetNode = selectedElements.nodes[1];
+        const [parent, ...children] = selectedElements.nodes;
 
-        // Create a new edge
-        const newEdge = {
-            id: `edge-${Date.now()}`,
-            source: sourceNode.id,
-            target: targetNode.id,
-            type: 'smoothstep',
-            animated: false,
-            style: { strokeWidth: 2, zIndex: 5 },
-            zIndex: 5,
-            data: {
-                label: '',
-                description: ''
+        setNodes((nds) => nds.map((node) => {
+            const child = children.find(c => c.id === node.id);
+            if (child) {
+                const parentNode = nds.find(n => n.id === parent.id);
+                const offset = parentNode ? { x: node.position.x - parentNode.position.x, y: node.position.y - parentNode.position.y } : node.position;
+                return { ...node, parentNode: parent.id, extent: 'parent', position: offset };
             }
-        };
+            return node;
+        }));
 
-        // Add the new edge
-        setEdges((eds) => [...eds, newEdge]);
         saveToHistory();
-
-        // Optionally show a toast notification
-        // toast.success('Nodes linked successfully');
     }, [selectedElements, saveToHistory]);
 
     // Unlink selected nodes function
     const unlinkSelectedNodes = useCallback(() => {
         if (selectedElements.edges.length > 0) {
-            // If edges are selected, remove them
             const selectedEdgeIds = selectedElements.edges.map(edge => edge.id);
             setEdges(edges.filter(edge => !selectedEdgeIds.includes(edge.id)));
             saveToHistory();
         } else if (selectedElements.nodes.length > 0) {
-            // If only nodes are selected, remove all edges connected to those nodes
-            const selectedNodeIds = selectedElements.nodes.map(node => node.id);
-            setEdges(edges.filter(edge =>
-                !selectedNodeIds.includes(edge.source) &&
-                !selectedNodeIds.includes(edge.target)
-            ));
+            setNodes((nds) => nds.map((node) => {
+                if (selectedElements.nodes.find(n => n.id === node.id) && node.parentNode) {
+                    const parent = nds.find(n => n.id === node.parentNode);
+                    const absPos = parent ? { x: node.position.x + parent.position.x, y: node.position.y + parent.position.y } : node.position;
+                    return { ...node, parentNode: undefined, extent: undefined, position: absPos };
+                }
+                return node;
+            }));
             saveToHistory();
         }
     }, [selectedElements, edges, saveToHistory]);
@@ -1179,17 +1172,29 @@ const ArchitectureDiagramEditorContent = () => {
     const copySelectedWithLinks = useCallback(() => {
         if (selectedElements.nodes.length === 0) return;
 
-        const selectedNodeIds = selectedElements.nodes.map(node => node.id);
+        const collectIds = (ids, all = []) => {
+            ids.forEach(id => {
+                if (!all.includes(id)) {
+                    all.push(id);
+                    nodes.forEach(n => {
+                        if (n.parentNode === id) {
+                            collectIds([n.id], all);
+                        }
+                    });
+                }
+            });
+            return all;
+        };
 
-        // Find all edges between selected nodes
+        const selectedNodeIds = collectIds(selectedElements.nodes.map(n => n.id));
+
+        const copiedNodes = nodes.filter(n => selectedNodeIds.includes(n.id));
         const connectedEdges = edges.filter(
-            edge =>
-                selectedNodeIds.includes(edge.source) &&
-                selectedNodeIds.includes(edge.target)
+            edge => selectedNodeIds.includes(edge.source) && selectedNodeIds.includes(edge.target)
         );
 
         setClipboardData({
-            nodes: selectedElements.nodes,
+            nodes: copiedNodes,
             edges: connectedEdges
         });
 
@@ -1212,6 +1217,7 @@ const ArchitectureDiagramEditorContent = () => {
             return {
                 ...node,
                 id: newId,
+                parentNode: node.parentNode ? (idMapping[node.parentNode] || node.parentNode) : undefined,
                 position: {
                     x: node.position.x + 50,
                     y: node.position.y + 50
@@ -1248,7 +1254,7 @@ const ArchitectureDiagramEditorContent = () => {
 
 
     return (
-        <div className="architecture-diagram-editor">
+        <div className="architecture-diagram-editor h-full flex flex-col">
             {/* Modals */}
             <PromptModal
                 isOpen={promptModal.isOpen}
@@ -1329,6 +1335,7 @@ const ArchitectureDiagramEditorContent = () => {
                     hasSelection={selectedElements.nodes.length > 0 || selectedElements.edges.length > 0}
                     hasClipboard={clipboardData !== null}
                     canLink={selectedElements.nodes.length >= 2}
+                    onTogglePropertiesPanel={togglePropertyPanel}
                 />
 
                 {/* Quick Action Buttons */}
@@ -1374,7 +1381,7 @@ const ArchitectureDiagramEditorContent = () => {
             </div>
 
             {/* Main Editor */}
-            <div className="flex-1 relative bg-white dark:bg-gray-800" ref={reactFlowWrapper}>
+            <div className="flex-1 w-full h-full relative bg-white dark:bg-gray-800" ref={reactFlowWrapper}>
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
@@ -1415,80 +1422,6 @@ const ArchitectureDiagramEditorContent = () => {
                         className="bg-white/95 dark:bg-gray-800/95 rounded-lg shadow-lg backdrop-blur-md"
                     />
 
-                    {/* Enhanced Toolbar Panel */}
-                    <Panel position="top-left" className="m-4">
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg backdrop-blur-md border border-gray-100 dark:border-gray-700 overflow-hidden">
-                            <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-200">
-                                Add Elements
-                            </div>
-                            <div className="p-3 flex flex-wrap gap-2">
-                                <button
-                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md flex items-center gap-1.5"
-                                    onClick={addContainerNode}
-                                    title="Add Container"
-                                >
-                                    📦 Container
-                                </button>
-                                <button
-                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md flex items-center gap-1.5"
-                                    onClick={addComponentNode}
-                                    title="Add Component"
-                                >
-                                    🔹 Component
-                                </button>
-                                <button
-                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md flex items-center gap-1.5"
-                                    onClick={showShapeSelectorModal}
-                                    title="Add Shape"
-                                >
-                                    ⭐ Shape
-                                </button>
-                            </div>
-                            <div className="p-3 border-t border-gray-200 dark:border-gray-700">
-                                <button
-                                    className={`w-full px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-1.5 transition-all ${selectedElements.nodes.length === 0 && selectedElements.edges.length === 0
-                                        ? 'bg-red-100 dark:bg-red-900/20 text-red-400 dark:text-red-300 cursor-not-allowed'
-                                        : 'bg-red-500 text-white hover:bg-red-600 hover:-translate-y-0.5 hover:shadow-md'
-                                        }`}
-                                    onClick={deleteSelected}
-                                    disabled={selectedElements.nodes.length === 0 && selectedElements.edges.length === 0}
-                                    title="Delete Selected (Del)"
-                                >
-                                    🗑️ Delete
-                                </button>
-                            </div>
-                            <div className="p-3 flex flex-wrap gap-2 border-t border-gray-200 dark:border-gray-700">
-                                <button
-                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-                                    onClick={exportDiagram}
-                                    title="Export as JSON"
-                                >
-                                    💾 JSON
-                                </button>
-                                <button
-                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-                                    onClick={exportToDrawioXML}
-                                    title="Export to draw.io XML"
-                                >
-                                    📄 XML
-                                </button>
-                                <button
-                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-                                    onClick={importDiagram}
-                                    title="Import JSON"
-                                >
-                                    📂 Import
-                                </button>
-                                <button
-                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-                                    onClick={resetDiagram}
-                                    title="Reset Diagram"
-                                >
-                                    🔄 Reset
-                                </button>
-                            </div>
-                        </div>
-                    </Panel>
 
                     {/* Stats Panel */}
                     <Panel position="top-right" className="m-4">
@@ -1526,13 +1459,15 @@ const ArchitectureDiagramEditorContent = () => {
                     </Panel>
 
                     {/* Universal Property Editor Panel */}
-                    <Panel position="bottom-right" className="m-4">
-                        <TailwindPropertyEditor
-                            selectedNode={selectedElements.nodes.length === 1 ? selectedElements.nodes[0] : null}
-                            selectedEdge={selectedElements.edges.length === 1 ? selectedElements.edges[0] : null}
-                            onElementPropertyChange={handleElementPropertyChange}
-                        />
-                    </Panel>
+                    {propertyPanelOpen && (
+                        <Panel position="bottom-right" className="m-4">
+                            <TailwindPropertyEditor
+                                selectedNode={selectedElements.nodes.length === 1 ? selectedElements.nodes[0] : null}
+                                selectedEdge={selectedElements.edges.length === 1 ? selectedElements.edges[0] : null}
+                                onElementPropertyChange={handleElementPropertyChange}
+                            />
+                        </Panel>
+                    )}
                 </ReactFlow>
             </div>
 
