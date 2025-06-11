@@ -7,6 +7,7 @@ import ReactFlow, {
     Panel,
     applyNodeChanges,
     applyEdgeChanges,
+    useUpdateNodeInternals,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -14,6 +15,7 @@ import 'reactflow/dist/style.css';
 import DiamondNode from '../nodes/DiamondNode';
 import CircleNode from '../nodes/CircleNode';
 import HexagonNode from '../nodes/HexagonNode';
+import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
 
@@ -38,6 +40,8 @@ const ArchitectureDiagramEditorContent = () => {
     const [isInitialized, setIsInitialized] = useState(false);
     const [clipboardData, setClipboardData] = useState(null);
     const [propertyPanelOpen, setPropertyPanelOpen] = useState(true);
+
+    const updateNodeInternals = useUpdateNodeInternals();
 
     // State for modals
     const [promptModal, setPromptModal] = useState({ isOpen: false, title: '', message: '', defaultValue: '', onConfirm: null });
@@ -170,6 +174,7 @@ const ArchitectureDiagramEditorContent = () => {
         diamond: DiamondNode,
         circle: CircleNode,
         hexagon: HexagonNode,
+        triangle: TriangleNode,
         container: ContainerNode,
         component: ComponentNode,
     }), []);
@@ -242,7 +247,6 @@ const ArchitectureDiagramEditorContent = () => {
                 type: 'component',
                 position: node.position,
                 parentNode: node.parentContainer,
-                extent: 'parent',
                 data: {
                     label: node.label,
                     color: node.color || '#E3F2FD',
@@ -538,7 +542,6 @@ const ArchitectureDiagramEditorContent = () => {
                             type: 'component',
                             position,
                             parentNode: containerId,
-                            extent: 'parent',
                             data: {
                                 label: name,
                                 icon: '🔹',
@@ -601,8 +604,8 @@ const ArchitectureDiagramEditorContent = () => {
                 position: { x: Math.random() * 300 + 100, y: Math.random() * 200 + 100 },
                 data: {
                     label: name,
-                    icon: shapeType === 'diamond' ? '♦️' : shapeType === 'circle' ? '⭕' : '⬢',
-                    color: shapeType === 'diamond' ? '#81D4FA' : shapeType === 'circle' ? '#C5E1A5' : '#FFCC80',
+                    icon: shapeType === 'diamond' ? '♦️' : shapeType === 'circle' ? '⭕' : shapeType === 'triangle' ? '🔺' : '⬢',
+                    color: shapeType === 'diamond' ? '#81D4FA' : shapeType === 'circle' ? '#C5E1A5' : shapeType === 'triangle' ? '#FFD54F' : '#FFCC80',
                     borderColor: '#ddd',
                     description: '',
                     onLabelChange: handleNodeLabelChange,
@@ -839,24 +842,19 @@ const ArchitectureDiagramEditorContent = () => {
                         const parser = new DOMParser();
                         const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
 
-                        // Parse mxfile structure
                         const cells = xmlDoc.querySelectorAll('mxCell');
-                        const importedNodes = [];
-                        const importedEdges = [];
-                        const cellIdMap = new Map(); // Map old IDs to new ones
+
+                        const tempNodes = [];
+                        const tempEdges = [];
 
                         cells.forEach(cell => {
                             const id = cell.getAttribute('id');
+                            if (id === '0' || id === '1') return; // skip root
+
                             const value = cell.getAttribute('value') || '';
                             const style = cell.getAttribute('style') || '';
                             const vertex = cell.getAttribute('vertex');
                             const edge = cell.getAttribute('edge');
-                            const parent = cell.getAttribute('parent');
-                            const source = cell.getAttribute('source');
-                            const target = cell.getAttribute('target');
-
-                            // Skip root cells
-                            if (id === '0' || id === '1') return;
 
                             const geometry = cell.querySelector('mxGeometry');
                             if (!geometry) return;
@@ -867,87 +865,121 @@ const ArchitectureDiagramEditorContent = () => {
                             const height = parseFloat(geometry.getAttribute('height')) || 80;
 
                             if (vertex) {
-                                // Parse node
-                                const newId = `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                                cellIdMap.set(id, newId);
-
-                                // Determine node type from style
-                                let nodeType = 'component';
-                                if (style.includes('swimlane')) nodeType = 'container';
-                                else if (style.includes('rhombus')) nodeType = 'diamond';
-                                else if (style.includes('ellipse')) nodeType = 'circle';
-                                else if (style.includes('hexagon')) nodeType = 'hexagon';
-
-                                // Extract colors from style
-                                const fillColorMatch = style.match(/fillColor=([^;]+)/);
-                                const strokeColorMatch = style.match(/strokeColor=([^;]+)/);
-                                const fillColor = fillColorMatch ? fillColorMatch[1] : '#ffffff';
-                                const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
-
-                                const node = {
-                                    id: newId,
-                                    type: nodeType,
-                                    position: { x, y },
-                                    data: {
-                                        label: value,
-                                        color: fillColor,
-                                        borderColor: strokeColor,
-                                        icon: nodeType === 'container' ? '📦' : '🔹',
-                                        description: '',
-                                        onLabelChange: handleNodeLabelChange,
-                                    },
-                                    style: {
-                                        width,
-                                        height,
-                                        zIndex: nodeType === 'container' ? 1 : 10,
-                                    },
-                                    draggable: true,
-                                    selectable: true,
-                                    zIndex: nodeType === 'container' ? 1 : 10
-                                };
-
-                                // Handle parent relationships
-                                if (parent && parent !== '1' && cellIdMap.has(parent)) {
-                                    node.parentNode = cellIdMap.get(parent);
-                                    node.extent = 'parent';
-                                }
-
-                                importedNodes.push(node);
-                            } else if (edge && source && target) {
-                                // Parse edge
-                                const newId = `imported-edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-                                // Extract style properties
-                                const strokeWidthMatch = style.match(/strokeWidth=([^;]+)/);
-                                const strokeColorMatch = style.match(/strokeColor=([^;]+)/);
-                                const strokeWidth = strokeWidthMatch ? parseInt(strokeWidthMatch[1]) : 2;
-                                const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
-                                const isDashed = style.includes('dashed=1');
-
-                                const edgeData = {
-                                    id: newId,
-                                    source: cellIdMap.get(source) || source,
-                                    target: cellIdMap.get(target) || target,
-                                    label: value,
-                                    type: 'smoothstep',
-                                    animated: false,
-                                    style: {
-                                        strokeWidth,
-                                        stroke: strokeColor,
-                                        strokeDasharray: isDashed ? '5,5' : undefined,
-                                        zIndex: 5
-                                    },
-                                    zIndex: 5,
-                                    data: { label: value, description: '' }
-                                };
-
-                                importedEdges.push(edgeData);
+                                tempNodes.push({
+                                    oldId: id,
+                                    value,
+                                    style,
+                                    x,
+                                    y,
+                                    width,
+                                    height,
+                                    parent: cell.getAttribute('parent')
+                                });
+                            } else if (edge) {
+                                tempEdges.push({
+                                    oldId: id,
+                                    value,
+                                    style,
+                                    source: cell.getAttribute('source'),
+                                    target: cell.getAttribute('target')
+                                });
                             }
                         });
 
-                        // Set imported data
+                        const cellIdMap = new Map();
+                        const importedNodes = [];
+
+                        tempNodes.forEach(n => {
+                            const newId = `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                            cellIdMap.set(n.oldId, newId);
+
+                            let nodeType = 'component';
+                            if (n.style.includes('swimlane')) nodeType = 'container';
+                            else if (n.style.includes('rhombus')) nodeType = 'diamond';
+                            else if (n.style.includes('ellipse')) nodeType = 'circle';
+                            else if (n.style.includes('hexagon')) nodeType = 'hexagon';
+                            else if (n.style.includes('triangle')) nodeType = 'triangle';
+
+                            const fillColorMatch = n.style.match(/fillColor=([^;]+)/);
+                            const strokeColorMatch = n.style.match(/strokeColor=([^;]+)/);
+                            const fillColor = fillColorMatch ? fillColorMatch[1] : '#ffffff';
+                            const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
+
+                            const [firstLine, ...restLines] = n.value.split('\n');
+                            importedNodes.push({
+                                id: newId,
+                                type: nodeType,
+                                position: { x: n.x, y: n.y },
+                                data: {
+                                    label: firstLine,
+                                    color: fillColor,
+                                    borderColor: strokeColor,
+                                    icon: nodeType === 'container' ? '📦' : '🔹',
+                                    description: restLines.join('\n'),
+                                    onLabelChange: handleNodeLabelChange
+                                },
+                                style: {
+                                    width: n.width,
+                                    height: n.height,
+                                    zIndex: nodeType === 'container' ? 1 : 10
+                                },
+                                draggable: true,
+                                selectable: true,
+                                zIndex: nodeType === 'container' ? 1 : 10,
+                                __parentOldId: n.parent
+                            });
+                        });
+
+                        importedNodes.forEach(node => {
+                            if (node.__parentOldId && cellIdMap.has(node.__parentOldId)) {
+                                node.parentNode = cellIdMap.get(node.__parentOldId);
+                            }
+                            delete node.__parentOldId;
+                        });
+
+                        const importedEdges = tempEdges.map(e => {
+                            const strokeWidthMatch = e.style.match(/strokeWidth=([^;]+)/);
+                            const strokeColorMatch = e.style.match(/strokeColor=([^;]+)/);
+                            const strokeWidth = strokeWidthMatch ? parseInt(strokeWidthMatch[1]) : 2;
+                            const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
+                            const isDashed = e.style.includes('dashed=1');
+
+                            return {
+                                id: `imported-edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                source: cellIdMap.get(e.source) || e.source,
+                                target: cellIdMap.get(e.target) || e.target,
+                                label: e.value,
+                                type: 'smoothstep',
+                                animated: false,
+                                style: {
+                                    strokeWidth,
+                                    stroke: strokeColor,
+                                    strokeDasharray: isDashed ? '5,5' : undefined,
+                                    zIndex: 5
+                                },
+                                zIndex: 5,
+                                data: { label: e.value, description: '' }
+                            };
+                        });
+
+                        const nodeMap = Object.fromEntries(importedNodes.map(n => [n.id, n]));
+                        const filteredEdges = [];
+                        importedEdges.forEach(edge => {
+                            const s = nodeMap[edge.source];
+                            const t = nodeMap[edge.target];
+                            if (s && t && s.type === 'container' && t.type === 'container') {
+                                t.parentNode = s.id;
+                                t.position = {
+                                    x: t.position.x - s.position.x,
+                                    y: t.position.y - s.position.y
+                                };
+                            } else {
+                                filteredEdges.push(edge);
+                            }
+                        });
+
                         setNodes(importedNodes);
-                        setEdges(importedEdges);
+                        setEdges(filteredEdges);
                         saveToHistory();
 
                     } catch (error) {
@@ -963,17 +995,16 @@ const ArchitectureDiagramEditorContent = () => {
 
     // Convert to draw.io XML format
     const exportToDrawioXML = useCallback(() => {
-        let cellId = 0;
-        const getCellId = () => `cell-${cellId++}`;
-
         // Map node types to draw.io shapes
         const getDrawioShape = (nodeType) => {
             switch (nodeType) {
-                case 'container': return 'swimlane';
+                case 'container':
+                    return 'swimlane;';
                 case 'component': return 'rounded=1;whiteSpace=wrap;html=1;';
                 case 'diamond': return 'rhombus;whiteSpace=wrap;html=1;';
                 case 'circle': return 'ellipse;whiteSpace=wrap;html=1;';
                 case 'hexagon': return 'hexagon;whiteSpace=wrap;html=1;';
+                case 'triangle': return 'triangle;whiteSpace=wrap;html=1;';
                 default: return 'rounded=1;whiteSpace=wrap;html=1;';
             }
         };
@@ -988,25 +1019,25 @@ const ArchitectureDiagramEditorContent = () => {
 
         // Add nodes
         nodes.forEach(node => {
-            const id = getCellId();
             const shape = getDrawioShape(node.type);
-            const isContainer = node.type === 'container';
+            const valueText = [node.data.label || '', node.data.description || ''].filter(Boolean).join('\n');
 
             xml += `
-        <mxCell id="${id}" value="${node.data.label || ''}" style="${shape}fillColor=${node.data.color || '#ffffff'};strokeColor=${node.data.borderColor || '#000000'};strokeWidth=2;" vertex="1" ${node.parentNode ? `parent="${node.parentNode}"` : 'parent="1"'}>
+        <mxCell id="${node.id}" value="${valueText}" style="${shape}fillColor=${node.data.color || '#ffffff'};strokeColor=${node.data.borderColor || '#000000'};strokeWidth=2;" vertex="1" parent="${node.parentNode || '1'}">
           <mxGeometry x="${node.position.x}" y="${node.position.y}" width="${node.style?.width || 120}" height="${node.style?.height || 80}" as="geometry"/>
         </mxCell>`;
         });
 
+        const allEdges = edges;
+
         // Add edges
-        edges.forEach(edge => {
-            const id = getCellId();
+        allEdges.forEach(edge => {
             const strokeWidth = edge.style?.strokeWidth || 2;
             const strokeColor = edge.style?.stroke || '#000000';
             const strokeDash = edge.style?.strokeDasharray ? 'dashed=1;' : '';
 
             xml += `
-        <mxCell id="${id}" value="${edge.data?.label || ''}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=${strokeWidth};strokeColor=${strokeColor};${strokeDash}" edge="1" parent="1" source="${edge.source}" target="${edge.target}">
+        <mxCell id="${edge.id}" value="${edge.data?.label || ''}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=${strokeWidth};strokeColor=${strokeColor};${strokeDash}" edge="1" parent="1" source="${edge.source}" target="${edge.target}">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>`;
         });
@@ -1134,20 +1165,30 @@ const ArchitectureDiagramEditorContent = () => {
             return;
         }
 
-        const [parent, ...children] = selectedElements.nodes;
+        const containers = selectedElements.nodes.filter(n => n.type === 'container');
+        const others = selectedElements.nodes.filter(n => n.type !== 'container');
+
+
+        let parent = containers[0] || selectedElements.nodes[0];
+        const children = selectedElements.nodes.filter(n => n.id !== parent.id);
 
         setNodes((nds) => nds.map((node) => {
             const child = children.find(c => c.id === node.id);
             if (child) {
                 const parentNode = nds.find(n => n.id === parent.id);
-                const offset = parentNode ? { x: node.position.x - parentNode.position.x, y: node.position.y - parentNode.position.y } : node.position;
-                return { ...node, parentNode: parent.id, extent: 'parent', position: offset };
+                const offset = parentNode ? {
+                    x: node.position.x - parentNode.position.x,
+                    y: node.position.y - parentNode.position.y
+                } : node.position;
+                return { ...node, parentNode: parent.id, position: offset };
             }
             return node;
         }));
 
+        children.forEach(c => updateNodeInternals(c.id));
+        updateNodeInternals(parent.id);
         saveToHistory();
-    }, [selectedElements, saveToHistory]);
+    }, [selectedElements, saveToHistory, updateNodeInternals]);
 
     // Unlink selected nodes function
     const unlinkSelectedNodes = useCallback(() => {
@@ -1156,6 +1197,8 @@ const ArchitectureDiagramEditorContent = () => {
             setEdges(edges.filter(edge => !selectedEdgeIds.includes(edge.id)));
             saveToHistory();
         } else if (selectedElements.nodes.length > 0) {
+            const containers = selectedElements.nodes.filter(n => n.type === 'container');
+
             setNodes((nds) => nds.map((node) => {
                 if (selectedElements.nodes.find(n => n.id === node.id) && node.parentNode) {
                     const parent = nds.find(n => n.id === node.parentNode);
@@ -1164,9 +1207,11 @@ const ArchitectureDiagramEditorContent = () => {
                 }
                 return node;
             }));
+
+            selectedElements.nodes.forEach(n => updateNodeInternals(n.id));
             saveToHistory();
         }
-    }, [selectedElements, edges, saveToHistory]);
+    }, [selectedElements, edges, saveToHistory, updateNodeInternals]);
 
     // Enhanced copy function that includes linked elements
     const copySelectedWithLinks = useCallback(() => {
@@ -1393,8 +1438,7 @@ const ArchitectureDiagramEditorContent = () => {
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     fitView
-                    snapToGrid
-                    snapGrid={[10, 10]}
+                    snapToGrid={false}
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}
                     attributionPosition="bottom-right"
                     deleteKeyCode={null}
