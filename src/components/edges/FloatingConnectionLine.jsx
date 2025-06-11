@@ -9,9 +9,8 @@ const FloatingConnectionLine = ({ fromX, fromY, toX, toY, fromPosition, toPositi
 
   const targetNode = {
     id: 'connection-target',
-    width: 1,
-    height: 1,
     position: { x: toX, y: toY },
+    positionAbsolute: { x: toX, y: toY },
     width: 1,
     height: 1,
   };
