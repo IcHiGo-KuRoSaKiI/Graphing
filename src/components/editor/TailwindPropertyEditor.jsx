@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronRight, Check } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyChange }) => {
     // Node properties
@@ -121,29 +121,6 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
         }
     }, [onElementPropertyChange]);
 
-    if (!selectedNode && !selectedEdge) {
-        return (
-            <div className="w-72 max-h-[calc(100vh-200px)] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-                <div className="py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
-                    Properties
-                </div>
-                <div className="p-4">
-                    <div className="text-center text-gray-500 dark:text-gray-400 py-6">
-                        <p>Select an element to edit its properties</p>
-                        <div className="mt-4 text-left text-sm bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
-                            <strong>Tips:</strong>
-                            <ul className="mt-2 pl-5 list-disc">
-                                <li className="mb-1">Click nodes or edges to select them</li>
-                                <li className="mb-1">Use Ctrl+C/V to copy/paste</li>
-                                <li className="mb-1">Use Delete key to remove elements</li>
-                                <li className="mb-1">Double-click to edit labels inline</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
     // Node handlers
     const handleNodeDescriptionChange = useCallback((e) => {
         const value = e.target.value;
@@ -224,6 +201,29 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
         onElementPropertyChange('edge', 'animated', checked);
     }, [onElementPropertyChange]);
 
+    if (!selectedNode && !selectedEdge) {
+        return (
+            <div className="w-72 max-h-[calc(100vh-200px)] overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                <div className="py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
+                    Properties
+                </div>
+                <div className="p-4">
+                    <div className="text-center text-gray-500 dark:text-gray-400 py-6">
+                        <p>Select an element to edit its properties</p>
+                        <div className="mt-4 text-left text-sm bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                            <strong>Tips:</strong>
+                            <ul className="mt-2 pl-5 list-disc">
+                                <li className="mb-1">Click nodes or edges to select them</li>
+                                <li className="mb-1">Use Ctrl+C/V to copy/paste</li>
+                                <li className="mb-1">Use Delete key to remove elements</li>
+                                <li className="mb-1">Double-click to edit labels inline</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg ${minimized ? 'overflow-hidden' : 'max-h-[calc(100vh-200px)] overflow-y-auto'}`}>
