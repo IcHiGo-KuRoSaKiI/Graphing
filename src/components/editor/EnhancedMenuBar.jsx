@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import { ChevronDown, File, Edit, Eye, Settings, HelpCircle } from 'lucide-react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { ChevronDown, File, Edit, Eye, Settings, HelpCircle, Plus, Link, Unlink, Copy, Trash } from 'lucide-react';
 
-const MenuBar = ({
+const EnhancedMenuBar = ({
   onNew,
   onOpen,
   onSave,
@@ -20,35 +20,51 @@ const MenuBar = ({
   onDelete,
   onSelectAll,
   onDeselectAll,
+  onAddContainer,
+  onAddComponent,
+  onAddShape,
+  onLinkNodes,
+  onUnlinkNodes,
   canUndo = false,
   canRedo = false,
   hasSelection = false,
-  hasClipboard = false
+  hasClipboard = false,
+  canLink = false
 }) => {
   const [activeMenu, setActiveMenu] = useState(null);
+  const menuRef = useRef(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActiveMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleMenuClick = useCallback((menuName) => {
     setActiveMenu(activeMenu === menuName ? null : menuName);
   }, [activeMenu]);
 
   const handleMenuItemClick = useCallback((action) => {
-    action();
-    setActiveMenu(null);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
+    if (action) {
+      action();
+    }
     setActiveMenu(null);
   }, []);
 
   const MenuButton = ({ name, icon: Icon, children }) => (
-    <div
-      className="menu-button-container"
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="relative">
       <button
-        className={`menu-button ${activeMenu === name ? 'active' : ''}`}
+        className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded transition-all ${activeMenu === name
+          ? 'bg-white/20 shadow-md transform -translate-y-0.5'
+          : 'hover:bg-white/10'
+          }`}
         onClick={() => handleMenuClick(name)}
-        onMouseEnter={() => activeMenu && setActiveMenu(name)}
       >
         <Icon size={16} />
         <span>{name}</span>
@@ -56,143 +72,44 @@ const MenuBar = ({
       </button>
 
       {activeMenu === name && (
-        <div className="menu-dropdown">
+        <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-lg min-w-[200px] z-50 animate-fadeIn">
           {children}
         </div>
       )}
     </div>
   );
 
-  const MenuItem = ({ onClick, disabled = false, children, shortcut = null, separator = false }) => {
+  const MenuItem = ({ onClick, disabled = false, children, shortcut = null, separator = false, icon: Icon = null }) => {
     if (separator) {
-      return <div className="menu-separator" />;
+      return <div className="h-px my-1 bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent" />;
     }
 
     return (
       <div
-        className={`menu-item ${disabled ? 'disabled' : ''}`}
+        className={`flex items-center justify-between px-4 py-2.5 text-gray-700 dark:text-gray-200 text-sm cursor-pointer transition-all ${disabled
+          ? 'opacity-50 cursor-not-allowed'
+          : 'hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-gray-700 dark:hover:to-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 hover:translate-x-0.5'
+          }`}
         onClick={disabled ? undefined : () => handleMenuItemClick(onClick)}
       >
-        <span className="menu-item-text">{children}</span>
-        {shortcut && <span className="menu-shortcut">{shortcut}</span>}
+        <span className="flex items-center gap-2">
+          {Icon && <Icon size={14} />}
+          {children}
+        </span>
+        {shortcut && (
+          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded font-mono border border-gray-200 dark:border-gray-600">
+            {shortcut}
+          </span>
+        )}
       </div>
     );
   };
 
   return (
-    <div className="menu-bar">
-      <style jsx>{`
-        .menu-bar {
-          display: flex;
-          align-items: center;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          padding: 0;
-          position: relative;
-          z-index: 1001;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .menu-button-container {
-          position: relative;
-        }
-
-        .menu-button {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          padding: 8px 16px;
-          background: transparent;
-          border: none;
-          color: white;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          border-radius: 4px;
-          margin: 4px 2px;
-        }
-
-        .menu-button:hover,
-        .menu-button.active {
-          background: rgba(255, 255, 255, 0.15);
-          transform: translateY(-1px);
-        }
-
-        .menu-dropdown {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          background: white;
-          border: 1px solid #e9ecef;
-          border-radius: 8px;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-          min-width: 200px;
-          z-index: 1002;
-          padding: 4px 0;
-          margin-top: 2px;
-          animation: menuSlideIn 0.15s ease-out;
-        }
-
-        @keyframes menuSlideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .menu-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 10px 16px;
-          cursor: pointer;
-          font-size: 14px;
-          color: #495057;
-          transition: all 0.2s ease;
-          position: relative;
-        }
-
-        .menu-item:hover:not(.disabled) {
-          background: linear-gradient(135deg, #f8f9ff 0%, #e6f0ff 100%);
-          color: #667eea;
-        }
-
-        .menu-item.disabled {
-          color: #adb5bd;
-          cursor: not-allowed;
-          opacity: 0.6;
-        }
-
-        .menu-item-text {
-          flex: 1;
-        }
-
-        .menu-shortcut {
-          font-size: 12px;
-          color: #6c757d;
-          background: #f8f9fa;
-          padding: 2px 6px;
-          border-radius: 4px;
-          margin-left: 12px;
-        }
-
-        .menu-separator {
-          height: 1px;
-          background: #e9ecef;
-          margin: 4px 0;
-        }
-
-        .submenu-indicator {
-          margin-left: 8px;
-          font-size: 10px;
-          color: #6c757d;
-        }
-      `}</style>
-
+    <div
+      ref={menuRef}
+      className="flex items-center bg-gradient-to-r from-indigo-500 to-purple-600 p-0 relative z-10 border-b border-white/10"
+    >
       <MenuButton name="File" icon={File}>
         <MenuItem onClick={onNew} shortcut="Ctrl+N">
           New Diagram
@@ -232,7 +149,7 @@ const MenuBar = ({
       </MenuButton>
 
       <MenuButton name="Edit" icon={Edit}>
-        <MenuItem onClick={onUndo} disabled={!canUndo} shortcut="Ctrl+Z">
+        <MenuItem onClick={onUndo} disabled={!canUndo} shortcut="Ctrl+Z" icon={ChevronDown}>
           Undo
         </MenuItem>
         <MenuItem onClick={onRedo} disabled={!canRedo} shortcut="Ctrl+Y">
@@ -242,14 +159,14 @@ const MenuBar = ({
         <MenuItem onClick={onCut} disabled={!hasSelection} shortcut="Ctrl+X">
           Cut
         </MenuItem>
-        <MenuItem onClick={onCopy} disabled={!hasSelection} shortcut="Ctrl+C">
+        <MenuItem onClick={onCopy} disabled={!hasSelection} shortcut="Ctrl+C" icon={Copy}>
           Copy
         </MenuItem>
         <MenuItem onClick={onPaste} disabled={!hasClipboard} shortcut="Ctrl+V">
           Paste
         </MenuItem>
         <MenuItem separator />
-        <MenuItem onClick={onDelete} disabled={!hasSelection} shortcut="Delete">
+        <MenuItem onClick={onDelete} disabled={!hasSelection} shortcut="Delete" icon={Trash}>
           Delete
         </MenuItem>
         <MenuItem separator />
@@ -258,6 +175,27 @@ const MenuBar = ({
         </MenuItem>
         <MenuItem onClick={onDeselectAll} disabled={!hasSelection}>
           Deselect All
+        </MenuItem>
+      </MenuButton>
+
+      <MenuButton name="Add" icon={Plus}>
+        <MenuItem onClick={onAddContainer} icon={Plus}>
+          Add Container
+        </MenuItem>
+        <MenuItem onClick={onAddComponent}>
+          Add Component
+        </MenuItem>
+        <MenuItem onClick={onAddShape}>
+          Add Shape
+        </MenuItem>
+      </MenuButton>
+
+      <MenuButton name="Connect" icon={Link}>
+        <MenuItem onClick={onLinkNodes} disabled={!canLink} icon={Link}>
+          Link Selected Nodes
+        </MenuItem>
+        <MenuItem onClick={onUnlinkNodes} disabled={!hasSelection} icon={Unlink}>
+          Unlink Selected
         </MenuItem>
       </MenuButton>
 
@@ -287,7 +225,7 @@ const MenuBar = ({
         </MenuItem>
       </MenuButton>
 
-      <MenuButton name="Tools" icon={Settings}>
+      <MenuButton name="Settings" icon={Settings}>
         <MenuItem onClick={() => { }}>
           Diagram Templates...
         </MenuItem>
@@ -323,4 +261,4 @@ const MenuBar = ({
   );
 };
 
-export default MenuBar;
+export default EnhancedMenuBar;

@@ -1,8 +1,8 @@
 // Update this file at: src/components/editor/index.js
 
 import ArchitectureDiagramEditor from './ArchitectureDiagramEditor';
-import MenuBar from './MenuBar';
-import UniversalPropertyEditor from './UniversalPropertyEditor';
+import MenuBar from './EnhancedMenuBar';
+import UniversalPropertyEditor from './TailwindPropertyEditor';
 import './ArchitectureDiagramEditor.css';
 import './MenuBar.css';
 

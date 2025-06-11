@@ -24,9 +24,9 @@ import ContainerSelectorModal from '../modals/ContainerSelectorModal';
 import ShapeSelectorModal from '../modals/ShapeSelectorModal';
 
 // Import editor components
-import UniversalPropertyEditor from './UniversalPropertyEditor';
+import TailwindPropertyEditor from './TailwindPropertyEditor';
 
-import MenuBar from './MenuBar';
+import EnhancedMenuBar from './EnhancedMenuBar';
 
 
 const ArchitectureDiagramEditorContent = () => {
@@ -1124,6 +1124,129 @@ const ArchitectureDiagramEditorContent = () => {
     }, [selectedElements, copySelected, deleteSelected]);
 
 
+    const linkSelectedNodes = useCallback(() => {
+        if (selectedElements.nodes.length < 2) {
+            // Need at least 2 nodes to create a link
+            return;
+        }
+
+        // Get the first two selected nodes
+        const sourceNode = selectedElements.nodes[0];
+        const targetNode = selectedElements.nodes[1];
+
+        // Create a new edge
+        const newEdge = {
+            id: `edge-${Date.now()}`,
+            source: sourceNode.id,
+            target: targetNode.id,
+            type: 'smoothstep',
+            animated: false,
+            style: { strokeWidth: 2, zIndex: 5 },
+            zIndex: 5,
+            data: {
+                label: '',
+                description: ''
+            }
+        };
+
+        // Add the new edge
+        setEdges((eds) => [...eds, newEdge]);
+        saveToHistory();
+
+        // Optionally show a toast notification
+        // toast.success('Nodes linked successfully');
+    }, [selectedElements, saveToHistory]);
+
+    // Unlink selected nodes function
+    const unlinkSelectedNodes = useCallback(() => {
+        if (selectedElements.edges.length > 0) {
+            // If edges are selected, remove them
+            const selectedEdgeIds = selectedElements.edges.map(edge => edge.id);
+            setEdges(edges.filter(edge => !selectedEdgeIds.includes(edge.id)));
+            saveToHistory();
+        } else if (selectedElements.nodes.length > 0) {
+            // If only nodes are selected, remove all edges connected to those nodes
+            const selectedNodeIds = selectedElements.nodes.map(node => node.id);
+            setEdges(edges.filter(edge =>
+                !selectedNodeIds.includes(edge.source) &&
+                !selectedNodeIds.includes(edge.target)
+            ));
+            saveToHistory();
+        }
+    }, [selectedElements, edges, saveToHistory]);
+
+    // Enhanced copy function that includes linked elements
+    const copySelectedWithLinks = useCallback(() => {
+        if (selectedElements.nodes.length === 0) return;
+
+        const selectedNodeIds = selectedElements.nodes.map(node => node.id);
+
+        // Find all edges between selected nodes
+        const connectedEdges = edges.filter(
+            edge =>
+                selectedNodeIds.includes(edge.source) &&
+                selectedNodeIds.includes(edge.target)
+        );
+
+        setClipboardData({
+            nodes: selectedElements.nodes,
+            edges: connectedEdges
+        });
+
+        // Optionally show a toast notification
+        // toast.success(`Copied ${selectedElements.nodes.length} nodes and ${connectedEdges.length} connections`);
+    }, [selectedElements, edges]);
+
+    // Enhanced paste function that preserves links between pasted elements
+    const pasteElementsWithLinks = useCallback(() => {
+        if (!clipboardData || clipboardData.nodes.length === 0) return;
+
+        // Create a mapping from old IDs to new IDs
+        const idMapping = {};
+
+        // Create new nodes with new IDs
+        const newNodes = clipboardData.nodes.map(node => {
+            const newId = `${node.type}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            idMapping[node.id] = newId;
+
+            return {
+                ...node,
+                id: newId,
+                position: {
+                    x: node.position.x + 50,
+                    y: node.position.y + 50
+                },
+                selected: false
+            };
+        });
+
+        // Create new edges with updated source and target IDs
+        const newEdges = clipboardData.edges.map(edge => {
+            const newSource = idMapping[edge.source];
+            const newTarget = idMapping[edge.target];
+
+            // Only create edges if both source and target nodes were copied
+            if (newSource && newTarget) {
+                return {
+                    ...edge,
+                    id: `edge-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                    source: newSource,
+                    target: newTarget,
+                    selected: false
+                };
+            }
+            return null;
+        }).filter(Boolean); // Filter out null edges
+
+        setNodes(nodes => [...nodes, ...newNodes]);
+        setEdges(edges => [...edges, ...newEdges]);
+        saveToHistory();
+
+        // Optionally show a toast notification
+        // toast.success(`Pasted ${newNodes.length} nodes and ${newEdges.length} connections`);
+    }, [clipboardData, saveToHistory]);
+
+
     return (
         <div className="architecture-diagram-editor">
             {/* Modals */}
@@ -1158,12 +1281,17 @@ const ArchitectureDiagramEditorContent = () => {
             />
 
             {/* Header */}
-            <div className="editor-header-enhanced">
-                <div className="editor-branding">
-                    <h1 className="editor-title">Architecture Diagram Editor</h1>
+            <div className="flex flex-col bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg z-10">
+                <div className="flex items-center justify-between px-6 py-3 border-b border-white/10">
+                    <div className="flex items-center">
+                        <h1 className="text-lg font-semibold text-white flex items-center gap-3 m-0">
+                            <span className="text-xl">📊</span>
+                            Architecture Diagram Editor
+                        </h1>
+                    </div>
                 </div>
 
-                <MenuBar
+                <EnhancedMenuBar
                     // File operations
                     onNew={newDiagram}
                     onOpen={openDiagram}
@@ -1180,23 +1308,34 @@ const ArchitectureDiagramEditorContent = () => {
                     onUndo={undo}
                     onRedo={redo}
                     onCut={cutSelected}
-                    onCopy={copySelected}
-                    onPaste={pasteElements}
+                    onCopy={copySelectedWithLinks} // Use enhanced copy function
+                    onPaste={pasteElementsWithLinks} // Use enhanced paste function
                     onDelete={deleteSelected}
                     onSelectAll={selectAllElements}
                     onDeselectAll={deselectAllElements}
+
+                    // Add operations
+                    onAddContainer={addContainerNode}
+                    onAddComponent={addComponentNode}
+                    onAddShape={showShapeSelectorModal}
+
+                    // Link operations
+                    onLinkNodes={linkSelectedNodes}
+                    onUnlinkNodes={unlinkSelectedNodes}
 
                     // State props
                     canUndo={history.past.length > 0}
                     canRedo={history.future.length > 0}
                     hasSelection={selectedElements.nodes.length > 0 || selectedElements.edges.length > 0}
                     hasClipboard={clipboardData !== null}
+                    canLink={selectedElements.nodes.length >= 2}
                 />
 
                 {/* Quick Action Buttons */}
-                <div className="editor-quick-actions">
+                <div className="flex items-center gap-2 p-2 bg-white/5 border-t border-white/10">
                     <button
-                        className="quick-action-button"
+                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${history.past.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
+                            }`}
                         onClick={undo}
                         disabled={history.past.length === 0}
                         title="Undo (Ctrl+Z)"
@@ -1204,25 +1343,28 @@ const ArchitectureDiagramEditorContent = () => {
                         ↩️
                     </button>
                     <button
-                        className="quick-action-button"
+                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${history.future.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
+                            }`}
                         onClick={redo}
                         disabled={history.future.length === 0}
                         title="Redo (Ctrl+Shift+Z)"
                     >
                         ↪️
                     </button>
-                    <div className="action-separator"></div>
+                    <div className="w-px h-6 bg-white/20 mx-1"></div>
                     <button
-                        className="quick-action-button"
-                        onClick={copySelected}
+                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${selectedElements.nodes.length === 0 && selectedElements.edges.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
+                            }`}
+                        onClick={copySelectedWithLinks}
                         disabled={selectedElements.nodes.length === 0 && selectedElements.edges.length === 0}
                         title="Copy (Ctrl+C)"
                     >
                         📋
                     </button>
                     <button
-                        className="quick-action-button"
-                        onClick={pasteElements}
+                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${!clipboardData ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
+                            }`}
+                        onClick={pasteElementsWithLinks}
                         disabled={!clipboardData}
                         title="Paste (Ctrl+V)"
                     >
@@ -1232,7 +1374,7 @@ const ArchitectureDiagramEditorContent = () => {
             </div>
 
             {/* Main Editor */}
-            <div className="editor-content" ref={reactFlowWrapper}>
+            <div className="flex-1 relative bg-white dark:bg-gray-800" ref={reactFlowWrapper}>
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
@@ -1264,89 +1406,128 @@ const ArchitectureDiagramEditorContent = () => {
                     panOnScroll={false}
                     preventScrolling={true}
                 >
-                    <Controls />
+                    <Controls className="bg-white/95 dark:bg-gray-800/95 rounded-lg shadow-lg backdrop-blur-md p-1" />
                     <Background color="#aaa" gap={16} />
                     <MiniMap
                         nodeStrokeWidth={3}
                         zoomable
                         pannable
+                        className="bg-white/95 dark:bg-gray-800/95 rounded-lg shadow-lg backdrop-blur-md"
                     />
 
                     {/* Enhanced Toolbar Panel */}
-                    <Panel position="top-left" className="editor-panel toolbar-panel">
-                        <div className="panel-header">Add Elements</div>
-                        <div className="panel-content">
-                            <button className="panel-button" onClick={addContainerNode} title="Add Container">
-                                📦 Container
-                            </button>
-                            <button className="panel-button" onClick={addComponentNode} title="Add Component">
-                                🔹 Component
-                            </button>
-                            <button className="panel-button" onClick={showShapeSelectorModal} title="Add Shape">
-                                ⭐ Shape
-                            </button>
-                        </div>
-                        <div className="panel-content">
-                            <button
-                                className="panel-button delete"
-                                onClick={deleteSelected}
-                                disabled={selectedElements.nodes.length === 0 && selectedElements.edges.length === 0}
-                                title="Delete Selected (Del)"
-                            >
-                                🗑️ Delete
-                            </button>
-                        </div>
-                        <div className="panel-content">
-                            <button className="panel-button" onClick={exportDiagram} title="Export as JSON">
-                                💾 JSON
-                            </button>
-                            <button className="panel-button" onClick={exportToDrawioXML} title="Export to draw.io XML">
-                                📄 XML
-                            </button>
-                            <button className="panel-button" onClick={importDiagram} title="Import JSON">
-                                📂 Import JSON
-                            </button>
-                            <button className="panel-button" onClick={importFromDrawioXML} title="Import draw.io XML">
-                                📥 Import XML
-                            </button>
-                            <button className="panel-button" onClick={resetDiagram} title="Reset Diagram">
-                                🔄 Reset
-                            </button>
+                    <Panel position="top-left" className="m-4">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg backdrop-blur-md border border-gray-100 dark:border-gray-700 overflow-hidden">
+                            <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-200">
+                                Add Elements
+                            </div>
+                            <div className="p-3 flex flex-wrap gap-2">
+                                <button
+                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md flex items-center gap-1.5"
+                                    onClick={addContainerNode}
+                                    title="Add Container"
+                                >
+                                    📦 Container
+                                </button>
+                                <button
+                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md flex items-center gap-1.5"
+                                    onClick={addComponentNode}
+                                    title="Add Component"
+                                >
+                                    🔹 Component
+                                </button>
+                                <button
+                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md flex items-center gap-1.5"
+                                    onClick={showShapeSelectorModal}
+                                    title="Add Shape"
+                                >
+                                    ⭐ Shape
+                                </button>
+                            </div>
+                            <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+                                <button
+                                    className={`w-full px-3 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-1.5 transition-all ${selectedElements.nodes.length === 0 && selectedElements.edges.length === 0
+                                        ? 'bg-red-100 dark:bg-red-900/20 text-red-400 dark:text-red-300 cursor-not-allowed'
+                                        : 'bg-red-500 text-white hover:bg-red-600 hover:-translate-y-0.5 hover:shadow-md'
+                                        }`}
+                                    onClick={deleteSelected}
+                                    disabled={selectedElements.nodes.length === 0 && selectedElements.edges.length === 0}
+                                    title="Delete Selected (Del)"
+                                >
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                            <div className="p-3 flex flex-wrap gap-2 border-t border-gray-200 dark:border-gray-700">
+                                <button
+                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                                    onClick={exportDiagram}
+                                    title="Export as JSON"
+                                >
+                                    💾 JSON
+                                </button>
+                                <button
+                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                                    onClick={exportToDrawioXML}
+                                    title="Export to draw.io XML"
+                                >
+                                    📄 XML
+                                </button>
+                                <button
+                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                                    onClick={importDiagram}
+                                    title="Import JSON"
+                                >
+                                    📂 Import
+                                </button>
+                                <button
+                                    className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                                    onClick={resetDiagram}
+                                    title="Reset Diagram"
+                                >
+                                    🔄 Reset
+                                </button>
+                            </div>
                         </div>
                     </Panel>
 
                     {/* Stats Panel */}
-                    <Panel position="top-right" className="editor-panel stats-panel">
-                        <div className="panel-header">Diagram Statistics</div>
-                        <div className="panel-content">
-                            <div className="stat-item">
-                                <span className="stat-label">Containers:</span>
-                                <span className="stat-value">
-                                    {nodes.filter((node) => node.type === 'container').length}
-                                </span>
+                    <Panel position="top-right" className="m-4">
+                        <div className="bg-white/98 dark:bg-gray-800/98 rounded-lg shadow-lg backdrop-blur-md border border-gray-100 dark:border-gray-700 overflow-hidden">
+                            <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-200">
+                                Diagram Statistics
                             </div>
-                            <div className="stat-item">
-                                <span className="stat-label">Components:</span>
-                                <span className="stat-value">
-                                    {nodes.filter((node) => node.type !== 'container').length}
-                                </span>
-                            </div>
-                            <div className="stat-item">
-                                <span className="stat-label">Connections:</span>
-                                <span className="stat-value">{edges.length}</span>
-                            </div>
-                            <div className="stat-item">
-                                <span className="stat-label">Selected:</span>
-                                <span className="stat-value">
-                                    {selectedElements.nodes.length + selectedElements.edges.length}
-                                </span>
+                            <div className="p-4">
+                                <div className="flex justify-between items-center mb-2 text-sm">
+                                    <span className="text-gray-500 dark:text-gray-400 font-medium">Containers:</span>
+                                    <span className="font-semibold text-gray-700 dark:text-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 px-2 py-1 rounded-full text-xs">
+                                        {nodes.filter((node) => node.type === 'container').length}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center mb-2 text-sm">
+                                    <span className="text-gray-500 dark:text-gray-400 font-medium">Components:</span>
+                                    <span className="font-semibold text-gray-700 dark:text-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 px-2 py-1 rounded-full text-xs">
+                                        {nodes.filter((node) => node.type !== 'container').length}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center mb-2 text-sm">
+                                    <span className="text-gray-500 dark:text-gray-400 font-medium">Connections:</span>
+                                    <span className="font-semibold text-gray-700 dark:text-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 px-2 py-1 rounded-full text-xs">
+                                        {edges.length}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-500 dark:text-gray-400 font-medium">Selected:</span>
+                                    <span className="font-semibold text-gray-700 dark:text-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 px-2 py-1 rounded-full text-xs">
+                                        {selectedElements.nodes.length + selectedElements.edges.length}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </Panel>
 
                     {/* Universal Property Editor Panel */}
-                    <Panel position="bottom-right" className="editor-panel property-panel">
-                        <UniversalPropertyEditor
+                    <Panel position="bottom-right" className="m-4">
+                        <TailwindPropertyEditor
                             selectedNode={selectedElements.nodes.length === 1 ? selectedElements.nodes[0] : null}
                             selectedEdge={selectedElements.edges.length === 1 ? selectedElements.edges[0] : null}
                             onElementPropertyChange={handleElementPropertyChange}
@@ -1354,8 +1535,42 @@ const ArchitectureDiagramEditorContent = () => {
                     </Panel>
                 </ReactFlow>
             </div>
+
+            {/* Modals */}
+            <PromptModal
+                isOpen={promptModal.isOpen}
+                title={promptModal.title}
+                message={promptModal.message}
+                defaultValue={promptModal.defaultValue}
+                onConfirm={promptModal.onConfirm}
+                onCancel={() => setPromptModal(prev => ({ ...prev, isOpen: false }))}
+            />
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                onConfirm={confirmModal.onConfirm}
+                onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            />
+            <ContainerSelectorModal
+                isOpen={containerSelectorModal.isOpen}
+                title={containerSelectorModal.title}
+                message={containerSelectorModal.message}
+                containers={containerSelectorModal.containers}
+                onSelect={containerSelectorModal.onSelect}
+                onCancel={() => setContainerSelectorModal(prev => ({ ...prev, isOpen: false }))}
+            />
+            <ShapeSelectorModal
+                isOpen={shapeSelectorModal.isOpen}
+                onSelect={(shapeType) => {
+                    setShapeSelectorModal({ isOpen: false });
+                    addShapeNode(shapeType);
+                }}
+                onCancel={() => setShapeSelectorModal({ isOpen: false })}
+            />
         </div>
     );
+
 };
 
 export default ArchitectureDiagramEditorContent;
