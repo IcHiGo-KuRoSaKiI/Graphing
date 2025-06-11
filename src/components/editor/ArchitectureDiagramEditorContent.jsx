@@ -19,7 +19,7 @@ import HexagonNode from '../nodes/HexagonNode';
 import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
-import { AdjustableEdge, FloatingEdge, FloatingConnectionLine } from '../edges';
+import { AdjustableEdge } from '../edges';
 
 // Import modal components
 import PromptModal from '../modals/PromptModal';
@@ -144,8 +144,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
     }), []);
 
     const edgeTypes = useMemo(() => ({
-        adjustable: AdjustableEdge,
-        floating: FloatingEdge,
+        adjustable: AdjustableEdge
     }), []);
 
     // Stable node label change handler
@@ -371,7 +370,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
     const onConnectEnd = useCallback(() => {}, []);
 
     const defaultEdgeOptions = useMemo(() => ({
-        type: 'floating',
+        type: 'adjustable',
         animated: true,
         style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5' }
     }), []);
@@ -381,7 +380,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         const newEdge = {
             ...params,
             id: `edge-${Date.now()}`,
-            type: 'floating',
+            type: 'adjustable',
             animated: true,
             style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5', zIndex: 5 },
             zIndex: 5,
@@ -1498,7 +1497,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
-                    connectionLineComponent={FloatingConnectionLine}
                     connectionMode="strict"
                     connectionLineStyle={{ stroke: '#2563eb', strokeDasharray: '5 5', strokeWidth: 2 }}
                     fitView
