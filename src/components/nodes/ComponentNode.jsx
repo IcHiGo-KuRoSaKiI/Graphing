@@ -19,6 +19,17 @@ const targetHandleStyle = {
     zIndex: 10,
 };
 
+const overlayHandleStyle = {
+    opacity: 0,
+    border: 'none',
+    width: '100%',
+    height: '100%',
+    left: 0,
+    top: 0,
+    transform: 'none',
+    pointerEvents: 'all',
+};
+
 const ComponentNode = ({ data, id, selected, isConnectable }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [label, setLabel] = useState(data.label || 'Component');
@@ -122,6 +133,18 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                 )}
 
                 {/* Connection handles */}
+                <Handle
+                    type="source"
+                    id="component-source"
+                    position={Position.Bottom}
+                    style={overlayHandleStyle}
+                />
+                <Handle
+                    type="target"
+                    id="component-target"
+                    position={Position.Bottom}
+                    style={overlayHandleStyle}
+                />
                 <Handle className="custom-handle" type="source" id="right-source" position={Position.Right} style={sourceHandleStyle} />
                 <Handle className="custom-handle" type="target" id="right-target" position={Position.Right} style={targetHandleStyle} />
                 <Handle className="custom-handle" type="source" id="left-source" position={Position.Left} style={sourceHandleStyle} />
