@@ -27,7 +27,7 @@ const overlayHandleStyle = {
     left: 0,
     top: 0,
     transform: 'none',
-    pointerEvents: 'all',
+    pointerEvents: 'none',
 };
 
 const ComponentNode = ({ data, id, selected, isConnectable }) => {
