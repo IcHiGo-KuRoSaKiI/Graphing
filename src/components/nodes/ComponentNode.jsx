@@ -104,14 +104,14 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                 )}
 
                 {/* Connection handles */}
-                <Handle type="source" id="right-source" position={Position.Right} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="target" id="right-target" position={Position.Right} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="source" id="left-source" position={Position.Left} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="target" id="left-target" position={Position.Left} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="source" id="bottom-source" position={Position.Bottom} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="target" id="bottom-target" position={Position.Bottom} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="source" id="top-source" position={Position.Top} style={{ background: '#555', width: 6, height: 6 }} />
-                <Handle type="target" id="top-target" position={Position.Top} style={{ background: '#555', width: 6, height: 6 }} />
+                <Handle type="source" id="right-source" position={Position.Right} className="handle handle-source" isConnectable={isConnectable} />
+                <Handle type="target" id="right-target" position={Position.Right} className="handle handle-target" isConnectable={isConnectable} />
+                <Handle type="source" id="left-source" position={Position.Left} className="handle handle-source" isConnectable={isConnectable} />
+                <Handle type="target" id="left-target" position={Position.Left} className="handle handle-target" isConnectable={isConnectable} />
+                <Handle type="source" id="bottom-source" position={Position.Bottom} className="handle handle-source" isConnectable={isConnectable} />
+                <Handle type="target" id="bottom-target" position={Position.Bottom} className="handle handle-target" isConnectable={isConnectable} />
+                <Handle type="source" id="top-source" position={Position.Top} className="handle handle-source" isConnectable={isConnectable} />
+                <Handle type="target" id="top-target" position={Position.Top} className="handle handle-target" isConnectable={isConnectable} />
             </div>
         </>
     );

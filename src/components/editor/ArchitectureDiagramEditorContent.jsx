@@ -114,6 +114,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
     const [isInitialized, setIsInitialized] = useState(false);
     const [clipboardData, setClipboardData] = useState(null);
     const [propertyPanelOpen, setPropertyPanelOpen] = useState(true);
+    const [isConnecting, setIsConnecting] = useState(false);
 
     const updateNodeInternals = useUpdateNodeInternals();
 
@@ -372,6 +373,14 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         animated: false,
         style: { strokeWidth: 2 }
     }), []);
+
+    const onConnectStart = useCallback(() => {
+        setIsConnecting(true);
+    }, []);
+
+    const onConnectEnd = useCallback(() => {
+        setIsConnecting(false);
+    }, []);
 
     // Handle new connections
     const onConnect = useCallback((params) => {
@@ -1491,9 +1500,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     onEdgeUpdateStart={onEdgeUpdateStart}
                     onEdgeUpdateEnd={onEdgeUpdateEnd}
                     onNodeDragStop={onNodeDragStop}
+                    onConnectStart={onConnectStart}
+                    onConnectEnd={onConnectEnd}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
                     connectionLineComponent={FloatingConnectionLine}
+                    connectionMode="strict"
                     fitView
                     snapToGrid={false}
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}
