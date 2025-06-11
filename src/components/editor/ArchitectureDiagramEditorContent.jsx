@@ -18,6 +18,7 @@ import HexagonNode from '../nodes/HexagonNode';
 import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
+import { AdjustableEdge } from '../edges';
 
 // Import modal components
 import PromptModal from '../modals/PromptModal';
@@ -141,6 +142,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         component: ComponentNode,
     }), []);
 
+    const edgeTypes = useMemo(() => ({
+        adjustable: AdjustableEdge
+    }), []);
+
     // Stable node label change handler
     const handleNodeLabelChange = useCallback((nodeId, label) => {
         setNodes((nds) =>
@@ -235,7 +240,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                 source: connection.source,
                 target: connection.target,
                 label: connection.label,
-                type: connection.type || 'smoothstep',
+                type: connection.type || 'adjustable',
                 animated: connection.animated || false,
                 style: {
                     strokeWidth: 2,
@@ -244,7 +249,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                 zIndex: connection.zIndex || 5,
                 data: {
                     label: connection.label,
-                    description: connection.description || ''
+                    description: connection.description || '',
+                    control: connection.control
                 }
             });
         });
@@ -349,7 +355,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
     }, [saveToHistory]);
 
     const defaultEdgeOptions = useMemo(() => ({
-        type: 'smoothstep',
+        type: 'adjustable',
         animated: false,
         style: { strokeWidth: 2 }
     }), []);
@@ -359,7 +365,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         const newEdge = {
             ...params,
             id: `edge-${Date.now()}`,
-            type: 'smoothstep',
+            type: 'adjustable',
             animated: true,
             style: { strokeWidth: 2, zIndex: 5 },
             zIndex: 5,
@@ -785,6 +791,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                 type: edge.type,
                 animated: edge.animated,
                 description: edge.data?.description,
+                control: edge.data?.control,
                 style: {
                     strokeWidth: edge.style?.strokeWidth || 2,
                     strokeDasharray: edge.style?.strokeDasharray,
@@ -1472,6 +1479,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     onEdgeClick={onEdgeClick}
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
+                    edgeTypes={edgeTypes}
                     fitView
                     snapToGrid={false}
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}
