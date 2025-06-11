@@ -358,7 +358,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         saveToHistory();
     }, [saveToHistory]);
 
-    const onEdgeUpdateStart = useCallback(() => {}, []);
+    const onEdgeUpdateStart = useCallback(() => { }, []);
     const onEdgeUpdateEnd = useCallback(() => {
         saveToHistory();
     }, [saveToHistory]);
@@ -366,13 +366,14 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
     }, []);
 
-    const onConnectStart = useCallback(() => {}, []);
-    const onConnectEnd = useCallback(() => {}, []);
+    const onConnectStart = useCallback(() => { }, []);
+    const onConnectEnd = useCallback(() => { }, []);
 
     const defaultEdgeOptions = useMemo(() => ({
         type: 'adjustable',
         animated: true,
-        style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5' }
+        style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5' },
+        data: { intersection: 'none' }
     }), []);
 
     // Handle new connections
@@ -382,14 +383,26 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
             id: `edge-${Date.now()}`,
             type: 'adjustable',
             animated: true,
-            style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5', zIndex: 5 },
+            style: {
+                strokeWidth: 2,
+                stroke: '#2563eb',
+                strokeDasharray: '5 5',
+                zIndex: 5
+            },
             zIndex: 5,
             markerEnd: { type: 'arrow' },
-            data: { label: '', description: '', intersection: 'none' }
+            data: {
+                label: '',
+                description: '',
+                intersection: 'none', // Default to no intersection
+                control: null // Will be auto-calculated
+            }
         };
         setEdges((eds) => addEdge(newEdge, eds));
         saveToHistory();
     }, [saveToHistory]);
+
+
 
     // Handle selection changes - now includes edges
     const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }) => {
@@ -1497,8 +1510,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
-                    connectionMode="strict"
-                    connectionLineStyle={{ stroke: '#2563eb', strokeDasharray: '5 5', strokeWidth: 2 }}
+                    connectionMode="loose"  // Changed from "strict" to "loose"
+                    connectionLineStyle={{ stroke: '#2563eb', strokeWidth: 2 }}
                     fitView
                     snapToGrid={false}
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}
@@ -1518,7 +1531,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                     zoomOnPinch={true}
                     panOnScroll={false}
                     preventScrolling={true}
+                    connectOnClick={true}  // Allow connections by clicking handles
+                    isValidConnection={(connection) => {
+                        // Allow all connections between different nodes
+                        return connection.source !== connection.target;
+                    }}
                 >
+
                     <Controls className="bg-white/95 dark:bg-gray-800/95 rounded-lg shadow-lg backdrop-blur-md p-1" />
                     <Background color="#aaa" gap={16} />
                     <MiniMap

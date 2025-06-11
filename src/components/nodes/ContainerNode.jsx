@@ -1,33 +1,15 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
 
-const sourceHandleStyle = {
+const handleStyle = {
     background: '#3b82f6',
     border: '2px solid #fff',
     width: 8,
     height: 8,
     borderRadius: '50%',
     zIndex: 10,
-};
-
-const targetHandleStyle = {
-    background: '#1e40af',
-    border: '2px solid #fff',
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    zIndex: 10,
-};
-
-const overlayHandleStyle = {
-    opacity: 0,
-    border: 'none',
-    width: '100%',
-    height: '100%',
-    left: 0,
-    top: 0,
-    transform: 'none',
-    pointerEvents: 'none',
+    cursor: 'crosshair',
+    transition: 'all 0.15s ease',
 };
 
 const ContainerNode = ({ data, id, selected, isConnectable }) => {
@@ -37,6 +19,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
     useEffect(() => {
         setLabel(data.label || 'Container');
     }, [data.label]);
+
     const inputRef = useRef(null);
 
     const handleDoubleClick = useCallback((e) => {
@@ -145,27 +128,69 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     )}
                 </div>
 
-                {/* Connection handles */}
+                {/* Simplified connection handles - one per position that can act as both source and target */}
                 <Handle
                     type="source"
-                    id="container-source"
+                    position={Position.Top}
+                    id="top"
+                    style={handleStyle}
+                    isConnectable={isConnectable}
+                    className="container-handle"
+                />
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id="right"
+                    style={handleStyle}
+                    isConnectable={isConnectable}
+                    className="container-handle"
+                />
+                <Handle
+                    type="source"
                     position={Position.Bottom}
-                    style={overlayHandleStyle}
+                    id="bottom"
+                    style={handleStyle}
+                    isConnectable={isConnectable}
+                    className="container-handle"
+                />
+                <Handle
+                    type="source"
+                    position={Position.Left}
+                    id="left"
+                    style={handleStyle}
+                    isConnectable={isConnectable}
+                    className="container-handle"
+                />
+
+                {/* Target handles - invisible but active for connections */}
+                <Handle
+                    type="target"
+                    position={Position.Top}
+                    id="top-target"
+                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    isConnectable={isConnectable}
                 />
                 <Handle
                     type="target"
-                    id="container-target"
-                    position={Position.Bottom}
-                    style={overlayHandleStyle}
+                    position={Position.Right}
+                    id="right-target"
+                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    isConnectable={isConnectable}
                 />
-                <Handle className="custom-handle" type="source" id="right-source" position={Position.Right} style={sourceHandleStyle} />
-                <Handle className="custom-handle" type="target" id="right-target" position={Position.Right} style={targetHandleStyle} />
-                <Handle className="custom-handle" type="source" id="left-source" position={Position.Left} style={sourceHandleStyle} />
-                <Handle className="custom-handle" type="target" id="left-target" position={Position.Left} style={targetHandleStyle} />
-                <Handle className="custom-handle" type="source" id="bottom-source" position={Position.Bottom} style={sourceHandleStyle} />
-                <Handle className="custom-handle" type="target" id="bottom-target" position={Position.Bottom} style={targetHandleStyle} />
-                <Handle className="custom-handle" type="source" id="top-source" position={Position.Top} style={sourceHandleStyle} />
-                <Handle className="custom-handle" type="target" id="top-target" position={Position.Top} style={targetHandleStyle} />
+                <Handle
+                    type="target"
+                    position={Position.Bottom}
+                    id="bottom-target"
+                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    isConnectable={isConnectable}
+                />
+                <Handle
+                    type="target"
+                    position={Position.Left}
+                    id="left-target"
+                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    isConnectable={isConnectable}
+                />
             </div>
         </>
     );

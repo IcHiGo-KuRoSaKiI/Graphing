@@ -16,7 +16,7 @@ body {
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-  monospace;
+    monospace;
 }
 
 /* Basic modal styling */
@@ -76,4 +76,316 @@ code {
 .react-flow__edge-path.animated {
   animation: dash 1s linear infinite;
   stroke-dasharray: 5;
+}
+
+
+
+/* Add these styles to your src/index.css file */
+
+/* Enhanced handle styling for better interaction */
+.component-handle,
+.container-handle,
+.diamond-handle,
+.circle-handle,
+.hexagon-handle,
+.triangle-handle {
+  cursor: crosshair !important;
+  transition: all 0.15s ease !important;
+  pointer-events: all !important;
+}
+
+.component-handle:hover,
+.container-handle:hover,
+.diamond-handle:hover,
+.circle-handle:hover,
+.hexagon-handle:hover,
+.triangle-handle:hover {
+  transform: scale(1.4) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 0 8px rgba(59, 130, 246, 0.6) !important;
+  background: #1d4ed8 !important;
+  z-index: 1000 !important;
+}
+
+/* Connection line styling */
+.react-flow__connection-line {
+  stroke: #2563eb;
+  stroke-width: 2px;
+  stroke-dasharray: 8, 4;
+  animation: dash 1s linear infinite;
+}
+
+.react-flow__connection-line circle {
+  fill: #2563eb;
+  stroke: #ffffff;
+  stroke-width: 2px;
+  r: 4;
+}
+
+/* Enhanced animation for connection line */
+@keyframes dash {
+  0% {
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    stroke-dashoffset: -12;
+  }
+}
+
+/* Make sure handles are always clickable */
+.react-flow__handle {
+  pointer-events: all !important;
+}
+
+.react-flow__handle-connecting {
+  background: #ff6b6b !important;
+  transform: scale(1.5) !important;
+}
+
+.react-flow__handle-valid {
+  background: #51cf66 !important;
+  transform: scale(1.3) !important;
+}
+
+/* Improve edge selection */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #2563eb !important;
+  stroke-width: 3px !important;
+}
+
+/* Better visual feedback for connecting */
+.react-flow__node.connecting {
+  box-shadow: 0 0 0 2px #2563eb !important;
+}
+
+/* Ensure proper layering */
+.react-flow__handle {
+  z-index: 100 !important;
+}
+
+.react-flow__handle.source {
+  z-index: 101 !important;
+}
+
+.react-flow__handle.target {
+  z-index: 102 !important;
+}
+
+/* Add these styles to your src/index.css for better intersection visualization */
+
+/* Enhanced edge path styling */
+.react-flow__edge-path {
+  transition: all 0.2s ease;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.3));
+}
+
+/* Control point styling */
+.react-flow__edge .react-flow__edge-label circle {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  transition: all 0.15s ease;
+}
+
+.react-flow__edge .react-flow__edge-label circle:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+/* Edge label styling */
+.react-flow__edge-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Intersection jump styling enhancements */
+.react-flow__edge[data-intersection="arc"] .react-flow__edge-path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.react-flow__edge[data-intersection="sharp"] .react-flow__edge-path {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+/* Enhanced property editor section for intersection */
+.intersection-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #666;
+}
+
+.intersection-preview svg {
+  width: 24px;
+  height: 16px;
+}
+
+/* Connection line preview styles */
+.connection-preview {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.connection-preview svg {
+  width: 100%;
+  height: 40px;
+}
+
+/* Improved form styling for edge properties */
+.edge-property-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 8px 0;
+}
+
+.edge-property-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Style the intersection type buttons */
+.intersection-type-buttons {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.intersection-type-button {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.intersection-type-button:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.intersection-type-button.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+/* Enhanced visual feedback for edge editing */
+.react-flow__edge.editing {
+  pointer-events: all;
+}
+
+.react-flow__edge.editing .react-flow__edge-path {
+  stroke-dasharray: 4, 4;
+  animation: dash 1s linear infinite;
+}
+
+/* Better visual hierarchy in property panel */
+.property-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.property-section-header .icon {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* Add these styles to src/index.css for better intersection visual effects */
+
+/* Enhanced edge path animations */
+.react-flow__edge-path {
+  transition: stroke-dasharray 0.3s ease, stroke-width 0.2s ease;
+}
+
+.react-flow__edge-path:hover {
+  stroke-width: 3;
+}
+
+/* Intersection jump styling */
+.intersection-jump {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Control point hover effects */
+.control-point {
+  transition: all 0.2s ease;
+  cursor: grab;
+}
+
+.control-point:hover {
+  r: 8;
+  filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.3));
+}
+
+.control-point:active {
+  cursor: grabbing;
+  filter: drop-shadow(0 1px 2px rgba(59, 130, 246, 0.5));
+}
+
+/* Enhanced selection indicators */
+.selection-indicator {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Intersection style preview animations */
+.intersection-preview {
+  transition: all 0.2s ease;
+}
+
+.intersection-preview:hover {
+  transform: scale(1.05);
+}
+
+/* Edge label improvements */
+.edge-label {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+/* Smooth edge intersections */
+.react-flow__edge.intersection-arc path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.react-flow__edge.intersection-sharp path {
+  stroke-linejoin: miter;
+  stroke-miterlimit: 4;
 }

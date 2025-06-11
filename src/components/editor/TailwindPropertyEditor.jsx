@@ -1,5 +1,8 @@
+// src/components/editor/TailwindPropertyEditor.jsx
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight } from 'lucide-react';
+import IntersectionStyleSelector from './IntersectionStyleSelector'; // 👈 ADD THIS IMPORT
 
 const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyChange }) => {
     // Node properties
@@ -100,9 +103,6 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
         setNodeIcon(emoji);
         onElementPropertyChange('node', 'icon', emoji);
     }, [onElementPropertyChange]);
-
-    // Other handlers similar to the original component...
-    // (I'm abbreviating here to focus on the Tailwind conversion)
 
     // Quick style presets
     const applyEdgePreset = useCallback((preset) => {
@@ -233,6 +233,7 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
         }
     }, [onElementPropertyChange]);
 
+    // 👈 UPDATED: This handler now works with the new component
     const handleEdgeIntersectionChange = useCallback((e) => {
         const value = e.target.value;
         setEdgeIntersection(value);
@@ -369,20 +370,16 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
                                         </select>
                                     </div>
                                 )}
+
+                                {/* 👈 REPLACE THIS ENTIRE SECTION */}
                                 {selectedEdge && (
-                                    <div className="mb-4">
-                                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Intersection Style:</label>
-                                        <select
-                                            value={edgeIntersection}
-                                            onChange={handleEdgeIntersectionChange}
-                                            className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        >
-                                            <option value="none">None</option>
-                                            <option value="arc">Arc Jump</option>
-                                            <option value="sharp">Sharp Jump</option>
-                                        </select>
-                                    </div>
+                                    <IntersectionStyleSelector
+                                        value={edgeIntersection}
+                                        onChange={handleEdgeIntersectionChange}
+                                    />
                                 )}
+                                {/* 👆 REPLACE ENDS HERE */}
+
                             </div>
                         )}
                     </div>
