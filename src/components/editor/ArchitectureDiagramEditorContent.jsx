@@ -844,24 +844,19 @@ const ArchitectureDiagramEditorContent = () => {
                         const parser = new DOMParser();
                         const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
 
-                        // Parse mxfile structure
                         const cells = xmlDoc.querySelectorAll('mxCell');
-                        const importedNodes = [];
-                        const importedEdges = [];
-                        const cellIdMap = new Map(); // Map old IDs to new ones
+
+                        const tempNodes = [];
+                        const tempEdges = [];
 
                         cells.forEach(cell => {
                             const id = cell.getAttribute('id');
+                            if (id === '0' || id === '1') return; // skip root
+
                             const value = cell.getAttribute('value') || '';
                             const style = cell.getAttribute('style') || '';
                             const vertex = cell.getAttribute('vertex');
                             const edge = cell.getAttribute('edge');
-                            const parent = cell.getAttribute('parent');
-                            const source = cell.getAttribute('source');
-                            const target = cell.getAttribute('target');
-
-                            // Skip root cells
-                            if (id === '0' || id === '1') return;
 
                             const geometry = cell.querySelector('mxGeometry');
                             if (!geometry) return;
@@ -872,84 +867,112 @@ const ArchitectureDiagramEditorContent = () => {
                             const height = parseFloat(geometry.getAttribute('height')) || 80;
 
                             if (vertex) {
-                                // Parse node
-                                const newId = `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                                cellIdMap.set(id, newId);
-
-                                // Determine node type from style
-                                let nodeType = 'component';
-                                if (style.includes('swimlane')) nodeType = 'container';
-                                else if (style.includes('rhombus')) nodeType = 'diamond';
-                                else if (style.includes('ellipse')) nodeType = 'circle';
-                                else if (style.includes('hexagon')) nodeType = 'hexagon';
-
-                                // Extract colors from style
-                                const fillColorMatch = style.match(/fillColor=([^;]+)/);
-                                const strokeColorMatch = style.match(/strokeColor=([^;]+)/);
-                                const fillColor = fillColorMatch ? fillColorMatch[1] : '#ffffff';
-                                const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
-
-                                const node = {
-                                    id: newId,
-                                    type: nodeType,
-                                    position: { x, y },
-                                    data: {
-                                        label: value,
-                                        color: fillColor,
-                                        borderColor: strokeColor,
-                                        icon: nodeType === 'container' ? '📦' : '🔹',
-                                        description: '',
-                                        onLabelChange: handleNodeLabelChange,
-                                    },
-                                    style: {
-                                        width,
-                                        height,
-                                        zIndex: nodeType === 'container' ? 1 : 10,
-                                    },
-                                    draggable: true,
-                                    selectable: true,
-                                    zIndex: nodeType === 'container' ? 1 : 10
-                                };
-
-                                // Handle parent relationships
-                                if (parent && parent !== '1' && cellIdMap.has(parent)) {
-                                    node.parentNode = cellIdMap.get(parent);
-                                }
-
-                                importedNodes.push(node);
-                            } else if (edge && source && target) {
-                                // Parse edge
-                                const newId = `imported-edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-                                // Extract style properties
-                                const strokeWidthMatch = style.match(/strokeWidth=([^;]+)/);
-                                const strokeColorMatch = style.match(/strokeColor=([^;]+)/);
-                                const strokeWidth = strokeWidthMatch ? parseInt(strokeWidthMatch[1]) : 2;
-                                const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
-                                const isDashed = style.includes('dashed=1');
-
-                                const edgeData = {
-                                    id: newId,
-                                    source: cellIdMap.get(source) || source,
-                                    target: cellIdMap.get(target) || target,
-                                    label: value,
-                                    type: 'smoothstep',
-                                    animated: false,
-                                    style: {
-                                        strokeWidth,
-                                        stroke: strokeColor,
-                                        strokeDasharray: isDashed ? '5,5' : undefined,
-                                        zIndex: 5
-                                    },
-                                    zIndex: 5,
-                                    data: { label: value, description: '' }
-                                };
-
-                                importedEdges.push(edgeData);
+                                tempNodes.push({
+                                    oldId: id,
+                                    value,
+                                    style,
+                                    x,
+                                    y,
+                                    width,
+                                    height,
+                                    parent: cell.getAttribute('parent')
+                                });
+                            } else if (edge) {
+                                tempEdges.push({
+                                    oldId: id,
+                                    value,
+                                    style,
+                                    source: cell.getAttribute('source'),
+                                    target: cell.getAttribute('target')
+                                });
                             }
                         });
 
-                        // Set imported data
+                        const cellIdMap = new Map();
+                        const importedNodes = [];
+
+                        tempNodes.forEach(n => {
+                            const newId = `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                            cellIdMap.set(n.oldId, newId);
+
+                            let nodeType = 'component';
+                            if (n.style.includes('swimlane')) nodeType = 'container';
+                            else if (n.style.includes('rhombus')) nodeType = 'diamond';
+                            else if (n.style.includes('ellipse')) nodeType = 'circle';
+                            else if (n.style.includes('hexagon')) nodeType = 'hexagon';
+
+                            const fillColorMatch = n.style.match(/fillColor=([^;]+)/);
+                            const strokeColorMatch = n.style.match(/strokeColor=([^;]+)/);
+                            const fillColor = fillColorMatch ? fillColorMatch[1] : '#ffffff';
+                            const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
+
+                            importedNodes.push({
+                                id: newId,
+                                type: nodeType,
+                                position: { x: n.x, y: n.y },
+                                data: {
+                                    label: n.value,
+                                    color: fillColor,
+                                    borderColor: strokeColor,
+                                    icon: nodeType === 'container' ? '📦' : '🔹',
+                                    description: '',
+                                    onLabelChange: handleNodeLabelChange,
+                                    linkedTo: []
+                                },
+                                style: {
+                                    width: n.width,
+                                    height: n.height,
+                                    zIndex: nodeType === 'container' ? 1 : 10
+                                },
+                                draggable: true,
+                                selectable: true,
+                                zIndex: nodeType === 'container' ? 1 : 10,
+                                __parentOldId: n.parent
+                            });
+                        });
+
+                        importedNodes.forEach(node => {
+                            if (node.__parentOldId && cellIdMap.has(node.__parentOldId)) {
+                                node.parentNode = cellIdMap.get(node.__parentOldId);
+                            }
+                            delete node.__parentOldId;
+                        });
+
+                        const importedEdges = tempEdges.map(e => {
+                            const strokeWidthMatch = e.style.match(/strokeWidth=([^;]+)/);
+                            const strokeColorMatch = e.style.match(/strokeColor=([^;]+)/);
+                            const strokeWidth = strokeWidthMatch ? parseInt(strokeWidthMatch[1]) : 2;
+                            const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
+                            const isDashed = e.style.includes('dashed=1');
+
+                            return {
+                                id: `imported-edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                                source: cellIdMap.get(e.source) || e.source,
+                                target: cellIdMap.get(e.target) || e.target,
+                                label: e.value,
+                                type: 'smoothstep',
+                                animated: false,
+                                style: {
+                                    strokeWidth,
+                                    stroke: strokeColor,
+                                    strokeDasharray: isDashed ? '5,5' : undefined,
+                                    zIndex: 5
+                                },
+                                zIndex: 5,
+                                data: { label: e.value, description: '' }
+                            };
+                        });
+
+                        const nodeMap = Object.fromEntries(importedNodes.map(n => [n.id, n]));
+                        importedEdges.forEach(edge => {
+                            const s = nodeMap[edge.source];
+                            const t = nodeMap[edge.target];
+                            if (s && t && s.type === 'container' && t.type === 'container') {
+                                s.data.linkedTo = Array.from(new Set([...(s.data.linkedTo || []), t.id]));
+                                t.data.linkedTo = Array.from(new Set([...(t.data.linkedTo || []), s.id]));
+                            }
+                        });
+
                         setNodes(importedNodes);
                         setEdges(importedEdges);
                         saveToHistory();
@@ -970,7 +993,8 @@ const ArchitectureDiagramEditorContent = () => {
         // Map node types to draw.io shapes
         const getDrawioShape = (nodeType) => {
             switch (nodeType) {
-                case 'container': return 'swimlane';
+                case 'container':
+                    return 'swimlane;';
                 case 'component': return 'rounded=1;whiteSpace=wrap;html=1;';
                 case 'diamond': return 'rhombus;whiteSpace=wrap;html=1;';
                 case 'circle': return 'ellipse;whiteSpace=wrap;html=1;';
@@ -997,8 +1021,31 @@ const ArchitectureDiagramEditorContent = () => {
         </mxCell>`;
         });
 
+        // Collect container linking edges
+        const containerLinkEdges = [];
+        const seenPairs = new Set();
+        nodes.forEach(node => {
+            if (node.type === 'container' && Array.isArray(node.data.linkedTo)) {
+                node.data.linkedTo.forEach(otherId => {
+                    const pairKey = [node.id, otherId].sort().join('~');
+                    if (!seenPairs.has(pairKey)) {
+                        seenPairs.add(pairKey);
+                        containerLinkEdges.push({
+                            id: `link-${pairKey}`,
+                            source: node.id,
+                            target: otherId,
+                            data: { label: '' },
+                            style: {}
+                        });
+                    }
+                });
+            }
+        });
+
+        const allEdges = [...edges, ...containerLinkEdges];
+
         // Add edges
-        edges.forEach(edge => {
+        allEdges.forEach(edge => {
             const strokeWidth = edge.style?.strokeWidth || 2;
             const strokeColor = edge.style?.stroke || '#000000';
             const strokeDash = edge.style?.strokeDasharray ? 'dashed=1;' : '';
