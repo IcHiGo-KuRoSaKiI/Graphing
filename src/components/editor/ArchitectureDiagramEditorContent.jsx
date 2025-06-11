@@ -1163,11 +1163,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
         const updated = [...nodes];
         const containers = updated.filter(n => n.type === 'container');
         let currentX = 50;
-        const containerSpacing = 50;
+        const containerSpacing = 60;
 
         containers.forEach(container => {
             const width = container.style?.width || 400;
-            const height = container.style?.height || 300;
             const containerY = 50;
 
             container.position = { x: currentX, y: containerY };
@@ -1189,12 +1188,20 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram }) => {
                 };
             });
 
-            currentX += width + containerSpacing;
+            // expand container height to fit children
+            const rows = Math.ceil(children.length / cols);
+            const childHeight = 80; // default
+            const neededHeight = padding + rows * (childHeight + childSpacingY);
+            if (!container.style) container.style = {};
+            container.style.height = Math.max(container.style?.height || 300, neededHeight);
+
+            currentX += (container.style.width || width) + containerSpacing;
         });
 
         setNodes(updated);
+        updated.forEach(n => updateNodeInternals(n.id));
         saveToHistory();
-    }, [nodes, saveToHistory]);
+    }, [nodes, saveToHistory, updateNodeInternals]);
 
     // Enhanced selection operations
     const selectAllElements = useCallback(() => {
