@@ -2,7 +2,71 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight } from 'lucide-react';
-import IntersectionStyleSelector from './IntersectionStyleSelector'; // 👈 ADD THIS IMPORT
+
+// Simple preview for the different intersection styles
+const IntersectionStylePreview = ({ style, size = 40, className = '' }) => {
+    const cx = size / 2;
+    const cy = size / 2;
+    const line = size * 0.7;
+    const jump = 8;
+
+    switch (style) {
+        case 'arc':
+            return (
+                <svg width={size} height={size} className={className} viewBox={`0 0 ${size} ${size}`}>
+                    <line x1={cx - line / 2} y1={cy} x2={cx + line / 2} y2={cy} stroke="#94a3b8" strokeWidth="2" />
+                    <path d={`M ${cx} ${cy - line / 2} L ${cx} ${cy - jump / 2} Q ${cx + jump / 2} ${cy} ${cx} ${cy + jump / 2} L ${cx} ${cy + line / 2}`} stroke="#3b82f6" strokeWidth="2" fill="none" />
+                </svg>
+            );
+        case 'sharp':
+            return (
+                <svg width={size} height={size} className={className} viewBox={`0 0 ${size} ${size}`}>
+                    <line x1={cx - line / 2} y1={cy} x2={cx + line / 2} y2={cy} stroke="#94a3b8" strokeWidth="2" />
+                    <path d={`M ${cx} ${cy - line / 2} L ${cx} ${cy - jump / 2} L ${cx + jump / 2} ${cy - jump / 2} L ${cx + jump / 2} ${cy + jump / 2} L ${cx} ${cy + jump / 2} L ${cx} ${cy + line / 2}`} stroke="#3b82f6" strokeWidth="2" fill="none" />
+                </svg>
+            );
+        default:
+            return (
+                <svg width={size} height={size} className={className} viewBox={`0 0 ${size} ${size}`}>
+                    <line x1={cx - line / 2} y1={cy} x2={cx + line / 2} y2={cy} stroke="#94a3b8" strokeWidth="2" />
+                    <line x1={cx} y1={cy - line / 2} x2={cx} y2={cy + line / 2} stroke="#3b82f6" strokeWidth="2" />
+                </svg>
+            );
+    }
+};
+
+// Small selector embedded in this file to avoid extra components
+const IntersectionStyleSelector = ({ value, onChange, disabled = false }) => {
+    const options = [
+        { value: 'none', label: 'None' },
+        { value: 'arc', label: 'Arc' },
+        { value: 'sharp', label: 'Sharp' },
+    ];
+
+    const handleClick = (val) => {
+        if (disabled) return;
+        onChange({ target: { value: val } });
+    };
+
+    return (
+        <div className="mb-4">
+            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Intersections:</label>
+            <div className="flex gap-2">
+                {options.map((opt) => (
+                    <button
+                        type="button"
+                        key={opt.value}
+                        onClick={() => handleClick(opt.value)}
+                        className={`p-1 border rounded ${value === opt.value ? 'border-indigo-500' : 'border-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-indigo-400'}`}
+                    >
+                        <IntersectionStylePreview style={opt.value} size={32} />
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 
 const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyChange }) => {
     // Node properties
@@ -371,14 +435,12 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
                                     </div>
                                 )}
 
-                                {/* 👈 REPLACE THIS ENTIRE SECTION */}
                                 {selectedEdge && (
                                     <IntersectionStyleSelector
                                         value={edgeIntersection}
                                         onChange={handleEdgeIntersectionChange}
                                     />
                                 )}
-                                {/* 👆 REPLACE ENDS HERE */}
 
                             </div>
                         )}

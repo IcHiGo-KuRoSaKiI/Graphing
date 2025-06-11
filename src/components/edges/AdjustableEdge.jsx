@@ -1,11 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { BaseEdge, EdgeLabelRenderer, useReactFlow, useNodes, useEdges } from 'reactflow';
-import {
-    lineIntersection,
-    generatePathWithJumps,
-    getNodeCenter,
-    calculateDirection
-} from "../../utils/intersectionUtils";
+
 
 
 const AdjustableEdge = ({
@@ -98,6 +93,7 @@ const AdjustableEdge = ({
         ];
 
         const result = [];
+        const seen = new Set();
 
         edges.forEach((edge) => {
             if (edge.id === id) return;
@@ -114,11 +110,14 @@ const AdjustableEdge = ({
                 otherSegments.forEach((otherSeg) => {
                     const intersectionPoint = lineIntersection(currentSeg, otherSeg);
                     if (intersectionPoint) {
-                        result.push({
-                            ...intersectionPoint,
-                            segmentIndex: segIndex,
-                            otherEdgeId: edge.id
-                        });
+                        const key = `${segIndex}-${intersectionPoint.x.toFixed(1)}-${intersectionPoint.y.toFixed(1)}`;
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            result.push({
+                                ...intersectionPoint,
+                                segmentIndex: segIndex
+                            });
+                        }
                     }
                 });
             });
