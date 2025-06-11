@@ -34,8 +34,8 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 isVisible={selected}
                 minWidth={200}
                 minHeight={150}
-                handleClassName="custom-resize-handle"
-                lineClassName="custom-resize-line"
+                handleClassName="w-2.5 h-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full border-2 border-white shadow"
+                lineClassName="border-2 border-dashed border-indigo-500 opacity-60"
                 nodeWidth={data.width}
                 nodeHeight={data.height}
             />
