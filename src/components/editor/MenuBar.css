@@ -1,0 +1,245 @@
+/* MenuBar.css - Create this file at: src/components/editor/MenuBar.css */
+
+.menu-bar {
+    display: flex;
+    align-items: center;
+    background: transparent;
+    padding: 0;
+    position: relative;
+    z-index: 1001;
+    flex-wrap: wrap;
+}
+
+.menu-button-container {
+    position: relative;
+}
+
+.menu-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    margin: 4px 2px;
+    outline: none;
+}
+
+.menu-button:hover,
+.menu-button.active {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-1px);
+}
+
+.menu-button:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+.menu-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    max-width: 300px;
+    z-index: 1002;
+    padding: 4px 0;
+    margin-top: 2px;
+    animation: menuSlideIn 0.15s ease-out;
+    backdrop-filter: blur(10px);
+}
+
+@keyframes menuSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #495057;
+    transition: all 0.2s ease;
+    position: relative;
+    white-space: nowrap;
+}
+
+.menu-item:hover:not(.disabled) {
+    background: linear-gradient(135deg, #f8f9ff 0%, #e6f0ff 100%);
+    color: #667eea;
+    transform: translateX(2px);
+}
+
+.menu-item.disabled {
+    color: #adb5bd;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.menu-item.disabled:hover {
+    background: transparent;
+    transform: none;
+}
+
+.menu-item-text {
+    flex: 1;
+    font-weight: 500;
+}
+
+.menu-shortcut {
+    font-size: 12px;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 12px;
+    font-family: 'Courier New', monospace;
+    border: 1px solid #e9ecef;
+}
+
+.menu-separator {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #e9ecef, transparent);
+    margin: 4px 8px;
+}
+
+.submenu-indicator {
+    margin-left: 8px;
+    font-size: 10px;
+    color: #6c757d;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .menu-bar {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .menu-button {
+        padding: 6px 12px;
+        font-size: 13px;
+        margin: 2px 1px;
+    }
+
+    .menu-dropdown {
+        min-width: 180px;
+        left: auto;
+        right: 0;
+    }
+
+    .menu-item {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .menu-shortcut {
+        display: none;
+        /* Hide shortcuts on mobile */
+    }
+}
+
+@media (max-width: 480px) {
+    .menu-button {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+
+    .menu-button span {
+        display: none;
+        /* Show only icons on very small screens */
+    }
+
+    .menu-dropdown {
+        min-width: 160px;
+    }
+
+    .menu-item {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+
+/* Dark theme compatibility */
+@media (prefers-color-scheme: dark) {
+    .menu-dropdown {
+        background: #2a2a2a;
+        border-color: #404040;
+        color: #e0e0e0;
+    }
+
+    .menu-item {
+        color: #e0e0e0;
+    }
+
+    .menu-item:hover:not(.disabled) {
+        background: linear-gradient(135deg, #404040 0%, #505050 100%);
+        color: #ffffff;
+    }
+
+    .menu-separator {
+        background: linear-gradient(to right, transparent, #404040, transparent);
+    }
+
+    .menu-shortcut {
+        background: #404040;
+        color: #e0e0e0;
+        border-color: #505050;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .menu-button {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .menu-dropdown {
+        border-width: 2px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .menu-item:hover:not(.disabled) {
+        background: #000;
+        color: #fff;
+    }
+}
+
+/* Animation preferences */
+@media (prefers-reduced-motion: reduce) {
+
+    .menu-button,
+    .menu-item,
+    .menu-dropdown {
+        transition: none;
+        animation: none;
+    }
+
+    .menu-item:hover:not(.disabled) {
+        transform: none;
+    }
+
+    .menu-button:hover {
+        transform: none;
+    }
+}

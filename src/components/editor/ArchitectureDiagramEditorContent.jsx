@@ -26,6 +26,9 @@ import ShapeSelectorModal from '../modals/ShapeSelectorModal';
 // Import editor components
 import UniversalPropertyEditor from './UniversalPropertyEditor';
 
+import MenuBar from './MenuBar';
+
+
 const ArchitectureDiagramEditorContent = () => {
     // State for nodes and edges
     const [nodes, setNodes] = useState([]);
@@ -1064,6 +1067,63 @@ const ArchitectureDiagramEditorContent = () => {
         };
     }, []);
 
+    const newDiagram = useCallback(() => {
+        showConfirmModal(
+            'New Diagram',
+            'Are you sure you want to create a new diagram? All unsaved changes will be lost.',
+            () => {
+                const { nodes: defaultNodes, edges: defaultEdges } = jsonToReactFlow(defaultConfig);
+                setNodes(defaultNodes);
+                setEdges(defaultEdges);
+                setSelectedElements({ nodes: [], edges: [] });
+                saveToHistory();
+            }
+        );
+    }, [jsonToReactFlow, defaultConfig, saveToHistory, showConfirmModal]);
+
+    const saveDiagram = useCallback(() => {
+        exportDiagram();
+    }, [exportDiagram]);
+
+    const saveAsDiagram = useCallback(() => {
+        exportDiagram();
+    }, [exportDiagram]);
+
+    const openDiagram = useCallback(() => {
+        importDiagram();
+    }, [importDiagram]);
+
+    // Enhanced export functions (placeholders for future)
+    const exportAsPNG = useCallback(async () => {
+        console.log('Export as PNG - to be implemented');
+        alert('PNG export coming soon!');
+    }, []);
+
+    const exportAsSVG = useCallback(async () => {
+        console.log('Export as SVG - to be implemented');
+        alert('SVG export coming soon!');
+    }, []);
+
+    // Enhanced selection operations
+    const selectAllElements = useCallback(() => {
+        setSelectedElements({
+            nodes: nodes,
+            edges: edges
+        });
+    }, [nodes, edges]);
+
+    const deselectAllElements = useCallback(() => {
+        setSelectedElements({ nodes: [], edges: [] });
+    }, []);
+
+    const cutSelected = useCallback(() => {
+        if (selectedElements.nodes.length > 0 || selectedElements.edges.length > 0) {
+            copySelected();
+            deleteSelected();
+        }
+    }, [selectedElements, copySelected, deleteSelected]);
+
+
     return (
         <div className="architecture-diagram-editor">
             {/* Modals */}
@@ -1098,40 +1158,75 @@ const ArchitectureDiagramEditorContent = () => {
             />
 
             {/* Header */}
-            <div className="editor-header">
-                <div className="editor-title">Architecture Diagram Editor</div>
-                <div className="editor-actions">
+            <div className="editor-header-enhanced">
+                <div className="editor-branding">
+                    <h1 className="editor-title">Architecture Diagram Editor</h1>
+                </div>
+
+                <MenuBar
+                    // File operations
+                    onNew={newDiagram}
+                    onOpen={openDiagram}
+                    onSave={saveDiagram}
+                    onSaveAs={saveAsDiagram}
+                    onImportJSON={importDiagram}
+                    onImportDrawio={importFromDrawioXML}
+                    onExportJSON={exportDiagram}
+                    onExportDrawio={exportToDrawioXML}
+                    onExportPNG={exportAsPNG}
+                    onExportSVG={exportAsSVG}
+
+                    // Edit operations
+                    onUndo={undo}
+                    onRedo={redo}
+                    onCut={cutSelected}
+                    onCopy={copySelected}
+                    onPaste={pasteElements}
+                    onDelete={deleteSelected}
+                    onSelectAll={selectAllElements}
+                    onDeselectAll={deselectAllElements}
+
+                    // State props
+                    canUndo={history.past.length > 0}
+                    canRedo={history.future.length > 0}
+                    hasSelection={selectedElements.nodes.length > 0 || selectedElements.edges.length > 0}
+                    hasClipboard={clipboardData !== null}
+                />
+
+                {/* Quick Action Buttons */}
+                <div className="editor-quick-actions">
                     <button
-                        className="editor-button"
+                        className="quick-action-button"
                         onClick={undo}
                         disabled={history.past.length === 0}
                         title="Undo (Ctrl+Z)"
                     >
-                        ↩️ Undo
+                        ↩️
                     </button>
                     <button
-                        className="editor-button"
+                        className="quick-action-button"
                         onClick={redo}
                         disabled={history.future.length === 0}
                         title="Redo (Ctrl+Shift+Z)"
                     >
-                        ↪️ Redo
+                        ↪️
                     </button>
+                    <div className="action-separator"></div>
                     <button
-                        className="editor-button"
+                        className="quick-action-button"
                         onClick={copySelected}
                         disabled={selectedElements.nodes.length === 0 && selectedElements.edges.length === 0}
                         title="Copy (Ctrl+C)"
                     >
-                        📋 Copy
+                        📋
                     </button>
                     <button
-                        className="editor-button"
+                        className="quick-action-button"
                         onClick={pasteElements}
                         disabled={!clipboardData}
                         title="Paste (Ctrl+V)"
                     >
-                        📄 Paste
+                        📄
                     </button>
                 </div>
             </div>
