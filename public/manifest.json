@@ -1,6 +1,6 @@
 {
-  "short_name": "Diagram Editor",
-  "name": "React Diagram Editor",
+  "short_name": "Graphing",
+  "name": "Graphing",
   "icons": [
     {
       "src": "favicon.ico",
