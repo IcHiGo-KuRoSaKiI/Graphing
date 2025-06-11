@@ -74,6 +74,7 @@ const ArchitectureDiagramEditorContent = () => {
                 borderColor: '#ddd',
                 icon: '🖥️',
                 zIndex: 1
+                linkedTo: []
             },
             {
                 id: 'container-2',
@@ -84,6 +85,7 @@ const ArchitectureDiagramEditorContent = () => {
                 bgColor: '#f5f5f5',
                 borderColor: '#ddd',
                 icon: '⚙️',
+                linkedTo: []
                 zIndex: 1
             }
         ],
@@ -225,6 +227,7 @@ const ArchitectureDiagramEditorContent = () => {
                     borderColor: container.borderColor || '#ddd',
                     icon: container.icon,
                     description: container.description,
+                    linkedTo: container.linkedTo || [],
                     onLabelChange: handleNodeLabelChange
                 },
                 style: {
@@ -780,6 +783,7 @@ const ArchitectureDiagramEditorContent = () => {
                     bgColor: container.data.bgColor,
                     borderColor: container.data.borderColor,
                     icon: container.data.icon,
+                    linkedTo: container.data.linkedTo || [],
                     description: container.data.description,
                     zIndex: container.zIndex || 1
                 })),
@@ -1137,12 +1141,26 @@ const ArchitectureDiagramEditorContent = () => {
             return;
         }
 
-        let parent = selectedElements.nodes[0];
         const containers = selectedElements.nodes.filter(n => n.type === 'container');
-        if (containers.length > 0) {
-            parent = containers[0];
+        const others = selectedElements.nodes.filter(n => n.type !== 'container');
+
+        // Only containers selected -> record linking instead of parent/child
+        if (containers.length >= 2 && others.length === 0) {
+            setNodes(nds => nds.map(node => {
+                const isSel = containers.find(c => c.id === node.id);
+                if (isSel) {
+                    const otherIds = containers.filter(c => c.id !== node.id).map(c => c.id);
+                    const linked = Array.from(new Set([...(node.data.linkedTo || []), ...otherIds]));
+                    return { ...node, data: { ...node.data, linkedTo: linked } };
+                }
+                return node;
+            }));
+            saveToHistory();
+            return;
         }
-        const children = selectedElements.nodes.filter(n => n.id !== parent.id);
+
+        let parent = containers[0] || selectedElements.nodes[0];
+        const children = selectedElements.nodes.filter(n => n.id !== parent.id && n.type !== 'container');
 
         setNodes((nds) => nds.map((node) => {
             const child = children.find(c => c.id === node.id);
@@ -1169,6 +1187,21 @@ const ArchitectureDiagramEditorContent = () => {
             setEdges(edges.filter(edge => !selectedEdgeIds.includes(edge.id)));
             saveToHistory();
         } else if (selectedElements.nodes.length > 0) {
+            const containers = selectedElements.nodes.filter(n => n.type === 'container');
+
+            if (containers.length >= 2 && containers.length === selectedElements.nodes.length) {
+                setNodes(nds => nds.map(node => {
+                    if (containers.find(c => c.id === node.id)) {
+                        const removeIds = containers.filter(c => c.id !== node.id).map(c => c.id);
+                        const linked = (node.data.linkedTo || []).filter(id => !removeIds.includes(id));
+                        return { ...node, data: { ...node.data, linkedTo: linked } };
+                    }
+                    return node;
+                }));
+                saveToHistory();
+                return;
+            }
+
             setNodes((nds) => nds.map((node) => {
                 if (selectedElements.nodes.find(n => n.id === node.id) && node.parentNode) {
                     const parent = nds.find(n => n.id === node.parentNode);
