@@ -24,6 +24,12 @@ function App() {
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative border rounded shadow-lg overflow-hidden bg-white dark:bg-gray-800 w-[900px] h-[1200px]">
             <button
+              className="absolute top-2 left-2 px-2 py-1 text-xs rounded bg-gray-200 dark:bg-gray-700"
+              onClick={toggleMini}
+            >
+              Full Editor
+            </button>
+            <button
               className="absolute top-2 right-2 px-2 py-1 text-xs rounded bg-gray-200 dark:bg-gray-700"
               onClick={() => setDark((d) => !d)}
             >
@@ -31,8 +37,6 @@ function App() {
             </button>
             <ArchitectureDiagramEditor
               mode={dark ? 'dark' : 'light'}
-              onToggleMini={toggleMini}
-              showMiniToggle
               className="w-full h-full"
             />
           </div>
