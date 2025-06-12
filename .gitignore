@@ -30,5 +30,6 @@ yarn-error.log*
 /src/ComplexArchitectureDiagram_native_good.jsx
 /src/ComplexArchitectureDiagram_react_flow_working.jsx
 /src/ComplexArchitectureDiagram.jsx
-/dist
+/dist/*
+!/dist/graphing.css
 /releases.md
