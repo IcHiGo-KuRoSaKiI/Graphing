@@ -3,7 +3,7 @@ name: Auto Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
     paths-ignore:
       - 'README.md'
       - 'docs/**'
@@ -35,7 +35,7 @@ jobs:
       run: npm test -- --coverage --watchAll=false
     
     - name: Build library
-      run: npm run lib:build
+      run: npm run build:lib
     
     - name: Configure Git
       run: |
@@ -56,7 +56,7 @@ jobs:
     - name: Bump version and create tag
       run: |
         npm version ${{ steps.version_bump.outputs.bump }} -m "Release %s [skip-release]"
-        git push origin main --tags
+        git push origin master --tags
     
     - name: Get new version
       id: package_version
