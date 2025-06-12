@@ -76,9 +76,9 @@ const EnhancedMenuBar = ({
           }`}
         onClick={() => handleMenuClick(name)}
       >
-        <Icon size={16} />
+        <Icon size={16} className="stroke-current" />
         <span>{name}</span>
-        <ChevronDown size={12} />
+        <ChevronDown size={12} className="stroke-current" />
       </button>
 
       {activeMenu === name && (
@@ -103,7 +103,7 @@ const EnhancedMenuBar = ({
         onClick={disabled ? undefined : () => handleMenuItemClick(onClick)}
       >
         <span className="flex items-center gap-2">
-          {Icon && <Icon size={14} />}
+          {Icon && <Icon size={14} className="stroke-current" />}
           {children}
         </span>
         {shortcut && (
@@ -118,7 +118,7 @@ const EnhancedMenuBar = ({
   return (
     <div
       ref={menuRef}
-      className="flex items-center bg-gradient-to-r from-indigo-500 to-purple-600 p-0 relative z-10 border-b border-white/10"
+      className="flex items-center bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-gray-800 dark:to-gray-700 text-gray-800 dark:text-gray-100 p-0 relative z-10 border-b border-white/10 dark:border-gray-800 transition-colors"
     >
       <MenuButton name="File" icon={File}>
         <MenuItem onClick={onNew} shortcut="Ctrl+N">

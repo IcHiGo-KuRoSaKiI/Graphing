@@ -11,6 +11,12 @@ const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'lig
         setTheme(mode);
     }, [mode]);
 
+    useEffect(() => {
+        const root = document.documentElement;
+        if (theme === 'dark') root.classList.add('dark');
+        else root.classList.remove('dark');
+    }, [theme]);
+
     const combinedStyle = { width: '100%', height: '100%', ...style };
     const fullscreenStyle = isFullscreen
         ? { position: 'fixed', inset: 0, width: '100vw', height: '100vh', zIndex: 1000 }

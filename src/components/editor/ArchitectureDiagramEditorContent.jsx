@@ -1569,7 +1569,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 />
 
                 {/* Quick Action Buttons */}
-                <div className="flex items-center gap-2 p-2 bg-white/5 border-t border-white/10">
+                <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-white/5 border-t border-gray-200 dark:border-white/10">
                     <button
                         className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${history.past.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
                             }`}
