@@ -29,6 +29,8 @@ const EnhancedMenuBar = ({
   onValidateJSON,
   onAutoLayout,
   onTogglePropertiesPanel,
+  onToggleTheme,
+  showThemeToggle = false,
   canUndo = false,
   canRedo = false,
   hasSelection = false,
@@ -228,6 +230,11 @@ const EnhancedMenuBar = ({
         <MenuItem onClick={onTogglePropertiesPanel}>
           Toggle Properties Panel
         </MenuItem>
+        {showThemeToggle && (
+          <MenuItem onClick={onToggleTheme}>
+            Toggle Dark Mode
+          </MenuItem>
+        )}
       </MenuButton>
 
       <MenuButton name="Settings" icon={Settings}>
