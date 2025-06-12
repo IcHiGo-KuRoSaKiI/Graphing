@@ -23,7 +23,7 @@ const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'lig
     const containerStyle = { ...combinedStyle, ...fullscreenStyle };
 
     return (
-        <div style={containerStyle} className={`${modeClass} bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 relative ${className || ''}`}>
+        <div style={containerStyle} className={`graphing ${modeClass} bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 relative ${className || ''}`}>
             <ReactFlowProvider>
                 <ArchitectureDiagramEditorContent
                     initialDiagram={diagram}
