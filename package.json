@@ -1,22 +1,56 @@
 {
-  "name": "graphing",
-  "version": "0.1.0",
-  "private": false,
+  "name": "@ichigo_san/graphing",
+  "version": "1.0.0",
+  "description": "A lightweight UML-style diagram editor built with React Flow and Tailwind CSS",
   "main": "dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
+  "keywords": [
+    "react",
+    "diagram",
+    "architecture",
+    "uml",
+    "react-flow",
+    "editor",
+    "flow-chart",
+    "visualization"
+  ],
+  "author": "ichigo_san",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/IcHiGo-KuRoSaKiI/Graphing.git"
+  },
+  "homepage": "https://github.com/IcHiGo-KuRoSaKiI/Graphing.git#readme",
+  "bugs": {
+    "url": "https://github.com/IcHiGo-KuRoSaKiI/Graphing.git/issues"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
   "dependencies": {
+    "ajv": "^8.17.1",
+    "lucide-react": "^0.513.0",
+    "reactflow": "^11.11.4"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.4",
+    "tailwindcss": "^3.4.17",
+    "@babel/cli": "^7.23.0",
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "@babel/preset-react": "^7.23.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
-    "ajv": "^8.17.1",
-    "lucide-react": "^0.513.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1",
-    "reactflow": "^11.11.4"
+    "react-scripts": "5.0.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -43,14 +77,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.4",
-    "tailwindcss": "^3.4.17",
-    "@babel/cli": "^7.23.0",
-    "@babel/core": "^7.23.0",
-    "@babel/preset-env": "^7.23.0",
-    "@babel/preset-react": "^7.23.0"
   }
 }

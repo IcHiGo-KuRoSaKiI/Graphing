@@ -31,3 +31,4 @@ yarn-error.log*
 /src/ComplexArchitectureDiagram_react_flow_working.jsx
 /src/ComplexArchitectureDiagram.jsx
 /dist
+/releases.md
