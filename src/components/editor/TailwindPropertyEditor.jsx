@@ -68,7 +68,14 @@ const IntersectionStyleSelector = ({ value, onChange, disabled = false }) => {
 };
 
 
-const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyChange }) => {
+const TailwindPropertyEditor = ({
+    selectedNode,
+    selectedEdge,
+    onElementPropertyChange,
+    minimized = false,
+    onToggleMinimized = () => {},
+    onClose = () => {}
+}) => {
     // Node properties
     const [nodeLabel, setNodeLabel] = useState('');
     const [nodeIcon, setNodeIcon] = useState('');
@@ -96,11 +103,6 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
         style: true,
         advanced: false
     });
-    const [minimized, setMinimized] = useState(false);
-
-    const toggleMinimized = useCallback(() => {
-        setMinimized((prev) => !prev);
-    }, []);
 
     // Common emojis with categories
     const emojiCategories = {
@@ -306,10 +308,15 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
 
     if (!selectedNode && !selectedEdge) {
         return (
-            <div className="w-72 max-w-[90vw] h-full overflow-y-auto bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg shadow-lg">
-                <div className="py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
-                    Properties
+            <div className={`w-72 max-w-[90vw] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg shadow-lg ${minimized ? 'overflow-hidden' : 'h-full overflow-y-auto'}`}> 
+                <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
+                    <span>Properties</span>
+                    <div className="space-x-2">
+                        <button className="text-xs" onClick={onToggleMinimized}>{minimized ? 'Expand' : 'Minimize'}</button>
+                        <button className="text-xs" onClick={onClose}>Close</button>
+                    </div>
                 </div>
+                {!minimized && (
                 <div className="p-4">
                     <div className="text-center text-gray-500 dark:text-gray-400 py-6">
                         <p>Select an element to edit its properties</p>
@@ -324,6 +331,7 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
                         </div>
                     </div>
                 </div>
+                )}
             </div>
         );
     }
@@ -332,7 +340,10 @@ const TailwindPropertyEditor = ({ selectedNode, selectedEdge, onElementPropertyC
         <div className={`w-72 max-w-[90vw] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg shadow-lg ${minimized ? 'overflow-hidden' : 'h-full overflow-y-auto'}`}>
             <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
                 <span>{selectedNode ? `${selectedNode.type || 'Node'} Properties` : 'Edge Properties'}</span>
-                <button className="text-xs" onClick={toggleMinimized}>{minimized ? 'Expand' : 'Minimize'}</button>
+                <div className="space-x-2">
+                    <button className="text-xs" onClick={onToggleMinimized}>{minimized ? 'Expand' : 'Minimize'}</button>
+                    <button className="text-xs" onClick={onClose}>Close</button>
+                </div>
             </div>
             {!minimized && (
                 <div className="p-4">

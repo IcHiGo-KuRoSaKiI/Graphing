@@ -115,6 +115,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [isInitialized, setIsInitialized] = useState(false);
     const [clipboardData, setClipboardData] = useState(null);
     const [propertyPanelOpen, setPropertyPanelOpen] = useState(true);
+    const [propertyPanelMinimized, setPropertyPanelMinimized] = useState(false);
     const [statsPanelOpen, setStatsPanelOpen] = useState(true);
 
     const updateNodeInternals = useUpdateNodeInternals();
@@ -132,7 +133,15 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const saveTimeoutRef = useRef(null);
 
     const togglePropertyPanel = useCallback(() => {
-        setPropertyPanelOpen((prev) => !prev);
+        setPropertyPanelOpen((prev) => {
+            const next = !prev;
+            if (next) setPropertyPanelMinimized(false);
+            return next;
+        });
+    }, []);
+
+    const togglePropertyPanelMinimized = useCallback(() => {
+        setPropertyPanelMinimized((prev) => !prev);
     }, []);
 
     const toggleStatsPanel = useCallback(() => {
@@ -1604,8 +1613,9 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     {statsPanelOpen && (
                     <Panel position="top-right" style={{ top: '110px', right: propertyPanelOpen ? '336px' : '16px' }}>
                         <div className="bg-white/98 dark:bg-gray-800/98 rounded-lg shadow-lg backdrop-blur-md border border-gray-100 dark:border-gray-700 overflow-hidden">
-                            <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-200">
-                                Diagram Statistics
+                            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-200">
+                                <span>Diagram Statistics</span>
+                                <button className="text-xs" onClick={() => setStatsPanelOpen(false)}>Close</button>
                             </div>
                             <div className="p-4">
                                 <div className="flex justify-between items-center mb-2 text-sm">
@@ -1639,11 +1649,17 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
                     {/* Universal Property Editor Panel */}
                     {propertyPanelOpen && (
-                        <Panel position="top-right" style={{ top: '110px', right: '16px', bottom: '16px' }}>
+                        <Panel
+                            position={propertyPanelMinimized ? 'bottom-right' : 'top-right'}
+                            style={propertyPanelMinimized ? { right: '16px', bottom: '16px' } : { top: '110px', right: '16px', bottom: '16px' }}
+                        >
                             <TailwindPropertyEditor
                                 selectedNode={selectedElements.nodes.length === 1 ? selectedElements.nodes[0] : null}
                                 selectedEdge={selectedElements.edges.length === 1 ? selectedElements.edges[0] : null}
                                 onElementPropertyChange={handleElementPropertyChange}
+                                minimized={propertyPanelMinimized}
+                                onToggleMinimized={togglePropertyPanelMinimized}
+                                onClose={() => { setPropertyPanelOpen(false); setPropertyPanelMinimized(false); }}
                             />
                         </Panel>
                     )}
