@@ -168,6 +168,15 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         setPanMode((prev) => !prev);
     }, []);
 
+    const handleContextMenu = useCallback(
+        (event) => {
+            if (panMode) {
+                event.preventDefault();
+            }
+        },
+        [panMode]
+    );
+
     // Custom node types
     const nodeTypes = useMemo(() => ({
         diamond: DiamondNode,
@@ -1614,7 +1623,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             </div>
 
             {/* Main Editor */}
-            <div className="flex-1 w-full h-full relative bg-white dark:bg-gray-800" ref={reactFlowWrapper}>
+            <div
+                className="flex-1 w-full h-full relative bg-white dark:bg-gray-800"
+                ref={reactFlowWrapper}
+                onContextMenu={handleContextMenu}
+            >
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
@@ -1653,6 +1666,9 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     panOnScroll={false}
                     preventScrolling={true}
                     connectOnClick={true}  // Allow connections by clicking handles
+                    onPaneContextMenu={handleContextMenu}
+                    onNodeContextMenu={handleContextMenu}
+                    onEdgeContextMenu={handleContextMenu}
                     isValidConnection={(connection) => {
                         // Allow all connections between different nodes
                         return connection.source !== connection.target;
