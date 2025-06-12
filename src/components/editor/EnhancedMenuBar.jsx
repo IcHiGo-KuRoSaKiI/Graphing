@@ -66,7 +66,7 @@ const EnhancedMenuBar = ({
   const MenuButton = ({ name, icon: Icon, children }) => (
     <div className="relative">
       <button
-        className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded transition-all ${activeMenu === name
+        className={`flex items-center gap-2 px-4 py-2 text-gray-800 dark:text-white text-sm font-medium rounded transition-all ${activeMenu === name
           ? 'bg-white/20 shadow-md transform -translate-y-0.5'
           : 'hover:bg-white/10'
           }`}
