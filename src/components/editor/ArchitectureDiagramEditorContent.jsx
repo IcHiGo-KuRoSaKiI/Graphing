@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { toPng, toJpeg, toSvg } from 'html-to-image';
-import { X } from 'lucide-react';
+import { X, Move } from 'lucide-react';
 import ReactFlow, {
     Controls,
     Background,
@@ -118,6 +118,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [propertyPanelOpen, setPropertyPanelOpen] = useState(true);
     const [propertyPanelMinimized, setPropertyPanelMinimized] = useState(false);
     const [statsPanelOpen, setStatsPanelOpen] = useState(true);
+    const [panMode, setPanMode] = useState(false);
 
     const getDiagramBounds = useCallback(() => {
         if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
@@ -161,6 +162,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     const toggleStatsPanel = useCallback(() => {
         setStatsPanelOpen((prev) => !prev);
+    }, []);
+
+    const togglePanMode = useCallback(() => {
+        setPanMode((prev) => !prev);
     }, []);
 
     // Custom node types
@@ -1592,6 +1597,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         📄
                     </button>
                     <button
+                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white border border-white/20 transition-all ${panMode ? 'bg-indigo-600 hover:bg-indigo-700 shadow-md' : 'bg-white/10 hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'}`}
+                        onClick={togglePanMode}
+                        title={panMode ? 'Selection Mode' : 'Pan Mode'}
+                    >
+                        <Move size={16} />
+                    </button>
+                    <button
                         className="p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md"
                         onClick={onToggleFullscreen}
                         title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
@@ -1626,8 +1638,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     defaultViewport={{ x: 0, y: 0, zoom: 1 }}
                     attributionPosition="bottom-right"
                     deleteKeyCode={null}
-                    selectionOnDrag
-                    panOnDrag={[1, 2]}
+                    selectionOnDrag={!panMode}
+                    panOnDrag={panMode ? [1, 2] : [2]}
                     selectionMode="partial"
                     minZoom={0.2}
                     maxZoom={2}
