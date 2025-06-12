@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { toPng, toJpeg, toSvg } from 'html-to-image';
+import { X } from 'lucide-react';
 import ReactFlow, {
     Controls,
     Background,
@@ -117,6 +118,20 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [propertyPanelOpen, setPropertyPanelOpen] = useState(true);
     const [propertyPanelMinimized, setPropertyPanelMinimized] = useState(false);
     const [statsPanelOpen, setStatsPanelOpen] = useState(true);
+
+    const getDiagramBounds = useCallback(() => {
+        if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        nodes.forEach((n) => {
+            const width = n.__rf?.width || n.style?.width || 150;
+            const height = n.__rf?.height || n.style?.height || 80;
+            minX = Math.min(minX, n.position.x);
+            minY = Math.min(minY, n.position.y);
+            maxX = Math.max(maxX, n.position.x + width);
+            maxY = Math.max(maxY, n.position.y + height);
+        });
+        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    }, [nodes]);
 
     const updateNodeInternals = useUpdateNodeInternals();
 
@@ -1173,44 +1188,77 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         if (!reactFlowWrapper.current) return;
         const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
         const isDark = !!reactFlowWrapper.current.closest('.dark');
+        const bounds = getDiagramBounds();
+        const margin = 20;
+        const width = bounds.width + margin * 2;
+        const height = bounds.height + margin * 2;
         const dataUrl = await toPng(renderer, {
             cacheBust: true,
-            backgroundColor: isDark ? '#111111' : '#ffffff'
+            backgroundColor: isDark ? '#111111' : '#ffffff',
+            width,
+            height,
+            style: {
+                width: `${width}px`,
+                height: `${height}px`,
+                transform: `translate(${-bounds.x + margin}px, ${-bounds.y + margin}px)`
+            }
         });
         const link = document.createElement('a');
         link.download = 'diagram.png';
         link.href = dataUrl;
         link.click();
-    }, []);
+    }, [getDiagramBounds]);
 
     const exportAsJPG = useCallback(async () => {
         if (!reactFlowWrapper.current) return;
         const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
         const isDark = !!reactFlowWrapper.current.closest('.dark');
+        const bounds = getDiagramBounds();
+        const margin = 20;
+        const width = bounds.width + margin * 2;
+        const height = bounds.height + margin * 2;
         const dataUrl = await toJpeg(renderer, {
             cacheBust: true,
             quality: 0.95,
-            backgroundColor: isDark ? '#111111' : '#ffffff'
+            backgroundColor: isDark ? '#111111' : '#ffffff',
+            width,
+            height,
+            style: {
+                width: `${width}px`,
+                height: `${height}px`,
+                transform: `translate(${-bounds.x + margin}px, ${-bounds.y + margin}px)`
+            }
         });
         const link = document.createElement('a');
         link.download = 'diagram.jpg';
         link.href = dataUrl;
         link.click();
-    }, []);
+    }, [getDiagramBounds]);
 
     const exportAsSVG = useCallback(async () => {
         if (!reactFlowWrapper.current) return;
         const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
         const isDark = !!reactFlowWrapper.current.closest('.dark');
+        const bounds = getDiagramBounds();
+        const margin = 20;
+        const width = bounds.width + margin * 2;
+        const height = bounds.height + margin * 2;
         const dataUrl = await toSvg(renderer, {
             cacheBust: true,
-            backgroundColor: isDark ? '#111111' : '#ffffff'
+            backgroundColor: isDark ? '#111111' : '#ffffff',
+            width,
+            height,
+            style: {
+                width: `${width}px`,
+                height: `${height}px`,
+                transform: `translate(${-bounds.x + margin}px, ${-bounds.y + margin}px)`
+            }
         });
         const link = document.createElement('a');
         link.download = 'diagram.svg';
         link.href = dataUrl;
         link.click();
-    }, []);
+    }, [getDiagramBounds]);
 
     const autoLayout = useCallback(() => {
         const updated = [...nodes];
@@ -1615,7 +1663,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         <div className="bg-white/98 dark:bg-gray-800/98 rounded-lg shadow-lg backdrop-blur-md border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-200">
                                 <span>Diagram Statistics</span>
-                                <button className="text-xs" onClick={() => setStatsPanelOpen(false)}>Close</button>
+                                <button
+                                    className="p-1 hover:bg-white/10 rounded"
+                                    onClick={() => setStatsPanelOpen(false)}
+                                    title="Close"
+                                >
+                                    <X size={14} />
+                                </button>
                             </div>
                             <div className="p-4">
                                 <div className="flex justify-between items-center mb-2 text-sm">

@@ -1,7 +1,7 @@
 // src/components/editor/TailwindPropertyEditor.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
 
 // Simple preview for the different intersection styles
 const IntersectionStylePreview = ({ style, size = 40, className = '' }) => {
@@ -311,9 +311,21 @@ const TailwindPropertyEditor = ({
             <div className={`w-72 max-w-[90vw] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg shadow-lg ${minimized ? 'overflow-hidden' : 'h-full overflow-y-auto'}`}> 
                 <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
                     <span>Properties</span>
-                    <div className="space-x-2">
-                        <button className="text-xs" onClick={onToggleMinimized}>{minimized ? 'Expand' : 'Minimize'}</button>
-                        <button className="text-xs" onClick={onClose}>Close</button>
+                    <div className="flex items-center space-x-1">
+                        <button
+                            className="p-1 hover:bg-white/10 rounded"
+                            onClick={onToggleMinimized}
+                            title={minimized ? 'Expand' : 'Minimize'}
+                        >
+                            {minimized ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                        <button
+                            className="p-1 hover:bg-white/10 rounded"
+                            onClick={onClose}
+                            title="Close"
+                        >
+                            <X size={14} />
+                        </button>
                     </div>
                 </div>
                 {!minimized && (
@@ -340,9 +352,21 @@ const TailwindPropertyEditor = ({
         <div className={`w-72 max-w-[90vw] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg shadow-lg ${minimized ? 'overflow-hidden' : 'h-full overflow-y-auto'}`}>
             <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
                 <span>{selectedNode ? `${selectedNode.type || 'Node'} Properties` : 'Edge Properties'}</span>
-                <div className="space-x-2">
-                    <button className="text-xs" onClick={onToggleMinimized}>{minimized ? 'Expand' : 'Minimize'}</button>
-                    <button className="text-xs" onClick={onClose}>Close</button>
+                <div className="flex items-center space-x-1">
+                    <button
+                        className="p-1 hover:bg-white/10 rounded"
+                        onClick={onToggleMinimized}
+                        title={minimized ? 'Expand' : 'Minimize'}
+                    >
+                        {minimized ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                    <button
+                        className="p-1 hover:bg-white/10 rounded"
+                        onClick={onClose}
+                        title="Close"
+                    >
+                        <X size={14} />
+                    </button>
                 </div>
             </div>
             {!minimized && (
