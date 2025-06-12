@@ -23,7 +23,6 @@
     "type": "git",
     "url": "https://github.com/IcHiGo-KuRoSaKiI/Graphing.git"
   },
-  "homepage": "https://github.com/IcHiGo-KuRoSaKiI/Graphing.git#readme",
   "bugs": {
     "url": "https://github.com/IcHiGo-KuRoSaKiI/Graphing.git/issues"
   },
@@ -37,9 +36,6 @@
     "reactflow": "^11.11.4"
   },
   "devDependencies": {
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.4",
-    "tailwindcss": "^3.4.17",
     "@babel/cli": "^7.23.0",
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
@@ -48,15 +44,19 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
+    "postcss": "^8.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "tailwindcss": "^3.4.17"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "cross-env PUBLIC_URL=/ HOST=0.0.0.0 PORT=3001 react-scripts start",
     "build": "react-scripts build",
-    "lib:build": "babel index.js src/components --out-dir dist --copy-files",
-    "prepare": "npm run lib:build",
+    "build:lib": "babel index.js src/components --out-dir dist --copy-files",
+    "prepare": "npm run build:lib",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

@@ -43,7 +43,7 @@ npm install path/to/graphing
 npm install graphing
 ```
 
-Import the editor and provide a diagram object. The optional `mode` prop controls the UI theme (`"light"` or `"dark"`).
+Import the editor and provide a diagram object. The optional `mode` prop controls the UI theme (`"dark"` or `"dark"`).
 
 ```jsx
 import { ArchitectureDiagramEditor } from 'graphing';
