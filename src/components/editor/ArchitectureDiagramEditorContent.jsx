@@ -105,7 +105,7 @@ const ajv = new Ajv();
 const validateDiagram = ajv.compile(diagramSchema);
 
 
-const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showThemeToggle }) => {
+const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showThemeToggle, onToggleFullscreen, isFullscreen }) => {
     // State for nodes and edges
     const [nodes, setNodes] = useState([]);
     const [edges, setEdges] = useState([]);
@@ -1490,6 +1490,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         title="Paste (Ctrl+V)"
                     >
                         📄
+                    </button>
+                    <button
+                        className="p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md"
+                        onClick={onToggleFullscreen}
+                        title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                    >
+                        {isFullscreen ? '🗗' : '🗖'}
                     </button>
                 </div>
             </div>
