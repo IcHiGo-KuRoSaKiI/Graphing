@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { toPng, toJpeg, toSvg } from 'html-to-image';
-import { X, Move } from 'lucide-react';
+import { X, Move, RotateCcw, RotateCw, ClipboardCopy, ClipboardPaste, Maximize2, Minimize2 } from 'lucide-react';
 import ReactFlow, {
     Controls,
     Background,
@@ -1569,7 +1569,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 />
 
                 {/* Quick Action Buttons */}
-                <div className="flex items-center gap-2 p-2 bg-white/5 border-t border-white/10">
+                <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                     <button
                         className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${history.past.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
                             }`}
@@ -1577,7 +1577,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         disabled={history.past.length === 0}
                         title="Undo (Ctrl+Z)"
                     >
-                        ↩️
+                        <RotateCcw size={16} />
                     </button>
                     <button
                         className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${history.future.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
@@ -1586,7 +1586,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         disabled={history.future.length === 0}
                         title="Redo (Ctrl+Shift+Z)"
                     >
-                        ↪️
+                        <RotateCw size={16} />
                     </button>
                     <div className="w-px h-6 bg-white/20 mx-1"></div>
                     <button
@@ -1596,7 +1596,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         disabled={selectedElements.nodes.length === 0 && selectedElements.edges.length === 0}
                         title="Copy (Ctrl+C)"
                     >
-                        📋
+                        <ClipboardCopy size={16} />
                     </button>
                     <button
                         className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${!clipboardData ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
@@ -1605,7 +1605,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         disabled={!clipboardData}
                         title="Paste (Ctrl+V)"
                     >
-                        📄
+                        <ClipboardPaste size={16} />
                     </button>
                     <button
                         className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white border border-white/20 transition-all ${panMode ? 'bg-indigo-600 hover:bg-indigo-700 shadow-md' : 'bg-white/10 hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'}`}
@@ -1619,7 +1619,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         onClick={onToggleFullscreen}
                         title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                     >
-                        {isFullscreen ? '🗗' : '🗖'}
+                        {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                     </button>
                 </div>
             </div>
