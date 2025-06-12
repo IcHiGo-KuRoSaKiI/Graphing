@@ -391,10 +391,13 @@ code {
 }
 
 /* Dark mode canvas and nodes */
+.dark .react-flow__viewport {
+  background-color: #111827;
+}
+
 .react-flow__node {
   transition: filter 0.2s ease;
 }
-
 
 .dark .react-flow__node {
   filter: brightness(0.85);
