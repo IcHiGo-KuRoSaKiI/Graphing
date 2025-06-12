@@ -391,8 +391,12 @@ code {
 }
 
 /* Dark mode canvas and nodes */
-.dark .react-flow__viewport {
+.dark .react-flow__container {
   background-color: #111827;
+}
+
+.dark .react-flow__viewport {
+  background-color: transparent;
 }
 
 .react-flow__node {
