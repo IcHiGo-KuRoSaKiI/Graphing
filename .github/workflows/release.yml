@@ -1,6 +1,11 @@
 # .github/workflows/release.yml
 name: Auto Release
 
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
 on:
   push:
     branches: [ master ]

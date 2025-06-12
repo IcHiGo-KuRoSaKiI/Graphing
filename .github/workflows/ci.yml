@@ -1,6 +1,9 @@
 # .github/workflows/ci.yml
 name: CI/CD Pipeline
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [master, develop]
