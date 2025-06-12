@@ -23,18 +23,20 @@ const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'lig
     const containerStyle = { ...combinedStyle, ...fullscreenStyle };
 
     return (
-        <div style={containerStyle} className={`${modeClass} bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 relative ${className || ''}`}>
-            <ReactFlowProvider>
-                <ArchitectureDiagramEditorContent
-                    initialDiagram={diagram}
-                    onToggleTheme={toggleTheme}
-                    onToggleFullscreen={toggleFullscreen}
-                    isFullscreen={isFullscreen}
-                    showThemeToggle={showThemeToggle}
-                    onToggleMini={onToggleMini}
-                    showMiniToggle={showMiniToggle}
-                />
-            </ReactFlowProvider>
+        <div className="graphing-root">
+            <div style={containerStyle} className={`${modeClass} bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 relative ${className || ''}`}>
+                <ReactFlowProvider>
+                    <ArchitectureDiagramEditorContent
+                        initialDiagram={diagram}
+                        onToggleTheme={toggleTheme}
+                        onToggleFullscreen={toggleFullscreen}
+                        isFullscreen={isFullscreen}
+                        showThemeToggle={showThemeToggle}
+                        onToggleMini={onToggleMini}
+                        showMiniToggle={showMiniToggle}
+                    />
+                </ReactFlowProvider>
+            </div>
         </div>
     );
 };
