@@ -22,11 +22,18 @@ function App() {
 
       {mini && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-80 h-64 border rounded shadow-lg overflow-hidden bg-white dark:bg-gray-800">
+          <div className="relative border rounded shadow-lg overflow-hidden bg-white dark:bg-gray-800 w-[900px] h-[1200px]">
+            <button
+              className="absolute top-2 right-2 px-2 py-1 text-xs rounded bg-gray-200 dark:bg-gray-700"
+              onClick={() => setDark((d) => !d)}
+            >
+              {dark ? 'Light' : 'Dark'}
+            </button>
             <ArchitectureDiagramEditor
               mode={dark ? 'dark' : 'light'}
               onToggleMini={toggleMini}
               showMiniToggle
+              className="w-full h-full"
             />
           </div>
         </div>
