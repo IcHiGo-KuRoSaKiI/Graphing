@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { toPng, toJpeg, toSvg } from 'html-to-image';
 import ReactFlow, {
     Controls,
     Background,
@@ -114,6 +115,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [isInitialized, setIsInitialized] = useState(false);
     const [clipboardData, setClipboardData] = useState(null);
     const [propertyPanelOpen, setPropertyPanelOpen] = useState(true);
+    const [statsPanelOpen, setStatsPanelOpen] = useState(true);
 
     const updateNodeInternals = useUpdateNodeInternals();
 
@@ -131,6 +133,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     const togglePropertyPanel = useCallback(() => {
         setPropertyPanelOpen((prev) => !prev);
+    }, []);
+
+    const toggleStatsPanel = useCallback(() => {
+        setStatsPanelOpen((prev) => !prev);
     }, []);
 
     // Custom node types
@@ -1153,13 +1159,32 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         importDiagram();
     }, [importDiagram]);
 
-    // Enhanced export functions (placeholders for future)
+    // Image export helpers
     const exportAsPNG = useCallback(async () => {
-        alert('PNG export coming soon!');
+        if (!reactFlowWrapper.current) return;
+        const dataUrl = await toPng(reactFlowWrapper.current, { cacheBust: true });
+        const link = document.createElement('a');
+        link.download = 'diagram.png';
+        link.href = dataUrl;
+        link.click();
+    }, []);
+
+    const exportAsJPG = useCallback(async () => {
+        if (!reactFlowWrapper.current) return;
+        const dataUrl = await toJpeg(reactFlowWrapper.current, { cacheBust: true, quality: 0.95 });
+        const link = document.createElement('a');
+        link.download = 'diagram.jpg';
+        link.href = dataUrl;
+        link.click();
     }, []);
 
     const exportAsSVG = useCallback(async () => {
-        alert('SVG export coming soon!');
+        if (!reactFlowWrapper.current) return;
+        const dataUrl = await toSvg(reactFlowWrapper.current, { cacheBust: true });
+        const link = document.createElement('a');
+        link.download = 'diagram.svg';
+        link.href = dataUrl;
+        link.click();
     }, []);
 
     const autoLayout = useCallback(() => {
@@ -1417,6 +1442,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     onExportJSON={exportDiagram}
                     onExportDrawio={exportToDrawioXML}
                     onExportPNG={exportAsPNG}
+                    onExportJPG={exportAsJPG}
                     onExportSVG={exportAsSVG}
 
                     // Edit operations
@@ -1448,6 +1474,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     hasClipboard={clipboardData !== null}
                     canLink={selectedElements.nodes.length >= 2}
                     onTogglePropertiesPanel={togglePropertyPanel}
+                    onToggleStatsPanel={toggleStatsPanel}
                     onToggleTheme={onToggleTheme}
                     showThemeToggle={showThemeToggle}
                 />
@@ -1558,7 +1585,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
 
                     {/* Stats Panel */}
-                    <Panel position="top-right" className="m-4">
+                    {statsPanelOpen && (
+                    <Panel position="top-right" style={{ top: '110px', right: '16px' }}>
                         <div className="bg-white/98 dark:bg-gray-800/98 rounded-lg shadow-lg backdrop-blur-md border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-200">
                                 Diagram Statistics
@@ -1591,10 +1619,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                             </div>
                         </div>
                     </Panel>
+                    )}
 
                     {/* Universal Property Editor Panel */}
                     {propertyPanelOpen && (
-                        <Panel position="bottom-right" className="m-4">
+                        <Panel position="top-right" style={{ top: '110px', right: '320px' }}>
                             <TailwindPropertyEditor
                                 selectedNode={selectedElements.nodes.length === 1 ? selectedElements.nodes[0] : null}
                                 selectedEdge={selectedElements.edges.length === 1 ? selectedElements.edges[0] : null}

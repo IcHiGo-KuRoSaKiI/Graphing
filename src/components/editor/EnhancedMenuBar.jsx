@@ -12,6 +12,7 @@ const EnhancedMenuBar = ({
   onExportJSON,
   onExportDrawio,
   onExportPNG,
+  onExportJPG,
   onExportSVG,
   onUndo,
   onRedo,
@@ -29,6 +30,7 @@ const EnhancedMenuBar = ({
   onValidateJSON,
   onAutoLayout,
   onTogglePropertiesPanel,
+  onToggleStatsPanel,
   onToggleTheme,
   showThemeToggle = false,
   canUndo = false,
@@ -152,6 +154,9 @@ const EnhancedMenuBar = ({
         <MenuItem onClick={onExportPNG}>
           Export as PNG
         </MenuItem>
+        <MenuItem onClick={onExportJPG}>
+          Export as JPG
+        </MenuItem>
         <MenuItem onClick={onExportSVG}>
           Export as SVG
         </MenuItem>
@@ -229,6 +234,9 @@ const EnhancedMenuBar = ({
         </MenuItem>
         <MenuItem onClick={onTogglePropertiesPanel}>
           Toggle Properties Panel
+        </MenuItem>
+        <MenuItem onClick={onToggleStatsPanel}>
+          Toggle Diagram Stats
         </MenuItem>
         {showThemeToggle && (
           <MenuItem onClick={onToggleTheme}>
