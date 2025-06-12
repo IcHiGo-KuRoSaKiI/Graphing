@@ -33,6 +33,8 @@ const EnhancedMenuBar = ({
   onToggleStatsPanel,
   onToggleTheme,
   showThemeToggle = false,
+  onToggleMini,
+  showMiniToggle = false,
   canUndo = false,
   canRedo = false,
   hasSelection = false,
@@ -238,6 +240,11 @@ const EnhancedMenuBar = ({
         <MenuItem onClick={onToggleStatsPanel}>
           Toggle Diagram Stats
         </MenuItem>
+        {showMiniToggle && (
+          <MenuItem onClick={onToggleMini}>
+            Toggle Mini Editor
+          </MenuItem>
+        )}
         {showThemeToggle && (
           <MenuItem onClick={onToggleTheme}>
             Toggle Dark Mode

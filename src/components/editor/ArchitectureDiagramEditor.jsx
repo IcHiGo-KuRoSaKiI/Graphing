@@ -3,7 +3,7 @@ import { ReactFlowProvider } from 'reactflow';
 import ArchitectureDiagramEditorContent from './ArchitectureDiagramEditorContent';
 import 'reactflow/dist/style.css';
 
-const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'light', showThemeToggle = false }) => {
+const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'light', showThemeToggle = false, onToggleMini, showMiniToggle = false }) => {
     const [theme, setTheme] = useState(mode);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -31,6 +31,8 @@ const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'lig
                     onToggleFullscreen={toggleFullscreen}
                     isFullscreen={isFullscreen}
                     showThemeToggle={showThemeToggle}
+                    onToggleMini={onToggleMini}
+                    showMiniToggle={showMiniToggle}
                 />
             </ReactFlowProvider>
         </div>

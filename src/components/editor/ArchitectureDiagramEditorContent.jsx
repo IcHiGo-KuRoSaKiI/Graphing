@@ -107,7 +107,7 @@ const ajv = new Ajv();
 const validateDiagram = ajv.compile(diagramSchema);
 
 
-const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showThemeToggle, onToggleFullscreen, isFullscreen }) => {
+const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showThemeToggle, onToggleFullscreen, isFullscreen, onToggleMini, showMiniToggle }) => {
     // State for nodes and edges
     const [nodes, setNodes] = useState([]);
     const [edges, setEdges] = useState([]);
@@ -1564,6 +1564,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     onToggleStatsPanel={toggleStatsPanel}
                     onToggleTheme={onToggleTheme}
                     showThemeToggle={showThemeToggle}
+                    onToggleMini={onToggleMini}
+                    showMiniToggle={showMiniToggle}
                 />
 
                 {/* Quick Action Buttons */}

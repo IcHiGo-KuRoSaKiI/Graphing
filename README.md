@@ -43,7 +43,7 @@ npm install path/to/graphing
 npm install graphing
 ```
 
-Import the editor component. The bundled stylesheet is now loaded automatically. The optional `mode` prop controls the initial UI theme (`"light"` or `"dark"`). You can also enable a built-in theme switcher in the View menu by passing `showThemeToggle`.
+Import the editor component. The bundled stylesheet is now loaded automatically. The optional `mode` prop controls the initial UI theme (`"light"` or `"dark"`). You can also enable a built-in theme switcher in the View menu by passing `showThemeToggle`. For development builds you can expose a menu option to toggle a miniature preview by passing `showMiniToggle` and handling the `onToggleMini` callback.
 
 ```jsx
 import { ArchitectureDiagramEditor } from 'graphing';
@@ -72,7 +72,12 @@ const example = {
 function Example() {
   return (
     <div style={{ width: 600, height: 400 }}>
-      <ArchitectureDiagramEditor diagram={example} mode="dark" showThemeToggle />
+      <ArchitectureDiagramEditor
+        diagram={example}
+        mode="dark"
+        showThemeToggle
+        showMiniToggle
+      />
     </div>
   );
 }
