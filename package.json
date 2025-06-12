@@ -57,7 +57,7 @@
     "build": "react-scripts build",
     "build:lib": "babel index.js src/components --out-dir dist --copy-files",
     "build:css": "tailwindcss -i ./src/index.css -o ./dist/graphing.css --minify",
-    "prepare": "npm run build:lib && npm run build:css",
+    "prepublishOnly": "npm run build:lib && npm run build:css",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
