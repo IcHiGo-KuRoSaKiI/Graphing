@@ -1162,7 +1162,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     // Image export helpers
     const exportAsPNG = useCallback(async () => {
         if (!reactFlowWrapper.current) return;
-        const dataUrl = await toPng(reactFlowWrapper.current, { cacheBust: true });
+        const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
+        const isDark = !!reactFlowWrapper.current.closest('.dark');
+        const dataUrl = await toPng(renderer, {
+            cacheBust: true,
+            backgroundColor: isDark ? '#111111' : '#ffffff'
+        });
         const link = document.createElement('a');
         link.download = 'diagram.png';
         link.href = dataUrl;
@@ -1171,7 +1176,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     const exportAsJPG = useCallback(async () => {
         if (!reactFlowWrapper.current) return;
-        const dataUrl = await toJpeg(reactFlowWrapper.current, { cacheBust: true, quality: 0.95 });
+        const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
+        const isDark = !!reactFlowWrapper.current.closest('.dark');
+        const dataUrl = await toJpeg(renderer, {
+            cacheBust: true,
+            quality: 0.95,
+            backgroundColor: isDark ? '#111111' : '#ffffff'
+        });
         const link = document.createElement('a');
         link.download = 'diagram.jpg';
         link.href = dataUrl;
@@ -1180,7 +1191,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     const exportAsSVG = useCallback(async () => {
         if (!reactFlowWrapper.current) return;
-        const dataUrl = await toSvg(reactFlowWrapper.current, { cacheBust: true });
+        const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
+        const isDark = !!reactFlowWrapper.current.closest('.dark');
+        const dataUrl = await toSvg(renderer, {
+            cacheBust: true,
+            backgroundColor: isDark ? '#111111' : '#ffffff'
+        });
         const link = document.createElement('a');
         link.download = 'diagram.svg';
         link.href = dataUrl;
@@ -1586,7 +1602,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
                     {/* Stats Panel */}
                     {statsPanelOpen && (
-                    <Panel position="top-right" style={{ top: '110px', right: '16px' }}>
+                    <Panel position="top-right" style={{ top: '110px', right: propertyPanelOpen ? '336px' : '16px' }}>
                         <div className="bg-white/98 dark:bg-gray-800/98 rounded-lg shadow-lg backdrop-blur-md border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-200">
                                 Diagram Statistics
@@ -1623,7 +1639,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
                     {/* Universal Property Editor Panel */}
                     {propertyPanelOpen && (
-                        <Panel position="top-right" style={{ top: '110px', right: '320px' }}>
+                        <Panel position="top-right" style={{ top: '110px', right: '16px', bottom: '16px' }}>
                             <TailwindPropertyEditor
                                 selectedNode={selectedElements.nodes.length === 1 ? selectedElements.nodes[0] : null}
                                 selectedEdge={selectedElements.edges.length === 1 ? selectedElements.edges[0] : null}
