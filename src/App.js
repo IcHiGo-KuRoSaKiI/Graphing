@@ -9,7 +9,7 @@ function App() {
   const toggleMini = () => setMini((m) => !m);
 
   return (
-    <div className={`w-full h-screen overflow-hidden relative ${dark ? 'dark bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>\
+    <div className={`w-full h-screen overflow-hidden relative ${dark ? 'dark bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>
       {!mini && (
         <ArchitectureDiagramEditor
           mode={dark ? 'dark' : 'light'}

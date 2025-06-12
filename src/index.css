@@ -390,10 +390,6 @@ code {
   stroke-miterlimit: 4;
 }
 
-/* Dark mode canvas and nodes */
-.dark .react-flow__container {
-  background-color: #111827;
-}
 
 .dark .react-flow__viewport {
   background-color: transparent;
