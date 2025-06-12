@@ -43,10 +43,9 @@ npm install path/to/graphing
 npm install graphing
 ```
 
-Import the bundled CSS and the editor component. The optional `mode` prop controls the initial UI theme (`"light"` or `"dark"`). You can also enable a built-in theme switcher in the View menu by passing `showThemeToggle`.
+Import the editor component. The bundled stylesheet is now loaded automatically. The optional `mode` prop controls the initial UI theme (`"light"` or `"dark"`). You can also enable a built-in theme switcher in the View menu by passing `showThemeToggle`.
 
 ```jsx
-import 'graphing/dist/graphing.css';
 import { ArchitectureDiagramEditor } from 'graphing';
 
 const example = {
