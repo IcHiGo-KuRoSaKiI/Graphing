@@ -91,6 +91,18 @@ jobs:
     - name: Build library
       run: npm run build:lib
 
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Bump package version
+      run: |
+        npm version patch -m "Release %s [skip-release]"
+        git push origin HEAD --tags
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Publish to NPM
       run: npm publish --access public
       env:
