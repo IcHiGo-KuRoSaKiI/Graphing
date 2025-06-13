@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import ArchitectureDiagramEditorContent from './ArchitectureDiagramEditorContent';
 import 'reactflow/dist/style.css';
+import useThemeStore from '../../store/themeStore';
 
 const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'light', showThemeToggle = false, onToggleMini, showMiniToggle = false }) => {
-    const [theme, setTheme] = useState(mode);
+    const { theme, setTheme, toggleTheme } = useThemeStore();
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
@@ -17,7 +18,7 @@ const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'lig
         : {};
     const modeClass = theme === 'dark' ? 'dark' : '';
 
-    const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    const handleToggleTheme = () => toggleTheme();
     const toggleFullscreen = () => setIsFullscreen((prev) => !prev);
 
     const containerStyle = { ...combinedStyle, ...fullscreenStyle };
@@ -28,7 +29,7 @@ const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'lig
                 <ReactFlowProvider>
                     <ArchitectureDiagramEditorContent
                         initialDiagram={diagram}
-                        onToggleTheme={toggleTheme}
+                    onToggleTheme={handleToggleTheme}
                         onToggleFullscreen={toggleFullscreen}
                         isFullscreen={isFullscreen}
                         showThemeToggle={showThemeToggle}

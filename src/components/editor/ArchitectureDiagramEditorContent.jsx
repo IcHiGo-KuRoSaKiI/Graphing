@@ -1608,14 +1608,14 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         📄
                     </button>
                     <button
-                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white border border-white/20 transition-all ${panMode ? 'bg-indigo-600 hover:bg-indigo-700 shadow-md' : 'bg-white/10 hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'}`}
+                        className={`p-2 rounded flex items-center justify-center w-9 h-9 border transition-colors ${panMode ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                         onClick={togglePanMode}
                         title={panMode ? 'Selection Mode' : 'Pan Mode'}
                     >
                         <Move size={16} />
                     </button>
                     <button
-                        className="p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md"
+                        className="p-2 rounded flex items-center justify-center w-9 h-9 border bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                         onClick={onToggleFullscreen}
                         title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                     >
