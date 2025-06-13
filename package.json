@@ -1,6 +1,6 @@
 {
   "name": "@ichigo_san/graphing",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "A lightweight UML-style diagram editor built with React Flow and Tailwind CSS",
   "main": "dist/index.js",
   "files": [
