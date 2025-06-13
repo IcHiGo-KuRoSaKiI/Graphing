@@ -58,7 +58,7 @@
   "scripts": {
     "start": "cross-env PUBLIC_URL=/ HOST=0.0.0.0 PORT=3001 react-scripts start",
     "build": "react-scripts build",
-    "build:lib": "babel index.js src/components --out-dir dist --copy-files",
+    "build:lib": "babel index.js --out-dir dist --copy-files && babel src/components --out-dir dist --copy-files",
     "build:css": "tailwindcss -i ./src/index.css -o ./dist/graphing.css --minify --postcss",
     "prepublishOnly": "npm run build:lib && npm run build:css",
     "test": "react-scripts test",
