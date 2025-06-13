@@ -72,16 +72,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 }}
             >
                 <div
-                    style={{
-                        padding: '8px',
-                        borderBottom: '1px solid #ddd',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        backgroundColor: 'rgba(0,0,0,0.05)',
-                        borderTopLeftRadius: '8px',
-                        borderTopRightRadius: '8px'
-                    }}
+                    className="px-2 py-1 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 rounded-t-lg flex items-center gap-2"
                     onDoubleClick={handleDoubleClick}
                 >
                     {data.icon && <span style={{ fontSize: '14px' }}>{data.icon}</span>}

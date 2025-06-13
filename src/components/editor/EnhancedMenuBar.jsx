@@ -70,7 +70,7 @@ const EnhancedMenuBar = ({
   const MenuButton = ({ name, icon: Icon, children }) => (
     <div className="relative">
       <button
-        className={`flex items-center gap-2 px-4 py-2 text-gray-800 dark:text-white text-sm font-medium rounded transition-all ${activeMenu === name
+        className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded transition-all ${activeMenu === name
           ? 'bg-white/20 shadow-md transform -translate-y-0.5'
           : 'hover:bg-white/10'
           }`}
@@ -118,7 +118,7 @@ const EnhancedMenuBar = ({
   return (
     <div
       ref={menuRef}
-      className="flex items-center bg-gradient-to-r from-indigo-500 to-purple-600 p-0 relative z-10 border-b border-white/10"
+      className="flex items-center bg-gradient-to-r from-indigo-500 to-purple-600 p-0 relative z-10 border-b border-white/10 text-white"
     >
       <MenuButton name="File" icon={File}>
         <MenuItem onClick={onNew} shortcut="Ctrl+N">

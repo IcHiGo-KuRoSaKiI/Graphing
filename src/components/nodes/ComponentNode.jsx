@@ -72,12 +72,7 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                 }}
             >
                 <div
-                    style={{
-                        padding: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                    }}
+                    className="px-2 py-1 flex items-center gap-2 border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-t"
                     onDoubleClick={handleDoubleClick}
                 >
                     {data.icon && <span style={{ fontSize: '14px' }}>{data.icon}</span>}
