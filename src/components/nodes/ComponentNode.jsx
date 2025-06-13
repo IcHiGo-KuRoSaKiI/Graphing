@@ -95,7 +95,12 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                             }}
                         />
                     ) : (
-                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: data.textColor || '#000' }}>{label}</span>
+                        <span
+                            style={{ fontSize: '14px', fontWeight: 'bold', color: data.textColor }}
+                            className={!data.textColor ? 'text-gray-800 dark:text-white' : ''}
+                        >
+                            {label}
+                        </span>
                     )}
                 </div>
                 {data.description && (
