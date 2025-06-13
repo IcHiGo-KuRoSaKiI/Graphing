@@ -57,7 +57,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
             />
             <div
                 style={{
-                    background: data.color || '#f5f5f5',
+                    background: data.color || '#f9f9f9',
                     border: `2px solid ${data.borderColor || '#ddd'}`,
                     borderRadius: '8px',
                     width: '100%',
@@ -72,7 +72,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 }}
             >
                 <div
-                    className="px-2 py-1 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t-lg flex items-center gap-2"
+                    className="px-2 py-1 border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t-lg flex items-center gap-2"
                     onDoubleClick={handleDoubleClick}
                 >
                     {data.icon && <span style={{ fontSize: '14px' }}>{data.icon}</span>}
