@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import ArchitectureDiagramEditorContent from './ArchitectureDiagramEditorContent';
 import 'reactflow/dist/style.css';
-import useThemeStore from '../../store/themeStore';
+import useThemeStore from '../store/themeStore';
 
 const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'light', showThemeToggle = false, onToggleMini, showMiniToggle = false }) => {
     const { theme, setTheme, toggleTheme } = useThemeStore();
@@ -25,11 +25,11 @@ const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'lig
 
     return (
         <div style={containerStyle} className={`graphing ${className || ''}`}>
-            <div className={`${modeClass} w-full h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 relative transition-colors`}> 
+            <div className={`${modeClass} w-full h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 relative transition-colors`}>
                 <ReactFlowProvider>
                     <ArchitectureDiagramEditorContent
                         initialDiagram={diagram}
-                    onToggleTheme={handleToggleTheme}
+                        onToggleTheme={handleToggleTheme}
                         onToggleFullscreen={toggleFullscreen}
                         isFullscreen={isFullscreen}
                         showThemeToggle={showThemeToggle}
@@ -40,6 +40,6 @@ const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'lig
             </div>
         </div>
     );
-}; 
+};
 
 export default ArchitectureDiagramEditor;
