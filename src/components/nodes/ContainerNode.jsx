@@ -50,7 +50,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 isVisible={selected}
                 minWidth={200}
                 minHeight={150}
-                handleClassName="w-2.5 h-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full border-2 border-white shadow"
+                handleClassName="w-2.5 h-2.5 bg-gray-500 rounded-full border-2 border-white shadow"
                 lineClassName="border-2 border-dashed border-indigo-500 opacity-60"
                 nodeWidth={data.width}
                 nodeHeight={data.height}
@@ -72,7 +72,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 }}
             >
                 <div
-                    className="px-2 py-1 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 rounded-t-lg flex items-center gap-2"
+                    className="px-2 py-1 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t-lg flex items-center gap-2"
                     onDoubleClick={handleDoubleClick}
                 >
                     {data.icon && <span style={{ fontSize: '14px' }}>{data.icon}</span>}

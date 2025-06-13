@@ -70,9 +70,9 @@ const EnhancedMenuBar = ({
   const MenuButton = ({ name, icon: Icon, children }) => (
     <div className="relative">
       <button
-        className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded transition-all ${activeMenu === name
-          ? 'bg-white/20 shadow-md transform -translate-y-0.5'
-          : 'hover:bg-white/10'
+        className={`flex items-center gap-2 px-4 py-2 text-gray-800 dark:text-gray-200 text-sm font-medium rounded transition-all ${activeMenu === name
+          ? 'bg-gray-200 dark:bg-gray-700 shadow-sm'
+          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
         onClick={() => handleMenuClick(name)}
       >
@@ -91,14 +91,14 @@ const EnhancedMenuBar = ({
 
   const MenuItem = ({ onClick, disabled = false, children, shortcut = null, separator = false, icon: Icon = null }) => {
     if (separator) {
-      return <div className="h-px my-1 bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent" />;
+      return <div className="h-px my-1 bg-gray-200 dark:bg-gray-700" />;
     }
 
     return (
       <div
         className={`flex items-center justify-between px-4 py-2.5 text-gray-700 dark:text-gray-200 text-sm cursor-pointer transition-all ${disabled
           ? 'opacity-50 cursor-not-allowed'
-          : 'hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-gray-700 dark:hover:to-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 hover:translate-x-0.5'
+          : 'hover:bg-gray-100 dark:hover:bg-gray-700 hover:translate-x-0.5'
           }`}
         onClick={disabled ? undefined : () => handleMenuItemClick(onClick)}
       >
@@ -118,7 +118,7 @@ const EnhancedMenuBar = ({
   return (
     <div
       ref={menuRef}
-      className="flex items-center bg-gradient-to-r from-indigo-500 to-purple-600 p-0 relative z-10 border-b border-white/10 text-white"
+      className="flex items-center bg-white dark:bg-gray-900 p-0 relative z-10 border-b border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100"
     >
       <MenuButton name="File" icon={File}>
         <MenuItem onClick={onNew} shortcut="Ctrl+N">

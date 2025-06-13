@@ -309,7 +309,7 @@ const TailwindPropertyEditor = ({
     if (!selectedNode && !selectedEdge) {
         return (
             <div className={`w-72 max-w-[90vw] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg shadow-lg ${minimized ? 'overflow-hidden' : 'h-full overflow-y-auto'}`}> 
-                <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
+                <div className="flex items-center justify-between py-3 px-4 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-semibold rounded-t-lg">
                     <span>Properties</span>
                     <div className="flex items-center space-x-1">
                         <button
@@ -350,7 +350,7 @@ const TailwindPropertyEditor = ({
 
     return (
         <div className={`w-72 max-w-[90vw] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg shadow-lg ${minimized ? 'overflow-hidden' : 'h-full overflow-y-auto'}`}>
-            <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-t-lg">
+            <div className="flex items-center justify-between py-3 px-4 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-semibold rounded-t-lg">
                 <span>{selectedNode ? `${selectedNode.type || 'Node'} Properties` : 'Edge Properties'}</span>
                 <div className="flex items-center space-x-1">
                     <button
@@ -375,7 +375,7 @@ const TailwindPropertyEditor = ({
                     {/* Basic Properties Section */}
                     <div className="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                         <div
-                            className="flex items-center px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 cursor-pointer"
+                            className="flex items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
                             onClick={() => toggleSection('basic')}
                         >
                             <ChevronRight className={`mr-2 text-gray-500 transition-transform ${expandedSections.basic ? 'rotate-90' : ''}`} size={16} />
@@ -484,7 +484,7 @@ const TailwindPropertyEditor = ({
                     {/* Style Properties Section */}
                     <div className="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                         <div
-                            className="flex items-center px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 cursor-pointer"
+                            className="flex items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
                             onClick={() => toggleSection('style')}
                         >
                             <ChevronRight className={`mr-2 text-gray-500 transition-transform ${expandedSections.style ? 'rotate-90' : ''}`} size={16} />
@@ -585,7 +585,7 @@ const TailwindPropertyEditor = ({
                                                     max="10"
                                                     value={edgeStrokeWidth}
                                                     onChange={handleEdgeStrokeWidthChange}
-                                                    className="flex-1 h-2 bg-gradient-to-r from-gray-300 to-indigo-500 rounded-full appearance-none"
+                                                    className="flex-1 h-2 bg-gray-300 rounded-full appearance-none"
                                                 />
                                                 <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded">{edgeStrokeWidth}px</span>
                                             </div>
@@ -652,7 +652,7 @@ const TailwindPropertyEditor = ({
                     {selectedNode && (
                         <div className="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                             <div
-                                className="flex items-center px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 cursor-pointer"
+                                className="flex items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
                                 onClick={() => toggleSection('advanced')}
                             >
                                 <ChevronRight className={`mr-2 text-gray-500 transition-transform ${expandedSections.advanced ? 'rotate-90' : ''}`} size={16} />

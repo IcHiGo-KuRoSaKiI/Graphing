@@ -67,7 +67,7 @@ const HexagonNode = ({ data, id, selected, isConnectable }) => {
                 isVisible={selected}
                 minWidth={80}
                 minHeight={80}
-                handleClassName="w-2.5 h-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full border-2 border-white shadow"
+                handleClassName="w-2.5 h-2.5 bg-gray-500 rounded-full border-2 border-white shadow"
                 lineClassName="border-2 border-dashed border-indigo-500 opacity-60"
                 nodeWidth={data.width}
                 nodeHeight={data.height}

@@ -14,7 +14,7 @@ const ShapeSelectorModal = ({ isOpen, onSelect, onCancel }) => {
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-slideIn">
-                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-b border-gray-200 dark:border-gray-700">
+                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                     <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Select Shape</h3>
                 </div>
 
