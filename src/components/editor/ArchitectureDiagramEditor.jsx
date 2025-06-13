@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import ArchitectureDiagramEditorContent from './ArchitectureDiagramEditorContent';
 import 'reactflow/dist/style.css';
-import useThemeStore from '../../store/themeStore';
+import useThemeStore from '../store/themeStore';
 
 const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'light', showThemeToggle = false, onToggleMini, showMiniToggle = false }) => {
     const { theme, setTheme, toggleTheme } = useThemeStore();
