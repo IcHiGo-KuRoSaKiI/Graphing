@@ -1,12 +1,18 @@
 export const autoLayoutNodes = (nodes) => {
   const updated = [...nodes];
 
-  const estimateTextSize = (text, minW = 100, minH = 60, maxW = 250, maxH = 250) => {
+  const estimateTextSize = (
+    text,
+    minW = 80,
+    minH = 50,
+    maxW = 220,
+    maxH = 220
+  ) => {
     if (!text) return { width: minW, height: minH };
     const lines = text.split(/\n+/);
-    const maxLine = Math.max(...lines.map(l => l.length));
-    let width = maxLine * 7 + 20;
-    let height = lines.length * 18 + 20;
+    const maxLine = Math.max(...lines.map((l) => l.length));
+    let width = maxLine * 6 + 16;
+    let height = lines.length * 16 + 16;
 
     width = Math.max(minW, Math.min(maxW, width));
     height = Math.max(minH, Math.min(maxH, height));
@@ -28,7 +34,7 @@ export const autoLayoutNodes = (nodes) => {
     const padding = 30;
     const children = updated.filter(n => n.parentNode === container.id);
     const text = `${container.data?.label || ''} ${container.data?.description || ''}`.trim();
-    const textSize = estimateTextSize(text, 150, 120);
+    const textSize = estimateTextSize(text, 130, 100);
     const headerHeight = textSize.height;
     let neededWidth = textSize.width;
     let neededHeight = headerHeight;
@@ -40,8 +46,8 @@ export const autoLayoutNodes = (nodes) => {
         }
         const childText = `${child.data?.label || ''} ${child.data?.description || ''}`.trim();
         const cSize = estimateTextSize(childText);
-        child.style.width = Math.max(100, cSize.width);
-        child.style.height = Math.max(60, cSize.height);
+        child.style.width = Math.max(80, cSize.width);
+        child.style.height = Math.max(50, cSize.height);
         const childZ = baseZ + 1;
         child.zIndex = childZ;
         child.style = { ...child.style, zIndex: childZ };
@@ -69,8 +75,8 @@ export const autoLayoutNodes = (nodes) => {
     container.zIndex = baseZ;
     container.style = {
       ...container.style,
-      width: Math.max(150, neededWidth),
-      height: Math.max(120, neededHeight),
+      width: Math.max(130, neededWidth),
+      height: Math.max(100, neededHeight),
       zIndex: baseZ,
     };
   };
@@ -80,7 +86,10 @@ export const autoLayoutNodes = (nodes) => {
 
   const center = { x: 400, y: 300 };
   const maxSize = Math.max(...topContainers.map(c => Math.max(c.style?.width || 150, c.style?.height || 120)), 150);
-  const radius = Math.max(150, maxSize * topContainers.length / Math.PI);
+  const radius = Math.max(
+    120,
+    (maxSize * topContainers.length) / (Math.PI * 1.5)
+  );
   const angleStep = (2 * Math.PI) / Math.max(1, topContainers.length);
 
   topContainers.forEach((container, idx) => {
