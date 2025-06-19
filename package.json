@@ -64,6 +64,7 @@
     "build:types": "tsc --emitDeclarationOnly --outDir dist",
     "build:css": "tailwindcss -i ./src/index.css -o ./dist/graphing.css --minify --postcss",
     "prepublishOnly": "npm run build:lib && npm run build:css",
+    "prepare": "npm run build:lib && npm run build:css",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

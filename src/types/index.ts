@@ -54,6 +54,10 @@ export interface DiagramData {
 export interface ArchitectureDiagramEditorProps {
   value?: DiagramData;
   defaultValue?: DiagramData;
+  /**
+   * @deprecated use `defaultValue` or `value` instead
+   */
+  diagram?: DiagramData;
   onChange?: (diagram: DiagramData) => void;
   onNodeChange?: (nodeId: string, changes: Partial<Node>) => void;
   onConnectionChange?: (connectionId: string, changes: Partial<Connection>) => void;

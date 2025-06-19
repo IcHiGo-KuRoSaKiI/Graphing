@@ -7,6 +7,7 @@ import useThemeStore from '../store/themeStore';
 const ArchitectureDiagramEditor = ({
   value,
   defaultValue,
+  diagram,
   onChange,
   onNodeChange,
   onConnectionChange,
@@ -22,8 +23,10 @@ const ArchitectureDiagramEditor = ({
 }) => {
   const { theme, setTheme, toggleTheme } = useThemeStore();
   const isControlled = value !== undefined;
+  const initialDiagram =
+    defaultValue !== undefined ? defaultValue : diagram;
   const [internalDiagram, setInternalDiagram] = useState(
-    defaultValue || { containers: [], nodes: [], connections: [] }
+    initialDiagram || { containers: [], nodes: [], connections: [] }
   );
   const [isFullscreen, setIsFullscreen] = useState(false);
 
