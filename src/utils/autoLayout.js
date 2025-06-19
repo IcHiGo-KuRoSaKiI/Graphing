@@ -1,28 +1,34 @@
 export const autoLayoutNodes = (nodes) => {
   const updated = [...nodes];
 
-  const estimateTextSize = (text, minW = 100, minH = 60) => {
+  const estimateTextSize = (text, minW = 100, minH = 60, maxW = 250, maxH = 250) => {
     if (!text) return { width: minW, height: minH };
     const lines = text.split(/\n+/);
     const maxLine = Math.max(...lines.map(l => l.length));
-    let width = maxLine * 8 + 40;
-    let height = lines.length * 20 + 40;
+    let width = maxLine * 7 + 20;
+    let height = lines.length * 18 + 20;
+
+    width = Math.max(minW, Math.min(maxW, width));
+    height = Math.max(minH, Math.min(maxH, height));
+
     const ratio = width / height;
-    if (ratio > 1.3) {
-      height = width / 1.3;
-    } else if (ratio < 0.77) {
-      width = height / 0.77;
+    if (ratio > 1.2) {
+      height = width / 1.2;
+    } else if (ratio < 0.83) {
+      width = height / 0.83;
     }
-    width = Math.max(minW, width);
-    height = Math.max(minH, height);
+
+    width = Math.min(maxW, width);
+    height = Math.min(maxH, height);
+
     return { width, height };
   };
 
   const layoutContainer = (container, baseZ = 1) => {
-    const padding = 40;
+    const padding = 30;
     const children = updated.filter(n => n.parentNode === container.id);
     const text = `${container.data?.label || ''} ${container.data?.description || ''}`.trim();
-    const textSize = estimateTextSize(text, 200, 150);
+    const textSize = estimateTextSize(text, 150, 120);
     const headerHeight = textSize.height;
     let neededWidth = textSize.width;
     let neededHeight = headerHeight;
@@ -63,8 +69,8 @@ export const autoLayoutNodes = (nodes) => {
     container.zIndex = baseZ;
     container.style = {
       ...container.style,
-      width: Math.max(200, neededWidth),
-      height: Math.max(150, neededHeight),
+      width: Math.max(150, neededWidth),
+      height: Math.max(120, neededHeight),
       zIndex: baseZ,
     };
   };
@@ -73,8 +79,8 @@ export const autoLayoutNodes = (nodes) => {
   topContainers.forEach(c => layoutContainer(c, 1));
 
   const center = { x: 400, y: 300 };
-  const maxSize = Math.max(...topContainers.map(c => Math.max(c.style?.width || 200, c.style?.height || 150)), 200);
-  const radius = Math.max(200, maxSize * topContainers.length / Math.PI);
+  const maxSize = Math.max(...topContainers.map(c => Math.max(c.style?.width || 150, c.style?.height || 120)), 150);
+  const radius = Math.max(150, maxSize * topContainers.length / Math.PI);
   const angleStep = (2 * Math.PI) / Math.max(1, topContainers.length);
 
   topContainers.forEach((container, idx) => {
