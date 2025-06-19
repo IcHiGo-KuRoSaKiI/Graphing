@@ -430,17 +430,35 @@ const ArchitectureDiagramEditorContent = ({
         }
 
         if (diagram) {
-            const { nodes: newNodes, edges: newEdges } = jsonToReactFlow(diagram);
-            setNodes(newNodes);
-            setEdges(newEdges);
-            setHistory({
-                past: [],
-                present: { nodes: newNodes, edges: newEdges },
-                future: [],
-            });
-            prevDiagramRef.current = diagram;
+            const prevDiagram = prevDiagramRef.current;
+            const newDiagramStr = JSON.stringify(diagram);
+            const prevDiagramStr = JSON.stringify(prevDiagram);
+
+            if (newDiagramStr !== prevDiagramStr) {
+                const { nodes: newNodes, edges: newEdges } = jsonToReactFlow(diagram);
+
+                const prevNodesStr = JSON.stringify(nodes);
+                const newNodesStr = JSON.stringify(newNodes);
+                if (prevNodesStr !== newNodesStr) {
+                    setNodes(newNodes);
+                }
+
+                const prevEdgesStr = JSON.stringify(edges);
+                const newEdgesStr = JSON.stringify(newEdges);
+                if (prevEdgesStr !== newEdgesStr) {
+                    setEdges(newEdges);
+                }
+
+                setHistory({
+                    past: [],
+                    present: { nodes: newNodes, edges: newEdges },
+                    future: [],
+                });
+
+                prevDiagramRef.current = diagram;
+            }
         }
-    }, [isInitialized, jsonToReactFlow, diagram]);
+    }, [isInitialized, jsonToReactFlow, diagram, nodes, edges]);
 
     // Optimized save to history function
     const saveToHistory = useCallback(() => {
