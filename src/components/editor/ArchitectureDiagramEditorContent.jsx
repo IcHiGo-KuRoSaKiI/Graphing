@@ -108,7 +108,7 @@ const validateDiagram = ajv.compile(diagramSchema);
 
 
 const ArchitectureDiagramEditorContent = ({
-    initialDiagram,
+    diagram,
     onToggleTheme,
     showThemeToggle,
     onToggleFullscreen,
@@ -415,7 +415,7 @@ const ArchitectureDiagramEditorContent = ({
     // Initialize diagram from the provided configuration
     useEffect(() => {
         if (!isInitialized) {
-            const config = initialDiagram || { containers: [], nodes: [], connections: [] };
+            const config = diagram || { containers: [], nodes: [], connections: [] };
             const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(config);
             setNodes(initialNodes);
             setEdges(initialEdges);
@@ -424,12 +424,13 @@ const ArchitectureDiagramEditorContent = ({
                 present: { nodes: initialNodes, edges: initialEdges },
                 future: [],
             });
+            prevDiagramRef.current = config;
             setIsInitialized(true);
             return;
         }
 
-        if (initialDiagram) {
-            const { nodes: newNodes, edges: newEdges } = jsonToReactFlow(initialDiagram);
+        if (diagram) {
+            const { nodes: newNodes, edges: newEdges } = jsonToReactFlow(diagram);
             setNodes(newNodes);
             setEdges(newEdges);
             setHistory({
@@ -437,8 +438,9 @@ const ArchitectureDiagramEditorContent = ({
                 present: { nodes: newNodes, edges: newEdges },
                 future: [],
             });
+            prevDiagramRef.current = diagram;
         }
-    }, [isInitialized, jsonToReactFlow, initialDiagram]);
+    }, [isInitialized, jsonToReactFlow, diagram]);
 
     // Optimized save to history function
     const saveToHistory = useCallback(() => {

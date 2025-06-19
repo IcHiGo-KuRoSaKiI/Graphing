@@ -113,7 +113,7 @@ const ArchitectureDiagramEditor = ({
       >
         <ReactFlowProvider>
           <ArchitectureDiagramEditorContent
-            initialDiagram={currentDiagram}
+            diagram={currentDiagram}
             onToggleTheme={handleToggleTheme}
             onToggleFullscreen={toggleFullscreen}
             isFullscreen={isFullscreen}
