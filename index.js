@@ -1,4 +1,8 @@
 // Automatically include the bundled styles when the library is imported
-import './dist/graphing.css';
+import './graphing.css';
 
-export * from './src/components/index.js';
+// Re-export the compiled component library
+export * from './components/index.js';
+export * from './hooks/useDiagram.js';
+export * from './hooks/useSelection.js';
+
