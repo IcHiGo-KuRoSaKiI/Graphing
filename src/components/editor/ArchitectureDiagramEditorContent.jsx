@@ -107,7 +107,20 @@ const ajv = new Ajv();
 const validateDiagram = ajv.compile(diagramSchema);
 
 
-const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showThemeToggle, onToggleFullscreen, isFullscreen, onToggleMini, showMiniToggle }) => {
+const ArchitectureDiagramEditorContent = ({
+    diagram,
+    onToggleTheme,
+    showThemeToggle,
+    onToggleFullscreen,
+    isFullscreen,
+    onToggleMini,
+    showMiniToggle,
+    onNodeChange,
+    onConnectionChange,
+    onSelectionChange: onSelectionChangeProp,
+    onDiagramChange,
+    onError
+}) => {
     // State for nodes and edges
     const [nodes, setNodes] = useState([]);
     const [edges, setEdges] = useState([]);
@@ -119,6 +132,99 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [propertyPanelMinimized, setPropertyPanelMinimized] = useState(false);
     const [statsPanelOpen, setStatsPanelOpen] = useState(true);
     const [panMode, setPanMode] = useState(false);
+
+    const getDiagramData = useCallback(() => ({
+        containers: nodes
+            .filter((node) => node.type === 'container')
+            .map((container) => ({
+                id: container.id,
+                label: container.data.label,
+                position: container.position,
+                size: {
+                    width: container.style?.width || 400,
+                    height: container.style?.height || 300,
+                },
+                color: container.data.color,
+                bgColor: container.data.bgColor,
+                borderColor: container.data.borderColor,
+                icon: container.data.icon,
+                description: container.data.description,
+                zIndex: container.zIndex || 1
+            })),
+        nodes: nodes
+            .filter((node) => node.type !== 'container')
+            .map((node) => ({
+                id: node.id,
+                label: node.data.label,
+                type: node.type,
+                position: node.position,
+                parentContainer: node.parentNode,
+                size: {
+                    width: node.style?.width || 150,
+                    height: node.style?.height || 80,
+                },
+                color: node.data.color,
+                borderColor: node.data.borderColor,
+                icon: node.data.icon,
+                description: node.data.description,
+                zIndex: node.zIndex || 10
+            })),
+        connections: edges.map((edge) => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            label: edge.data?.label,
+            type: edge.type,
+            animated: edge.animated,
+            description: edge.data?.description,
+            control: edge.data?.control,
+            markerStart: edge.markerStart,
+            markerEnd: edge.markerEnd,
+            intersection: edge.data?.intersection,
+            style: {
+                strokeWidth: edge.style?.strokeWidth || 2,
+                strokeDasharray: edge.style?.strokeDasharray,
+            },
+            zIndex: edge.zIndex || 5
+        }))
+    }), [nodes, edges]);
+
+    const prevDiagramRef = useRef(getDiagramData());
+
+    useEffect(() => {
+        const newDiagram = getDiagramData();
+        const prevDiagram = prevDiagramRef.current;
+
+        if (JSON.stringify(newDiagram) === JSON.stringify(prevDiagram)) {
+            return;
+        }
+
+        if (onDiagramChange) {
+            onDiagramChange(newDiagram);
+        }
+
+        if (onNodeChange) {
+            const prevNodesMap = Object.fromEntries(prevDiagram.nodes.map(n => [n.id, n]));
+            newDiagram.nodes.forEach(n => {
+                const prev = prevNodesMap[n.id];
+                if (!prev || JSON.stringify(prev) !== JSON.stringify(n)) {
+                    onNodeChange(n.id, n);
+                }
+            });
+        }
+
+        if (onConnectionChange) {
+            const prevEdgesMap = Object.fromEntries(prevDiagram.connections.map(e => [e.id, e]));
+            newDiagram.connections.forEach(e => {
+                const prev = prevEdgesMap[e.id];
+                if (!prev || JSON.stringify(prev) !== JSON.stringify(e)) {
+                    onConnectionChange(e.id, e);
+                }
+            });
+        }
+
+        prevDiagramRef.current = newDiagram;
+    }, [nodes, edges, onDiagramChange, onNodeChange, onConnectionChange, getDiagramData]);
 
     const getDiagramBounds = useCallback(() => {
         if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
@@ -309,7 +415,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     // Initialize diagram from the provided configuration
     useEffect(() => {
         if (!isInitialized) {
-            const config = initialDiagram || { containers: [], nodes: [], connections: [] };
+            const config = diagram || { containers: [], nodes: [], connections: [] };
             const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(config);
             setNodes(initialNodes);
             setEdges(initialEdges);
@@ -318,9 +424,41 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 present: { nodes: initialNodes, edges: initialEdges },
                 future: [],
             });
+            prevDiagramRef.current = config;
             setIsInitialized(true);
+            return;
         }
-    }, [isInitialized, jsonToReactFlow, initialDiagram]);
+
+        if (diagram) {
+            const prevDiagram = prevDiagramRef.current;
+            const newDiagramStr = JSON.stringify(diagram);
+            const prevDiagramStr = JSON.stringify(prevDiagram);
+
+            if (newDiagramStr !== prevDiagramStr) {
+                const { nodes: newNodes, edges: newEdges } = jsonToReactFlow(diagram);
+
+                const prevNodesStr = JSON.stringify(nodes);
+                const newNodesStr = JSON.stringify(newNodes);
+                if (prevNodesStr !== newNodesStr) {
+                    setNodes(newNodes);
+                }
+
+                const prevEdgesStr = JSON.stringify(edges);
+                const newEdgesStr = JSON.stringify(newEdges);
+                if (prevEdgesStr !== newEdgesStr) {
+                    setEdges(newEdges);
+                }
+
+                setHistory({
+                    past: [],
+                    present: { nodes: newNodes, edges: newEdges },
+                    future: [],
+                });
+
+                prevDiagramRef.current = diagram;
+            }
+        }
+    }, [isInitialized, jsonToReactFlow, diagram, nodes, edges]);
 
     // Optimized save to history function
     const saveToHistory = useCallback(() => {
@@ -450,11 +588,18 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     // Handle selection changes - now includes edges
     const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }) => {
-        setSelectedElements({
+        const selection = {
             nodes: selectedNodes || [],
             edges: selectedEdges || [],
-        });
-    }, []);
+        };
+        setSelectedElements(selection);
+        if (onSelectionChangeProp) {
+            onSelectionChangeProp({
+                nodes: selection.nodes.map((n) => n.id || n),
+                connections: selection.edges.map((e) => e.id || e)
+            });
+        }
+    }, [onSelectionChangeProp]);
 
     // Handle edge click - now uses property panel instead of modal
     const onEdgeClick = useCallback((event, edge) => {

@@ -3,6 +3,7 @@
   "version": "1.0.12",
   "description": "A lightweight UML-style diagram editor built with React Flow and Tailwind CSS",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
     "dist",
     "README.md"
@@ -58,7 +59,9 @@
   "scripts": {
     "start": "cross-env PUBLIC_URL=/ HOST=0.0.0.0 PORT=3001 react-scripts start",
     "build": "react-scripts build",
-    "build:lib": "babel index.js --out-dir dist --copy-files && babel src/components --out-dir dist --copy-files",
+    "build:lib": "npm run build:js && npm run build:types",
+    "build:js": "babel src/components --out-dir dist/components --copy-files && babel src/hooks --out-dir dist/hooks --copy-files && babel index.js --out-file dist/index.js",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist",
     "build:css": "tailwindcss -i ./src/index.css -o ./dist/graphing.css --minify --postcss",
     "prepublishOnly": "npm run build:lib && npm run build:css",
     "test": "react-scripts test",
