@@ -1277,40 +1277,58 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const autoLayout = useCallback(() => {
         const updated = [...nodes];
         const containers = updated.filter(n => n.type === 'container');
-        let currentX = 50;
-        const containerSpacing = 60;
 
-        containers.forEach(container => {
-            const width = container.style?.width || 400;
-            const containerY = 50;
+        // Position containers in a radial/star layout around the center
+        const center = { x: 400, y: 300 };
+        const radius = Math.max(200, containers.length * 60);
+        const angleStep = (2 * Math.PI) / Math.max(1, containers.length);
 
-            container.position = { x: currentX, y: containerY };
+        containers.forEach((container, idx) => {
+            const angle = idx * angleStep;
+            container.position = {
+                x: center.x + radius * Math.cos(angle),
+                y: center.y + radius * Math.sin(angle)
+            };
+
+            container.zIndex = 1;
+            container.style = {
+                ...container.style,
+                zIndex: 1
+            };
 
             const children = updated.filter(n => n.parentNode === container.id);
-            const childSpacingX = 20;
-            const childSpacingY = 20;
-            const padding = 40;
-            const cols = Math.max(1, Math.floor((width - padding) / (150 + childSpacingX)));
 
-            children.forEach((child, index) => {
-                const childWidth = child.style?.width || 150;
-                const childHeight = child.style?.height || 80;
-                const col = index % cols;
-                const row = Math.floor(index / cols);
-                child.position = {
-                    x: container.position.x + padding / 2 + col * (childWidth + childSpacingX),
-                    y: container.position.y + padding / 2 + row * (childHeight + childSpacingY)
-                };
-            });
+            if (children.length > 0) {
+                const padding = 40;
+                let minX = Infinity;
+                let minY = Infinity;
+                let maxX = -Infinity;
+                let maxY = -Infinity;
 
-            // expand container height to fit children
-            const rows = Math.ceil(children.length / cols);
-            const childHeight = 80; // default
-            const neededHeight = padding + rows * (childHeight + childSpacingY);
-            if (!container.style) container.style = {};
-            container.style.height = Math.max(container.style?.height || 300, neededHeight);
+                children.forEach(child => {
+                    const width = child.style?.width || 150;
+                    const height = child.style?.height || 80;
+                    minX = Math.min(minX, child.position.x);
+                    minY = Math.min(minY, child.position.y);
+                    maxX = Math.max(maxX, child.position.x + width);
+                    maxY = Math.max(maxY, child.position.y + height);
+                });
 
-            currentX += (container.style.width || width) + containerSpacing;
+                children.forEach(child => {
+                    child.position = {
+                        x: child.position.x - minX + padding / 2,
+                        y: child.position.y - minY + padding / 2
+                    };
+                    const childZ = (container.zIndex || 1) + 1;
+                    child.zIndex = childZ;
+                    child.style = { ...child.style, zIndex: childZ };
+                });
+
+                const neededWidth = maxX - minX + padding;
+                const neededHeight = maxY - minY + padding;
+                container.style.width = Math.max(container.style?.width || 400, neededWidth);
+                container.style.height = Math.max(container.style?.height || 300, neededHeight);
+            }
         });
 
         setNodes(updated);
