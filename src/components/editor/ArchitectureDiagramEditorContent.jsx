@@ -814,7 +814,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }, [copySelected, pasteElements, deleteSelected, undo, redo]);
 
     // Export and import functions (same as before but with z-index)
-    const exportDiagram = useCallback(() => {
+    const exportJSON = useCallback(() => {
         const diagramData = {
             metadata: {
                 name: 'Architecture Diagram',
@@ -1187,19 +1187,19 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }, [saveToHistory, showConfirmModal]);
 
     const saveDiagram = useCallback(() => {
-        exportDiagram();
-    }, [exportDiagram]);
+        exportJSON();
+    }, [exportJSON]);
 
     const saveAsDiagram = useCallback(() => {
-        exportDiagram();
-    }, [exportDiagram]);
+        exportJSON();
+    }, [exportJSON]);
 
     const openDiagram = useCallback(() => {
         importDiagram();
     }, [importDiagram]);
 
     // Image export helpers
-    const exportDiagram = useCallback(async (type) => {
+    const exportImage = useCallback(async (type) => {
         if (!reactFlowWrapper.current) return;
         const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
         const isDark = !!reactFlowWrapper.current.closest('.dark');
@@ -1228,9 +1228,9 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         link.click();
     }, [getDiagramBounds]);
 
-    const exportAsPNG = useCallback(() => exportDiagram('png'), [exportDiagram]);
-    const exportAsJPG = useCallback(() => exportDiagram('jpg'), [exportDiagram]);
-    const exportAsSVG = useCallback(() => exportDiagram('svg'), [exportDiagram]);
+    const exportAsPNG = useCallback(() => exportImage("png"), [exportImage]);
+    const exportAsJPG = useCallback(() => exportImage('jpg'), [exportImage]);
+    const exportAsSVG = useCallback(() => exportImage('svg'), [exportImage]);
 
     const autoLayout = useCallback(() => {
         const updated = autoLayoutNodes(nodes);
@@ -1447,7 +1447,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     onImportJSON={importDiagram}
                     onImportJSONText={() => showJsonPasteModal(handleJsonPasteImport)}
                     onImportDrawio={importFromDrawioXML}
-                    onExportJSON={exportDiagram}
+                    onExportJSON={exportJSON}
                     onExportDrawio={exportToDrawioXML}
                     onExportPNG={exportAsPNG}
                     onExportJPG={exportAsJPG}
