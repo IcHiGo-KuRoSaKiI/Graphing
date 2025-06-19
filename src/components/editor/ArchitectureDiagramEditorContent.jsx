@@ -537,6 +537,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         saveToHistory();
     }, [selectedElements, saveToHistory]);
 
+    const applyAutoLayout = useCallback((currentNodes) => {
+        const laidOut = autoLayoutNodes(currentNodes);
+        setNodes(laidOut);
+        laidOut.forEach(n => updateNodeInternals(n.id));
+    }, [updateNodeInternals]);
+
     // Add new container node
     const addContainerNode = useCallback(() => {
         showPromptModal('Add Container', 'Enter container name:', 'New Container', (name) => {
@@ -562,11 +568,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 zIndex: 1
             };
 
-            const all = [...nodes, newNode];
-            applyAutoLayout(all);
+            setNodes((nds) => [...nds, newNode]);
             saveToHistory();
         });
-    }, [nodes, applyAutoLayout, handleNodeLabelChange, saveToHistory, showPromptModal]);
+    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal]);
 
     // Add new component node
     const addComponentNode = useCallback(() => {
@@ -616,8 +621,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                             zIndex: 10
                         };
 
-                        const all = [...nodes, newNode];
-                        applyAutoLayout(all);
+                        setNodes((nds) => [...nds, newNode]);
                         saveToHistory();
                     });
                 }
@@ -646,12 +650,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     zIndex: 10
                 };
 
-                const all = [...nodes, newNode];
-                applyAutoLayout(all);
+                setNodes((nds) => [...nds, newNode]);
                 saveToHistory();
             });
         }
-    }, [nodes, applyAutoLayout, handleNodeLabelChange, saveToHistory, showContainerSelectorModal, showPromptModal]);
+    }, [nodes, handleNodeLabelChange, saveToHistory, showContainerSelectorModal, showPromptModal]);
 
     // Add new shape node
     const addShapeNode = useCallback((shapeType) => {
@@ -678,11 +681,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 zIndex: 15
             };
 
-            const all = [...nodes, newNode];
-            applyAutoLayout(all);
+            setNodes((nds) => [...nds, newNode]);
             saveToHistory();
         });
-    }, [nodes, applyAutoLayout, handleNodeLabelChange, saveToHistory, showPromptModal]);
+    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal]);
 
     // Copy selected elements
     const copySelected = useCallback(() => {
@@ -713,12 +715,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 selected: false
             }));
 
-            const updated = [...nodes, ...newNodes];
-            applyAutoLayout(updated);
+            setNodes((nds) => [...nds, ...newNodes]);
             setEdges((eds) => [...eds, ...newEdges]);
             saveToHistory();
         }
-    }, [nodes, clipboardData, applyAutoLayout, saveToHistory]);
+    }, [nodes, clipboardData, saveToHistory]);
 
     // Delete selected elements
     const deleteSelected = useCallback(() => {
@@ -1239,12 +1240,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const exportAsJPG = useCallback(() => exportImage('jpg'), [exportImage]);
     const exportAsSVG = useCallback(() => exportImage('svg'), [exportImage]);
 
-    const applyAutoLayout = useCallback((currentNodes) => {
-        const laidOut = autoLayoutNodes(currentNodes);
-        setNodes(laidOut);
-        laidOut.forEach(n => updateNodeInternals(n.id));
-    }, [updateNodeInternals]);
-
     const autoLayout = useCallback(() => {
         applyAutoLayout(nodes);
         saveToHistory();
@@ -1396,14 +1391,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             return null;
         }).filter(Boolean); // Filter out null edges
 
-        const updated = [...nodes, ...newNodes];
-        applyAutoLayout(updated);
+        setNodes((nds) => [...nds, ...newNodes]);
         setEdges(edges => [...edges, ...newEdges]);
         saveToHistory();
 
         // Optionally show a toast notification
         // toast.success(`Pasted ${newNodes.length} nodes and ${newEdges.length} connections`);
-    }, [nodes, clipboardData, applyAutoLayout, saveToHistory]);
+    }, [nodes, clipboardData, saveToHistory]);
 
 
     return (
