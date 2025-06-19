@@ -312,16 +312,18 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         if (!isInitialized) {
             const config = initialDiagram || { containers: [], nodes: [], connections: [] };
             const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(config);
-            setNodes(initialNodes);
+            const laidOut = autoLayoutNodes(initialNodes);
+            setNodes(laidOut);
             setEdges(initialEdges);
             setHistory({
                 past: [],
-                present: { nodes: initialNodes, edges: initialEdges },
+                present: { nodes: laidOut, edges: initialEdges },
                 future: [],
             });
+            laidOut.forEach(n => updateNodeInternals(n.id));
             setIsInitialized(true);
         }
-    }, [isInitialized, jsonToReactFlow, initialDiagram]);
+    }, [isInitialized, jsonToReactFlow, initialDiagram, updateNodeInternals]);
 
     // Optimized save to history function
     const saveToHistory = useCallback(() => {
@@ -560,10 +562,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 zIndex: 1
             };
 
-            setNodes((nds) => [...nds, newNode]);
+            const all = [...nodes, newNode];
+            applyAutoLayout(all);
             saveToHistory();
         });
-    }, [handleNodeLabelChange, saveToHistory, showPromptModal]);
+    }, [nodes, applyAutoLayout, handleNodeLabelChange, saveToHistory, showPromptModal]);
 
     // Add new component node
     const addComponentNode = useCallback(() => {
@@ -613,7 +616,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                             zIndex: 10
                         };
 
-                        setNodes((nds) => [...nds, newNode]);
+                        const all = [...nodes, newNode];
+                        applyAutoLayout(all);
                         saveToHistory();
                     });
                 }
@@ -642,11 +646,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     zIndex: 10
                 };
 
-                setNodes((nds) => [...nds, newNode]);
+                const all = [...nodes, newNode];
+                applyAutoLayout(all);
                 saveToHistory();
             });
         }
-    }, [nodes, handleNodeLabelChange, saveToHistory, showContainerSelectorModal, showPromptModal]);
+    }, [nodes, applyAutoLayout, handleNodeLabelChange, saveToHistory, showContainerSelectorModal, showPromptModal]);
 
     // Add new shape node
     const addShapeNode = useCallback((shapeType) => {
@@ -673,10 +678,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 zIndex: 15
             };
 
-            setNodes((nds) => [...nds, newNode]);
+            const all = [...nodes, newNode];
+            applyAutoLayout(all);
             saveToHistory();
         });
-    }, [handleNodeLabelChange, saveToHistory, showPromptModal]);
+    }, [nodes, applyAutoLayout, handleNodeLabelChange, saveToHistory, showPromptModal]);
 
     // Copy selected elements
     const copySelected = useCallback(() => {
@@ -707,11 +713,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 selected: false
             }));
 
-            setNodes((nds) => [...nds, ...newNodes]);
+            const updated = [...nodes, ...newNodes];
+            applyAutoLayout(updated);
             setEdges((eds) => [...eds, ...newEdges]);
             saveToHistory();
         }
-    }, [clipboardData, saveToHistory]);
+    }, [nodes, clipboardData, applyAutoLayout, saveToHistory]);
 
     // Delete selected elements
     const deleteSelected = useCallback(() => {
@@ -1127,7 +1134,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     try {
                         const importedData = JSON.parse(e.target.result);
                         const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(importedData);
-                        setNodes(importedNodes);
+                        applyAutoLayout(importedNodes);
                         setEdges(importedEdges);
                         saveToHistory();
                     } catch (error) {
@@ -1139,7 +1146,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             }
         };
         inputElement.click();
-    }, [jsonToReactFlow, saveToHistory]);
+    }, [jsonToReactFlow, applyAutoLayout, saveToHistory]);
 
     const importDiagramObject = useCallback((data) => {
         if (!validateDiagram(data)) {
@@ -1147,10 +1154,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             return;
         }
         const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
-        setNodes(importedNodes);
+        applyAutoLayout(importedNodes);
         setEdges(importedEdges);
         saveToHistory();
-    }, [jsonToReactFlow, saveToHistory]);
+    }, [jsonToReactFlow, applyAutoLayout, saveToHistory]);
 
 
     const handleJsonPasteImport = useCallback((data) => {
@@ -1178,13 +1185,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             'New Diagram',
             'Are you sure you want to create a new diagram? All unsaved changes will be lost.',
             () => {
-                setNodes([]);
+                applyAutoLayout([]);
                 setEdges([]);
                 setSelectedElements({ nodes: [], edges: [] });
                 saveToHistory();
             }
         );
-    }, [saveToHistory, showConfirmModal]);
+    }, [applyAutoLayout, saveToHistory, showConfirmModal]);
 
     const saveDiagram = useCallback(() => {
         exportJSON();
@@ -1232,12 +1239,16 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const exportAsJPG = useCallback(() => exportImage('jpg'), [exportImage]);
     const exportAsSVG = useCallback(() => exportImage('svg'), [exportImage]);
 
+    const applyAutoLayout = useCallback((currentNodes) => {
+        const laidOut = autoLayoutNodes(currentNodes);
+        setNodes(laidOut);
+        laidOut.forEach(n => updateNodeInternals(n.id));
+    }, [updateNodeInternals]);
+
     const autoLayout = useCallback(() => {
-        const updated = autoLayoutNodes(nodes);
-        setNodes(updated);
-        updated.forEach(n => updateNodeInternals(n.id));
+        applyAutoLayout(nodes);
         saveToHistory();
-    }, [nodes, saveToHistory, updateNodeInternals]);
+    }, [nodes, saveToHistory, applyAutoLayout]);
 
     // Enhanced selection operations
     const selectAllElements = useCallback(() => {
@@ -1385,13 +1396,14 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             return null;
         }).filter(Boolean); // Filter out null edges
 
-        setNodes(nodes => [...nodes, ...newNodes]);
+        const updated = [...nodes, ...newNodes];
+        applyAutoLayout(updated);
         setEdges(edges => [...edges, ...newEdges]);
         saveToHistory();
 
         // Optionally show a toast notification
         // toast.success(`Pasted ${newNodes.length} nodes and ${newEdges.length} connections`);
-    }, [clipboardData, saveToHistory]);
+    }, [nodes, clipboardData, applyAutoLayout, saveToHistory]);
 
 
     return (

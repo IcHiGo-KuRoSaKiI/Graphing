@@ -7,11 +7,14 @@ export const autoLayoutNodes = (nodes) => {
     const maxLine = Math.max(...lines.map(l => l.length));
     let width = maxLine * 8 + 40;
     let height = lines.length * 20 + 40;
+    const ratio = width / height;
+    if (ratio > 1.3) {
+      height = width / 1.3;
+    } else if (ratio < 0.77) {
+      width = height / 0.77;
+    }
     width = Math.max(minW, width);
     height = Math.max(minH, height);
-    const ratio = width / height;
-    if (ratio > 1.5) width = height * 1.5;
-    if (ratio < 0.67) height = width * 1.5;
     return { width, height };
   };
 
