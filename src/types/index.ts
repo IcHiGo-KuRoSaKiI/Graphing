@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 export interface Position {
   x: number;
   y: number;
@@ -58,7 +59,7 @@ export interface ArchitectureDiagramEditorProps {
   onConnectionChange?: (connectionId: string, changes: Partial<Connection>) => void;
   onSelectionChange?: (selection: { nodes: string[]; connections: string[] }) => void;
   onError?: (error: Error) => void;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   className?: string;
   mode?: 'light' | 'dark';
   readOnly?: boolean;
