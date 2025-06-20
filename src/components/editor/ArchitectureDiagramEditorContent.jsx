@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { toPng, toJpeg, toSvg } from 'html-to-image';
 import { X, Move } from 'lucide-react';
