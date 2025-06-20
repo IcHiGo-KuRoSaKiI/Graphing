@@ -1,11 +1,6 @@
-import ArchitectureDiagramEditor from './editor';
-import * as Nodes from './nodes';
-import * as Modals from './modals';
-import * as Edges from './edges';
-
-export {
-    ArchitectureDiagramEditor,
-    Nodes,
-    Modals,
-    Edges
-};
+export { default as ArchitectureDiagramEditor } from './editor';
+export * as Nodes from './nodes';
+export * as Modals from './modals';
+export * as Edges from './edges';
+export { useDiagram } from '../hooks/useDiagram';
+export { useSelection } from '../hooks/useSelection';
