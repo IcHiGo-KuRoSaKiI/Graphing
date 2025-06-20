@@ -28,7 +28,10 @@ npm test
 The source files are compiled with Babel into the `dist` directory. Build them with:
 
 ```bash
-npm run lib:build
+npm run build:lib
+
+# Optional: rebuild the stylesheet
+npm run build:css
 ```
 
 This command is also run automatically when publishing thanks to the `prepare` script in `package.json`.
