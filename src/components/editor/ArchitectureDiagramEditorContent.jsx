@@ -11,6 +11,7 @@ import ReactFlow, {
     applyNodeChanges,
     applyEdgeChanges,
     useUpdateNodeInternals,
+    useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -136,6 +137,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }, [nodes]);
 
     const updateNodeInternals = useUpdateNodeInternals();
+    const { project } = useReactFlow();
 
     // State for modals
     const [promptModal, setPromptModal] = useState({ isOpen: false, title: '', message: '', defaultValue: '', onConfirm: null });
@@ -546,10 +548,17 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     // Add new container node
     const addContainerNode = useCallback(() => {
         showPromptModal('Add Container', 'Enter container name:', 'New Container', (name) => {
+            let position = { x: 0, y: 0 };
+            if (reactFlowWrapper.current) {
+                const { left, top, width, height } = reactFlowWrapper.current.getBoundingClientRect();
+                const center = { x: left + width / 2, y: top + height / 2 };
+                position = project({ x: center.x - left, y: center.y - top });
+            }
+
             const newNode = {
                 id: `container-${Date.now()}`,
                 type: 'container',
-                position: { x: Math.random() * 300 + 100, y: Math.random() * 200 + 100 },
+                position,
                 data: {
                     label: name,
                     icon: '📦',
