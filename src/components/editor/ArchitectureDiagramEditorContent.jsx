@@ -447,7 +447,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         setEdges((eds) => applyEdgeChanges(changes, eds));
     }, []);
 
-    const onNodeDragStop = useCallback(() => {
+    const onNodeDragStop = useCallback((event, node) => {
+        const updatedNode = { ...node, position: node.position };
+        setNodes(prevNodes => 
+            prevNodes.map(n => n.id === node.id ? updatedNode : n)
+        );
         saveToHistory();
     }, [saveToHistory]);
 
@@ -1537,22 +1541,21 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     useEffect(() => {
         if (!technicalDetailsPanelOpen || !selectedElementForTechnicalDetails) return;
         
-        // Add a small delay to ensure DOM elements are rendered
+        // Debounce position updates to reduce ResizeObserver calls
         const timer = setTimeout(() => {
             const node = nodes.find(n => n.id === selectedElementForTechnicalDetails.id);
             if (node && node.position) {
-                // Get the React Flow instance and viewport
-                const reactFlowInstance = document.querySelector('.react-flow');
-                if (!reactFlowInstance) return;
+                // Get the React Flow wrapper
+                const reactFlowWrapper = document.querySelector('.react-flow');
+                if (!reactFlowWrapper) return;
                 
                 // Get the actual DOM element of the node
                 const nodeElement = document.querySelector(`[data-id="${node.id}"]`);
                 if (!nodeElement) return;
                 
                 const nodeRect = nodeElement.getBoundingClientRect();
-                const flowRect = reactFlowInstance.getBoundingClientRect();
                 
-                // Calculate panel position relative to the node
+                // Calculate panel position relative to the node in screen coordinates
                 let x = nodeRect.right + 20; // 20px to the right of the node
                 let y = nodeRect.top;
                 
@@ -1571,10 +1574,71 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 
                 setPanelOffset({ x, y });
             }
-        }, 50); // 50ms delay to ensure DOM is ready
+        }, 100); // Increased delay to ensure DOM is ready and reduce ResizeObserver calls
         
         return () => clearTimeout(timer);
     }, [nodes, technicalDetailsPanelOpen, selectedElementForTechnicalDetails]);
+
+    // Additional effect to handle React Flow viewport changes more robustly
+    useEffect(() => {
+        if (!technicalDetailsPanelOpen || !selectedElementForTechnicalDetails) return;
+        
+        const handleReactFlowViewportChange = () => {
+            const node = nodes.find(n => n.id === selectedElementForTechnicalDetails.id);
+            if (node && node.position) {
+                const nodeElement = document.querySelector(`[data-id="${node.id}"]`);
+                if (!nodeElement) return;
+                
+                const nodeRect = nodeElement.getBoundingClientRect();
+                
+                // Calculate panel position relative to the node
+                let x = nodeRect.right + 20;
+                let y = nodeRect.top;
+                
+                // If panel would go off-screen, position it to the left
+                if (x + 320 > window.innerWidth) {
+                    x = nodeRect.left - 340;
+                }
+                
+                // Keep panel within viewport height
+                if (y + 400 > window.innerHeight) {
+                    y = window.innerHeight - 420;
+                }
+                if (y < 10) {
+                    y = 10;
+                }
+                
+                setPanelOffset({ x, y });
+            }
+        };
+        
+        // Use a more aggressive approach to catch all viewport changes
+        const reactFlowWrapper = document.querySelector('.react-flow');
+        if (reactFlowWrapper) {
+            // Listen to all possible viewport change events
+            const events = ['scroll', 'wheel', 'mousemove', 'mouseup', 'touchmove', 'touchend'];
+            events.forEach(event => {
+                reactFlowWrapper.addEventListener(event, handleReactFlowViewportChange, { passive: true });
+            });
+            
+            // Also listen to the viewport element specifically
+            const viewport = reactFlowWrapper.querySelector('.react-flow__viewport');
+            if (viewport) {
+                events.forEach(event => {
+                    viewport.addEventListener(event, handleReactFlowViewportChange, { passive: true });
+                });
+            }
+            
+            return () => {
+                events.forEach(event => {
+                    reactFlowWrapper.removeEventListener(event, handleReactFlowViewportChange);
+                    if (viewport) {
+                        viewport.removeEventListener(event, handleReactFlowViewportChange);
+                    }
+                });
+            };
+        }
+    }, [technicalDetailsPanelOpen, selectedElementForTechnicalDetails, nodes]);
 
 
     return (

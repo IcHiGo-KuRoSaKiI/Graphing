@@ -31,7 +31,6 @@ const AdjustableEdge = ({
   selected,
 }) => {
   const { screenToFlowPosition, setEdges, getEdges, getNodes } = useReactFlow();
-  const [hoveredWaypoint, setHoveredWaypoint] = useState(null);
   const [hoveredSegmentInfo, setHoveredSegmentInfo] = useState(null);
   const [draggedSegmentIndex, setDraggedSegmentIndex] = useState(null);
 
@@ -39,12 +38,18 @@ const AdjustableEdge = ({
   const nodes = getNodes();
   const sourceNode = nodes.find(n => n.id === data?.source || n.id === data?.sourceNode || n.id === data?.sourceId);
   const targetNode = nodes.find(n => n.id === data?.target || n.id === data?.targetNode || n.id === data?.targetId);
-  const sourcePoint = sourceNode && sourcePosition
-    ? getConnectionPoint(sourceNode.position.x, sourceNode.position.y, sourceNode.width, sourceNode.height, sourcePosition)
-    : { x: sourceX, y: sourceY };
-  const targetPoint = targetNode && targetPosition
-    ? getConnectionPoint(targetNode.position.x, targetNode.position.y, targetNode.width, targetNode.height, targetPosition)
-    : { x: targetX, y: targetY };
+  
+  const sourcePoint = useMemo(() => {
+    return sourceNode && sourcePosition
+      ? getConnectionPoint(sourceNode.position.x, sourceNode.position.y, sourceNode.width, sourceNode.height, sourcePosition)
+      : { x: sourceX, y: sourceY };
+  }, [sourceNode, sourcePosition, sourceX, sourceY]);
+  
+  const targetPoint = useMemo(() => {
+    return targetNode && targetPosition
+      ? getConnectionPoint(targetNode.position.x, targetNode.position.y, targetNode.width, targetNode.height, targetPosition)
+      : { x: targetX, y: targetY };
+  }, [targetNode, targetPosition, targetX, targetY]);
 
   // Calculate orthogonal bends for new edges - always use connection points
   const calculateOrthogonalBends = (source, target) => {
@@ -62,10 +67,9 @@ const AdjustableEdge = ({
         ];
       } else {
         // Vertical first
-        const midY = source.y + dy / 2;
         return [
-          { x: source.x, y: midY },
-          { x: target.x, y: midY }
+          { x: source.x, y: source.y + dy / 2 },
+          { x: target.x, y: target.y - dy / 2 }
         ];
       }
     } else {
@@ -74,8 +78,7 @@ const AdjustableEdge = ({
         const midX = source.x + dx / 2;
         return [{ x: midX, y: source.y }];
       } else {
-        const midY = source.y + dy / 2;
-        return [{ x: source.x, y: midY }];
+        return [{ x: source.x, y: source.y + dy / 2 }];
       }
     }
   };
@@ -140,7 +143,6 @@ const AdjustableEdge = ({
         const maxDistance = Math.max(Math.abs(dx), Math.abs(dy)) / 2;
         const bendDistance = Math.min(maxDistance, Math.abs(dx) / 2);
         const midX = sourcePoint.x + (dx > 0 ? bendDistance : -bendDistance);
-        const midY = targetPoint.y + (dy > 0 ? -bendDistance : bendDistance);
         
         currentWaypoints = [
           { x: midX, y: sourcePoint.y },
@@ -148,8 +150,7 @@ const AdjustableEdge = ({
         ];
       } else {
         const midX = sourcePoint.x + dx / 2;
-        const midY = sourcePoint.y + dy / 2;
-        currentWaypoints = [{ x: midX, y: midY }];
+        currentWaypoints = [{ x: midX, y: sourcePoint.y + dy / 2 }];
       }
     }
 
@@ -373,76 +374,6 @@ const AdjustableEdge = ({
     );
   }, [id, setEdges]);
 
-  // Edge click handler
-  const handleEdgeClick = useCallback((event) => {
-    event.stopPropagation();
-    console.log('Edge clicked:', id);
-  }, [id]);
-
-  // Edge mouse move handler for hover effects
-  const handleEdgeMouseMove = useCallback((event) => {
-    // Calculate which segment is being hovered
-    const points = [sourcePoint, ...waypoints, targetPoint];
-    const flowBounds = event.currentTarget.getBoundingClientRect();
-    const mouseX = event.clientX - flowBounds.left;
-    const mouseY = event.clientY - flowBounds.top;
-    
-    // Find the closest segment
-    let closestSegment = -1;
-    let minDistance = Infinity;
-    
-    for (let i = 0; i < points.length - 1; i++) {
-      const p1 = points[i];
-      const p2 = points[i + 1];
-      
-      if (!p1 || !p2) continue;
-      
-      // Calculate distance from mouse to line segment
-      const A = mouseX - p1.x;
-      const B = mouseY - p1.y;
-      const C = p2.x - p1.x;
-      const D = p2.y - p1.y;
-      
-      const dot = A * C + B * D;
-      const lenSq = C * C + D * D;
-      let param = -1;
-      
-      if (lenSq !== 0) param = dot / lenSq;
-      
-      let xx, yy;
-      if (param < 0) {
-        xx = p1.x;
-        yy = p1.y;
-      } else if (param > 1) {
-        xx = p2.x;
-        yy = p2.y;
-      } else {
-        xx = p1.x + param * C;
-        yy = p1.y + param * D;
-      }
-      
-      const dx = mouseX - xx;
-      const dy = mouseY - yy;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestSegment = i;
-      }
-    }
-    
-    if (minDistance < 20) {
-      setHoveredSegmentInfo({ segmentIndex: closestSegment, distance: minDistance });
-    } else {
-      setHoveredSegmentInfo(null);
-    }
-  }, [sourcePoint, targetPoint, waypoints]);
-
-  // Edge mouse leave handler
-  const handleEdgeMouseLeave = useCallback(() => {
-    setHoveredSegmentInfo(null);
-  }, []);
-
   // Calculate label position
   const labelPosition = useMemo(() => {
     const points = [sourcePoint, ...waypoints, targetPoint];
@@ -504,7 +435,6 @@ const AdjustableEdge = ({
           if (!p1 || !p2) return null;
           
           const isHorizontal = Math.abs(p1.y - p2.y) < 5;
-          const isVertical = Math.abs(p1.x - p2.x) < 5;
           const isDragging = draggedSegmentIndex === i;
           const isHovered = hoveredSegmentInfo?.segmentIndex === i;
           
@@ -597,7 +527,7 @@ const AdjustableEdge = ({
       ))}
 
       {/* Hover waypoint preview */}
-      {hoveredWaypoint && (
+      {/* hoveredWaypoint && (
         <g className="react-flow__custom-edge-hover">
           <circle 
             cx={hoveredWaypoint.x} 
@@ -609,7 +539,7 @@ const AdjustableEdge = ({
             style={{ pointerEvents: 'none' }}
           />
         </g>
-      )}
+      ) */}
     </>
   );
 };

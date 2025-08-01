@@ -10,7 +10,7 @@ const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'lig
 
     useEffect(() => {
         setTheme(mode);
-    }, [mode]);
+    }, [mode, setTheme]);
 
     const combinedStyle = { width: '100%', height: '100%', ...style };
     const fullscreenStyle = isFullscreen

@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { X, Info, Shield, Zap, Server, Activity, AlertTriangle, Database, Network } from 'lucide-react';
-import { extractTechnicalDetails, extractConnectionTechnicalDetails, getTechnicalColor } from '../utils/technicalDetailsParser';
+import { extractTechnicalDetails, extractConnectionTechnicalDetails } from '../utils/technicalDetailsParser';
 
 const TechnicalDetailsPanel = ({ selectedElement, onClose, isOpen, position }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [manualPosition, setManualPosition] = useState(null); // NEW
+    const [manualPosition, setManualPosition] = useState(null);
     const panelRef = useRef(null);
+    const positionTimeoutRef = useRef(null);
 
     useEffect(() => {
         if (isOpen && selectedElement) {
@@ -17,6 +18,31 @@ const TechnicalDetailsPanel = ({ selectedElement, onClose, isOpen, position }) =
             setIsVisible(false);
         }
     }, [isOpen, selectedElement]);
+
+    // Debounced position update to reduce ResizeObserver calls
+    useEffect(() => {
+        if (position && !manualPosition) {
+            if (positionTimeoutRef.current) {
+                clearTimeout(positionTimeoutRef.current);
+            }
+            positionTimeoutRef.current = setTimeout(() => {
+                setManualPosition(position);
+            }, 25); // Reduced delay for more responsive movement
+        }
+        return () => {
+            if (positionTimeoutRef.current) {
+                clearTimeout(positionTimeoutRef.current);
+            }
+        };
+    }, [position, manualPosition]);
+
+    // Immediate position update for better responsiveness
+    useEffect(() => {
+        if (position && !isDragging) {
+            // Update position immediately if not dragging
+            setManualPosition(position);
+        }
+    }, [position, isDragging]);
 
     // Dragging functionality
     const handleMouseDown = useCallback((e) => {
@@ -79,7 +105,7 @@ const TechnicalDetailsPanel = ({ selectedElement, onClose, isOpen, position }) =
         }
     };
 
-    // Use manual position if set, otherwise use prop
+    // Use manual position if set, otherwise use the position prop directly
     const panelPos = manualPosition || position || { x: 100, y: 100 };
 
     return (
@@ -92,7 +118,8 @@ const TechnicalDetailsPanel = ({ selectedElement, onClose, isOpen, position }) =
                 left: panelPos.x,
                 top: panelPos.y,
                 transform: isVisible ? 'translate(0, 0)' : 'translate(10px, -10px)',
-                userSelect: isDragging ? 'none' : 'auto'
+                userSelect: isDragging ? 'none' : 'auto',
+                willChange: 'transform, opacity' // Optimize for animations
             }}
             onMouseDown={handleMouseDown}
         >
