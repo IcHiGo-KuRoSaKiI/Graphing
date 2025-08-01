@@ -1,0 +1,1 @@
+export { DiagramConfig } from './DiagramConfig.js'; 

@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { toPng, toJpeg, toSvg } from 'html-to-image';
 import { X, Move } from 'lucide-react';
 import ReactFlow, {
     Controls,
@@ -37,80 +36,38 @@ import TailwindPropertyEditor from './TailwindPropertyEditor';
 import TechnicalDetailsPanel from './TechnicalDetailsPanel';
 
 import EnhancedMenuBar from './EnhancedMenuBar';
-import Ajv from 'ajv';
 import { autoLayoutNodes } from '../utils/autoLayout';
 
-const diagramSchema = {
-    type: 'object',
-    properties: {
-        containers: {
-            type: 'array',
-            items: {
-                type: 'object',
-                required: ['id', 'label', 'position', 'size'],
-                properties: {
-                    id: { type: 'string' },
-                    label: { type: 'string' },
-                    position: {
-                        type: 'object',
-                        required: ['x', 'y'],
-                        properties: {
-                            x: { type: 'number' },
-                            y: { type: 'number' }
-                        }
-                    },
-                    size: {
-                        type: 'object',
-                        required: ['width', 'height'],
-                        properties: {
-                            width: { type: 'number' },
-                            height: { type: 'number' }
-                        }
-                    }
-                }
-            }
-        },
-        nodes: {
-            type: 'array',
-            items: {
-                type: 'object',
-                required: ['id', 'label', 'position'],
-                properties: {
-                    id: { type: 'string' },
-                    label: { type: 'string' },
-                    type: { type: 'string' },
-                    position: {
-                        type: 'object',
-                        required: ['x', 'y'],
-                        properties: {
-                            x: { type: 'number' },
-                            y: { type: 'number' }
-                        }
-                    }
-                }
-            }
-        },
-        connections: {
-            type: 'array',
-            items: {
-                type: 'object',
-                required: ['id', 'source', 'target'],
-                properties: {
-                    id: { type: 'string' },
-                    source: { type: 'string' },
-                    target: { type: 'string' }
-                }
-            }
-        }
-    },
-    required: ['containers', 'nodes', 'connections']
-};
+// Import new service layer
+import { ServiceFactory } from '../../services/ServiceFactory';
 
-const ajv = new Ajv();
-const validateDiagram = ajv.compile(diagramSchema);
 
 
 const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showThemeToggle, onToggleFullscreen, isFullscreen, onToggleMini, showMiniToggle }) => {
+    // Service layer integration
+    const [serviceFactory, setServiceFactory] = useState(null);
+    const [isServiceInitialized, setIsServiceInitialized] = useState(false);
+
+    // Initialize service layer
+    useEffect(() => {
+        const initializeServices = async () => {
+            try {
+                console.log('Starting service layer initialization...');
+                const factory = ServiceFactory.create();
+                console.log('ServiceFactory created, initializing...');
+                await factory.initialize();
+                console.log('ServiceFactory initialized, setting state...');
+                setServiceFactory(factory);
+                setIsServiceInitialized(true);
+                console.log('Service layer initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize service layer:', error);
+                console.error('Error details:', error.stack);
+            }
+        };
+        initializeServices();
+    }, []);
+
     // State for nodes and edges
     const [nodes, setNodes] = useState([]);
     const [edges, setEdges] = useState([]);
@@ -231,99 +188,162 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         }, 500);
     }, [nodes, edges]);
 
-    // Convert JSON configuration to React Flow format
-    const jsonToReactFlow = useCallback((config) => {
-        const flowNodes = [];
-        const flowEdges = [];
-
-        // Add container nodes first
-        config.containers?.forEach(container => {
-            flowNodes.push({
-                id: container.id,
-                type: 'container',
-                position: container.position,
-                data: {
-                    label: container.label,
-                    color: container.color || '#f5f5f5',
-                    bgColor: container.bgColor || '#f5f5f5',
-                    borderColor: container.borderColor || '#ddd',
-                    icon: container.icon,
-                    description: container.description,
-                    onLabelChange: handleNodeLabelChange
-                },
+    // Conversion functions for service layer
+    const reactFlowToJson = useCallback((reactFlowNodes, reactFlowEdges) => {
+        return {
+            containers: reactFlowNodes
+                .filter((node) => node.type === 'container')
+                .map((container) => ({
+                    id: container.id,
+                    label: container.data.label,
+                    position: container.position,
+                    size: {
+                        width: container.style?.width || 400,
+                        height: container.style?.height || 300,
+                    },
+                    color: container.data.color,
+                    bgColor: container.data.bgColor,
+                    borderColor: container.data.borderColor,
+                    icon: container.data.icon,
+                    description: container.data.description,
+                    zIndex: container.zIndex || 1
+                })),
+            nodes: reactFlowNodes
+                .filter((node) => node.type !== 'container')
+                .map((node) => ({
+                    id: node.id,
+                    label: node.data.label,
+                    type: node.type,
+                    position: node.position,
+                    parentContainer: node.parentNode,
+                    size: {
+                        width: node.style?.width || 150,
+                        height: node.style?.height || 80,
+                    },
+                    color: node.data.color,
+                    borderColor: node.data.borderColor,
+                    icon: node.data.icon,
+                    description: node.data.description,
+                    zIndex: node.zIndex || 10
+                })),
+            connections: reactFlowEdges.map((edge) => ({
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                label: edge.data?.label,
+                type: edge.type,
+                animated: edge.animated,
+                description: edge.data?.description,
+                waypoints: edge.data?.waypoints,
+                markerStart: edge.markerStart,
+                markerEnd: edge.markerEnd,
+                intersection: edge.data?.intersection,
                 style: {
-                    width: container.size?.width || 400,
-                    height: container.size?.height || 300,
-                    zIndex: container.zIndex || 1,
+                    strokeWidth: edge.style?.strokeWidth || 2,
+                    strokeDasharray: edge.style?.strokeDasharray,
                 },
-                draggable: true,
-                selectable: true,
-                zIndex: container.zIndex || 1
+                zIndex: edge.zIndex || 5
+            }))
+        };
+    }, []);
+
+    const jsonToReactFlow = useCallback((data) => {
+        const reactFlowNodes = [];
+        const reactFlowEdges = [];
+
+        // Convert containers
+        if (data.containers) {
+            data.containers.forEach(container => {
+                reactFlowNodes.push({
+                    id: container.id,
+                    type: 'container',
+                    position: container.position,
+                    data: {
+                        label: container.label,
+                        color: container.color || '#f5f5f5',
+                        bgColor: container.bgColor || '#f5f5f5',
+                        borderColor: container.borderColor || '#ddd',
+                        icon: container.icon,
+                        description: container.description,
+                        onLabelChange: handleNodeLabelChange
+                    },
+                    style: {
+                        width: container.size?.width || 400,
+                        height: container.size?.height || 300,
+                        zIndex: container.zIndex || 1,
+                    },
+                    draggable: true,
+                    selectable: true,
+                    zIndex: container.zIndex || 1
+                });
             });
-        });
+        }
 
-        // Add component nodes
-        config.nodes?.forEach(node => {
-            flowNodes.push({
-                id: node.id,
-                type: 'component',
-                position: node.position,
-                parentNode: node.parentContainer,
-                data: {
-                    label: node.label,
-                    color: node.color || '#E3F2FD',
-                    borderColor: node.borderColor || '#90CAF9',
-                    icon: node.icon,
-                    description: node.description,
-                    onLabelChange: handleNodeLabelChange
-                },
-                style: {
-                    width: node.size?.width || 150,
-                    height: node.size?.height || 80,
-                    zIndex: node.zIndex || 10,
-                },
-                draggable: true,
-                selectable: true,
-                zIndex: node.zIndex || 10
+        // Convert nodes
+        if (data.nodes) {
+            data.nodes.forEach(node => {
+                reactFlowNodes.push({
+                    id: node.id,
+                    type: 'component',
+                    position: node.position,
+                    parentNode: node.parentContainer,
+                    data: {
+                        label: node.label,
+                        color: node.color || '#E3F2FD',
+                        borderColor: node.borderColor || '#90CAF9',
+                        icon: node.icon,
+                        description: node.description,
+                        onLabelChange: handleNodeLabelChange
+                    },
+                    style: {
+                        width: node.size?.width || 150,
+                        height: node.size?.height || 80,
+                        zIndex: node.zIndex || 10,
+                    },
+                    draggable: true,
+                    selectable: true,
+                    zIndex: node.zIndex || 10
+                });
             });
-        });
+        }
 
-        // Add connections/edges
-        config.connections?.forEach(connection => {
-            // Convert old control points to waypoints and ensure we use adjustable edge type
-            let waypoints = [];
-            if (connection.waypoints) {
-                waypoints = connection.waypoints;
-            } else if (connection.control) {
-                // Migrate old single control point to waypoints array
-                waypoints = [connection.control];
-            }
-            
-            flowEdges.push({
-                id: connection.id,
-                source: connection.source,
-                target: connection.target,
-                label: connection.label,
-                type: 'adjustable', // Use adjustable type for waypoint functionality
-                animated: connection.animated || false,
-                style: {
-                    strokeWidth: 2,
-                    stroke: '#2563eb',
-                    zIndex: 5
-                },
-                zIndex: 5,
-                markerStart: connection.markerStart,
-                markerEnd: connection.markerEnd || { type: 'arrow' },
-                data: {
-                    label: connection.label,
-                    description: connection.description || '',
-                    waypoints: waypoints,
-                    intersection: connection.intersection || 'none'
+        // Convert connections
+        if (data.connections) {
+            data.connections.forEach(connection => {
+                // Convert old control points to waypoints and ensure we use adjustable edge type
+                let waypoints = [];
+                if (connection.waypoints) {
+                    waypoints = connection.waypoints;
+                } else if (connection.control) {
+                    // Migrate old single control point to waypoints array
+                    waypoints = [connection.control];
                 }
+                
+                reactFlowEdges.push({
+                    id: connection.id,
+                    source: connection.source,
+                    target: connection.target,
+                    type: 'adjustable', // Use adjustable type for waypoint functionality
+                    animated: connection.animated || false,
+                    style: {
+                        strokeWidth: connection.style?.strokeWidth || 2,
+                        stroke: connection.style?.stroke || '#2563eb',
+                        zIndex: connection.zIndex || 5
+                    },
+                    zIndex: connection.zIndex || 5,
+                    markerStart: connection.markerStart,
+                    markerEnd: connection.markerEnd || { type: 'arrow' },
+                    data: {
+                        label: connection.label,
+                        description: connection.description || '',
+                        waypoints: waypoints,
+                        intersection: connection.intersection || 'none'
+                    }
+                });
             });
-        });
+        }
 
-        return { nodes: flowNodes, edges: flowEdges };
+        return { nodes: reactFlowNodes, edges: reactFlowEdges };
     }, [handleNodeLabelChange]);
 
     // Migrate edges to ensure they have waypoint functionality
@@ -662,11 +682,41 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         saveToHistory();
     }, [selectedElements, saveToHistory]);
 
-    const applyAutoLayout = useCallback((currentNodes) => {
-        const laidOut = autoLayoutNodes(currentNodes);
-        setNodes(laidOut);
-        laidOut.forEach(n => updateNodeInternals(n.id));
-    }, [updateNodeInternals]);
+    const applyAutoLayout = useCallback(async (currentNodes) => {
+        if (!serviceFactory || !isServiceInitialized) {
+            console.warn('Service layer not initialized, falling back to old method');
+            const laidOut = autoLayoutNodes(currentNodes);
+            setNodes(laidOut);
+            laidOut.forEach(n => updateNodeInternals(n.id));
+            return;
+        }
+
+        try {
+            const diagramData = reactFlowToJson(currentNodes, edges);
+            const result = await serviceFactory.layoutDiagram(diagramData, {
+                algorithm: 'default',
+                options: { spacing: 50 }
+            });
+            
+            if (result.success) {
+                const { nodes: laidOutNodes } = jsonToReactFlow(result.diagramData);
+                setNodes(laidOutNodes);
+                laidOutNodes.forEach(n => updateNodeInternals(n.id));
+            } else {
+                console.error('Auto-layout failed:', result.error);
+                // Fallback to old method
+                const laidOut = autoLayoutNodes(currentNodes);
+                setNodes(laidOut);
+                laidOut.forEach(n => updateNodeInternals(n.id));
+            }
+        } catch (error) {
+            console.error('Error applying auto-layout:', error);
+            // Fallback to old method
+            const laidOut = autoLayoutNodes(currentNodes);
+            setNodes(laidOut);
+            laidOut.forEach(n => updateNodeInternals(n.id));
+        }
+    }, [updateNodeInternals, serviceFactory, isServiceInitialized, edges]);
 
     // Add new container node
     const addContainerNode = useCallback(() => {
@@ -955,79 +1005,105 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [copySelected, pasteElements, deleteSelected, undo, redo]);
 
-    // Export and import functions (same as before but with z-index)
-    const exportJSON = useCallback(() => {
-        const diagramData = {
-            metadata: {
-                name: 'Architecture Diagram',
-                description: 'Exported architecture diagram',
-                version: '1.0',
-                exportDate: new Date().toISOString(),
-            },
-            containers: nodes
-                .filter((node) => node.type === 'container')
-                .map((container) => ({
-                    id: container.id,
-                    label: container.data.label,
-                    position: container.position,
-                    size: {
-                        width: container.style?.width || 400,
-                        height: container.style?.height || 300,
-                    },
-                    color: container.data.color,
-                    bgColor: container.data.bgColor,
-                    borderColor: container.data.borderColor,
-                    icon: container.data.icon,
-                    description: container.data.description,
-                    zIndex: container.zIndex || 1
-                })),
-            nodes: nodes
-                .filter((node) => node.type !== 'container')
-                .map((node) => ({
-                    id: node.id,
-                    label: node.data.label,
-                    type: node.type,
-                    position: node.position,
-                    parentContainer: node.parentNode,
-                    size: {
-                        width: node.style?.width || 150,
-                        height: node.style?.height || 80,
-                    },
-                    color: node.data.color,
-                    borderColor: node.data.borderColor,
-                    icon: node.data.icon,
-                    description: node.data.description,
-                    zIndex: node.zIndex || 10
-                })),
-            connections: edges.map((edge) => ({
-                id: edge.id,
-                source: edge.source,
-                target: edge.target,
-                label: edge.data?.label,
-                type: edge.type,
-                animated: edge.animated,
-                description: edge.data?.description,
-                waypoints: edge.data?.waypoints, // Export waypoints instead of control
-                markerStart: edge.markerStart,
-                markerEnd: edge.markerEnd,
-                intersection: edge.data?.intersection,
-                style: {
-                    strokeWidth: edge.style?.strokeWidth || 2,
-                    strokeDasharray: edge.style?.strokeDasharray,
+    // Export and import functions using service layer
+    const exportJSON = useCallback(async () => {
+        if (!serviceFactory || !isServiceInitialized) {
+            console.warn('Service layer not initialized, falling back to old method');
+            // Fallback to old method
+            const diagramData = {
+                metadata: {
+                    name: 'Architecture Diagram',
+                    description: 'Exported architecture diagram',
+                    version: '1.0',
+                    exportDate: new Date().toISOString(),
                 },
-                zIndex: edge.zIndex || 5
-            })),
-        };
+                containers: nodes
+                    .filter((node) => node.type === 'container')
+                    .map((container) => ({
+                        id: container.id,
+                        label: container.data.label,
+                        position: container.position,
+                        size: {
+                            width: container.style?.width || 400,
+                            height: container.style?.height || 300,
+                        },
+                        color: container.data.color,
+                        bgColor: container.data.bgColor,
+                        borderColor: container.data.borderColor,
+                        icon: container.data.icon,
+                        description: container.data.description,
+                        zIndex: container.zIndex || 1
+                    })),
+                nodes: nodes
+                    .filter((node) => node.type !== 'container')
+                    .map((node) => ({
+                        id: node.id,
+                        label: node.data.label,
+                        type: node.type,
+                        position: node.position,
+                        parentContainer: node.parentNode,
+                        size: {
+                            width: node.style?.width || 150,
+                            height: node.style?.height || 80,
+                        },
+                        color: node.data.color,
+                        borderColor: node.data.borderColor,
+                        icon: node.data.icon,
+                        description: node.data.description,
+                        zIndex: node.zIndex || 10
+                    })),
+                connections: edges.map((edge) => ({
+                    id: edge.id,
+                    source: edge.source,
+                    target: edge.target,
+                    label: edge.data?.label,
+                    type: edge.type,
+                    animated: edge.animated,
+                    description: edge.data?.description,
+                    waypoints: edge.data?.waypoints,
+                    markerStart: edge.markerStart,
+                    markerEnd: edge.markerEnd,
+                    intersection: edge.data?.intersection,
+                    style: {
+                        strokeWidth: edge.style?.strokeWidth || 2,
+                        strokeDasharray: edge.style?.strokeDasharray,
+                    },
+                    zIndex: edge.zIndex || 5
+                })),
+            };
 
-        const dataStr = JSON.stringify(diagramData, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-        const exportFileDefaultName = 'architecture-diagram.json';
+            const dataStr = JSON.stringify(diagramData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            const exportFileDefaultName = 'architecture-diagram.json';
 
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
-    }, [nodes, edges]);
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            return;
+        }
+
+        try {
+            const diagramData = reactFlowToJson(nodes, edges);
+            const result = await serviceFactory.exportDiagram(diagramData, 'json', {
+                filename: 'architecture-diagram.json',
+                prettyPrint: true
+            });
+            
+            if (result.success) {
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', result.dataUri);
+                linkElement.setAttribute('download', result.filename);
+                linkElement.click();
+            } else {
+                console.error('Export failed:', result.error);
+                alert('Export failed. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error exporting JSON:', error);
+            alert('Error exporting diagram. Please try again.');
+        }
+    }, [nodes, edges, serviceFactory, isServiceInitialized]);
 
     // Import from draw.io XML
     const importFromDrawioXML = useCallback(() => {
@@ -1195,67 +1271,33 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         inputElement.click();
     }, [handleNodeLabelChange, saveToHistory]);
 
-    // Convert to draw.io XML format
-    const exportToDrawioXML = useCallback(() => {
-        // Map node types to draw.io shapes
-        const getDrawioShape = (nodeType) => {
-            switch (nodeType) {
-                case 'container':
-                    return 'swimlane;';
-                case 'component': return 'rounded=1;whiteSpace=wrap;html=1;';
-                case 'diamond': return 'rhombus;whiteSpace=wrap;html=1;';
-                case 'circle': return 'ellipse;whiteSpace=wrap;html=1;';
-                case 'hexagon': return 'hexagon;whiteSpace=wrap;html=1;';
-                case 'triangle': return 'triangle;whiteSpace=wrap;html=1;';
-                default: return 'rounded=1;whiteSpace=wrap;html=1;';
+    // Convert to draw.io XML format using service layer
+    const exportToDrawioXML = useCallback(async () => {
+        if (!serviceFactory || !isServiceInitialized) {
+            console.warn('Service layer not initialized, falling back to old method');
+            return;
+        }
+
+        try {
+            const diagramData = reactFlowToJson(nodes, edges);
+            const result = await serviceFactory.exportDiagram(diagramData, 'drawio', {
+                filename: 'architecture-diagram.drawio'
+            });
+            
+            if (result.success) {
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', result.dataUri);
+                linkElement.setAttribute('download', result.filename);
+                linkElement.click();
+            } else {
+                console.error('Export failed:', result.error);
+                alert('Export failed. Please try again.');
             }
-        };
-
-        let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="app.diagrams.net" modified="${new Date().toISOString()}" agent="Architecture Diagram Editor" version="1.0">
-  <diagram name="Architecture Diagram" id="diagram1">
-    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
-      <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>`;
-
-        // Add nodes
-        nodes.forEach(node => {
-            const shape = getDrawioShape(node.type);
-            const valueText = [node.data.label || '', node.data.description || ''].filter(Boolean).join('\n');
-
-            xml += `
-        <mxCell id="${node.id}" value="${valueText}" style="${shape}fillColor=${node.data.color || '#ffffff'};strokeColor=${node.data.borderColor || '#000000'};strokeWidth=2;" vertex="1" parent="${node.parentNode || '1'}">
-          <mxGeometry x="${node.position.x}" y="${node.position.y}" width="${node.style?.width || 120}" height="${node.style?.height || 80}" as="geometry"/>
-        </mxCell>`;
-        });
-
-        const allEdges = edges;
-
-        // Add edges
-        allEdges.forEach(edge => {
-            const strokeWidth = edge.style?.strokeWidth || 2;
-            const strokeColor = edge.style?.stroke || '#000000';
-            const strokeDash = edge.style?.strokeDasharray ? 'dashed=1;' : '';
-
-            xml += `
-        <mxCell id="${edge.id}" value="${edge.data?.label || ''}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=${strokeWidth};strokeColor=${strokeColor};${strokeDash}" edge="1" parent="1" source="${edge.source}" target="${edge.target}">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>`;
-        });
-
-        xml += `
-      </root>
-    </mxGraphModel>
-  </diagram>
-</mxfile>`;
-
-        const dataUri = 'data:application/xml;charset=utf-8,' + encodeURIComponent(xml);
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', 'architecture-diagram.drawio');
-        linkElement.click();
-    }, [nodes, edges]);
+        } catch (error) {
+            console.error('Error exporting to Draw.io XML:', error);
+            alert('Error exporting diagram. Please try again.');
+        }
+    }, [nodes, edges, serviceFactory, isServiceInitialized]);
 
     const importDiagram = useCallback(() => {
         const inputElement = document.createElement('input');
@@ -1285,18 +1327,39 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         inputElement.click();
     }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToAdjustable]);
 
-    const importDiagramObject = useCallback((data) => {
-        if (!validateDiagram(data)) {
-            alert('Invalid diagram JSON');
+    const importDiagramObject = useCallback(async (data) => {
+        if (!serviceFactory || !isServiceInitialized) {
+            console.warn('Service layer not initialized, falling back to old method');
+            // Simple validation fallback
+            if (!data || !data.containers || !data.nodes || !data.connections) {
+                alert('Invalid diagram JSON');
+                return;
+            }
+            const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
+            // Migrate edges to ensure waypoint functionality
+            const migratedEdges = migrateEdgesToAdjustable(importedEdges);
+            applyAutoLayout(importedNodes);
+            setEdges(migratedEdges);
+            saveToHistory();
             return;
         }
-        const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
-        // Migrate edges to ensure waypoint functionality
-        const migratedEdges = migrateEdgesToAdjustable(importedEdges);
-        applyAutoLayout(importedNodes);
-        setEdges(migratedEdges);
-        saveToHistory();
-    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToAdjustable]);
+
+        try {
+            // Validate the diagram data
+            await serviceFactory.validateDiagram(data);
+            
+            // If validation passes, import the diagram
+            const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
+            // Migrate edges to ensure waypoint functionality
+            const migratedEdges = migrateEdgesToAdjustable(importedEdges);
+            applyAutoLayout(importedNodes);
+            setEdges(migratedEdges);
+            saveToHistory();
+        } catch (error) {
+            console.error('Error importing diagram:', error);
+            alert('Error importing diagram: ' + error.message);
+        }
+    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToAdjustable, serviceFactory, isServiceInitialized]);
 
 
     const handleJsonPasteImport = useCallback((data) => {
@@ -1304,11 +1367,30 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         setJsonPasteModal({ isOpen: false, onConfirm: null });
     }, [importDiagramObject]);
 
-    const validateJson = useCallback((data) => {
-        const valid = validateDiagram(data);
-        const errors = valid ? [] : (validateDiagram.errors || []).map(e => `${e.instancePath} ${e.message}`);
-        return { valid, errors };
-    }, []);
+    const validateJson = useCallback(async (data) => {
+        if (!serviceFactory || !isServiceInitialized) {
+            console.warn('Service layer not initialized, falling back to old method');
+            // Simple validation fallback
+            const valid = data && data.containers && data.nodes && data.connections;
+            const errors = valid ? [] : ['Invalid diagram structure'];
+            return { valid, errors };
+        }
+
+        try {
+            // Validate the diagram data
+            await serviceFactory.validateDiagram(data);
+            return {
+                valid: true,
+                errors: []
+            };
+        } catch (error) {
+            console.error('Error validating diagram:', error);
+            return {
+                valid: false,
+                errors: [error.message]
+            };
+        }
+    }, [serviceFactory, isServiceInitialized]);
 
     // Clean up timeout on unmount
     useEffect(() => {
@@ -1344,35 +1426,56 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         importDiagram();
     }, [importDiagram]);
 
-    // Image export helpers
+    // Image export helpers using service layer
     const exportImage = useCallback(async (type) => {
-        if (!reactFlowWrapper.current) return;
-        const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
-        const isDark = !!reactFlowWrapper.current.closest('.dark');
-        const bounds = getDiagramBounds();
-        const margin = 20;
-        const width = bounds.width + margin * 2;
-        const height = bounds.height + margin * 2;
-        const common = {
-            cacheBust: true,
-            backgroundColor: isDark ? '#111111' : '#ffffff',
-            width,
-            height,
-            style: {
-                width: `${width}px`,
-                height: `${height}px`,
-                transform: `translate(${-bounds.x + margin}px, ${-bounds.y + margin}px)`
+        if (!serviceFactory || !isServiceInitialized) {
+            console.warn('Service layer not initialized, falling back to old method');
+            if (!reactFlowWrapper.current) return;
+            const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
+            const isDark = !!reactFlowWrapper.current.closest('.dark');
+            const bounds = getDiagramBounds();
+            const margin = 20;
+            const width = bounds.width + margin * 2;
+            const height = bounds.height + margin * 2;
+            const common = {
+                cacheBust: true,
+                backgroundColor: isDark ? '#111111' : '#ffffff',
+                width,
+                height,
+                style: {
+                    width: `${width}px`,
+                    height: `${height}px`,
+                    transform: `translate(${-bounds.x + margin}px, ${-bounds.y + margin}px)`
+                }
+            };
+            // Fallback image export not available without service layer
+            console.error('Image export not available without service layer');
+            alert('Image export not available. Please try again later.');
+            return;
+        }
+
+        try {
+            const diagramData = reactFlowToJson(nodes, edges);
+            const result = await serviceFactory.exportDiagram(diagramData, type, {
+                filename: `diagram.${type}`,
+                backgroundColor: reactFlowWrapper.current?.closest('.dark') ? '#111111' : '#ffffff',
+                margin: 20
+            });
+            
+            if (result.success) {
+                const link = document.createElement('a');
+                link.download = result.filename;
+                link.href = result.dataUri;
+                link.click();
+            } else {
+                console.error('Image export failed:', result.error);
+                alert('Image export failed. Please try again.');
             }
-        };
-        let dataUrl;
-        if (type === 'png') dataUrl = await toPng(renderer, common);
-        if (type === 'jpg') dataUrl = await toJpeg(renderer, { ...common, quality: 0.95 });
-        if (type === 'svg') dataUrl = await toSvg(renderer, common);
-        const link = document.createElement('a');
-        link.download = `diagram.${type}`;
-        link.href = dataUrl;
-        link.click();
-    }, [getDiagramBounds]);
+        } catch (error) {
+            console.error('Error exporting image:', error);
+            alert('Error exporting image. Please try again.');
+        }
+    }, [getDiagramBounds, serviceFactory, isServiceInitialized, nodes, edges]);
 
     const exportAsPNG = useCallback(() => exportImage("png"), [exportImage]);
     const exportAsJPG = useCallback(() => exportImage('jpg'), [exportImage]);
@@ -1643,6 +1746,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     return (
         <div className="architecture-diagram-editor h-full flex flex-col">
+
+            
             {/* Modals */}
             <PromptModal
                 isOpen={promptModal.isOpen}
