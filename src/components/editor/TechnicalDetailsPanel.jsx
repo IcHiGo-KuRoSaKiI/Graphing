@@ -1,8 +1,63 @@
-import React from 'react';
-import { X } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { X, Info, Shield, Zap, Server, Activity, AlertTriangle, Database, Network } from 'lucide-react';
 import { extractTechnicalDetails, extractConnectionTechnicalDetails, getTechnicalColor } from '../utils/technicalDetailsParser';
 
-const TechnicalDetailsPanel = ({ selectedElement, onClose, isOpen }) => {
+const TechnicalDetailsPanel = ({ selectedElement, onClose, isOpen, position }) => {
+    const [isVisible, setIsVisible] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+    const [manualPosition, setManualPosition] = useState(null); // NEW
+    const panelRef = useRef(null);
+
+    useEffect(() => {
+        if (isOpen && selectedElement) {
+            setIsVisible(true);
+            setManualPosition(null); // Reset manual position on new selection
+        } else {
+            setIsVisible(false);
+        }
+    }, [isOpen, selectedElement]);
+
+    // Dragging functionality
+    const handleMouseDown = useCallback((e) => {
+        if (e.target.closest('button')) return; // Don't drag if clicking buttons
+        setIsDragging(true);
+        const rect = panelRef.current.getBoundingClientRect();
+        setDragOffset({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        });
+        e.preventDefault();
+    }, []);
+
+    const handleMouseMove = useCallback((e) => {
+        if (!isDragging) return;
+        const newX = e.clientX - dragOffset.x;
+        const newY = e.clientY - dragOffset.y;
+        // Keep panel within viewport bounds
+        const maxX = window.innerWidth - 320;
+        const maxY = window.innerHeight - 400;
+        setManualPosition({
+            x: Math.max(10, Math.min(newX, maxX)),
+            y: Math.max(10, Math.min(newY, maxY))
+        });
+    }, [isDragging, dragOffset]);
+
+    const handleMouseUp = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            return () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            };
+        }
+    }, [isDragging, handleMouseMove, handleMouseUp]);
+
     if (!isOpen || !selectedElement) return null;
 
     const isNode = selectedElement.type === 'node';
@@ -12,194 +67,225 @@ const TechnicalDetailsPanel = ({ selectedElement, onClose, isOpen }) => {
 
     const elementLabel = selectedElement.data?.label || selectedElement.label || 'Unknown Element';
 
+    // Get icon based on element type and technical details
+    const getElementIcon = () => {
+        if (isNode) {
+            if (technicalDetails.infrastructure.includes('Kubernetes')) return <Server className="w-4 h-4" />;
+            if (technicalDetails.protocol.includes('HTTP')) return <Network className="w-4 h-4" />;
+            if (technicalDetails.monitoring.includes('Prometheus')) return <Activity className="w-4 h-4" />;
+            return <Database className="w-4 h-4" />;
+        } else {
+            return <Network className="w-4 h-4" />;
+        }
+    };
+
+    // Use manual position if set, otherwise use prop
+    const panelPos = manualPosition || position || { x: 100, y: 100 };
+
     return (
-        <div className="technical-details-panel fixed right-5 top-20 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-            <div className="panel-header flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-                    Technical Specifications
-                </h3>
-                <button
-                    onClick={onClose}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                >
-                    <X size={16} />
-                </button>
-            </div>
-            
-            <div className="panel-content p-4">
-                <h4 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-4 pb-2 border-b border-gray-100 dark:border-gray-600">
-                    {elementLabel}
-                </h4>
+        <div 
+            ref={panelRef}
+            className={`fixed z-40 transition-all duration-150 ease-out ${
+                isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+            } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            style={{
+                left: panelPos.x,
+                top: panelPos.y,
+                transform: isVisible ? 'translate(0, 0)' : 'translate(10px, -10px)',
+                userSelect: isDragging ? 'none' : 'auto'
+            }}
+            onMouseDown={handleMouseDown}
+        >
+            {/* Main Panel */}
+            <div className="w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 rounded-xl shadow-xl">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                            {getElementIcon()}
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {elementLabel}
+                            </h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Technical Details
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                        <X size={16} className="text-gray-400" />
+                    </button>
+                </div>
                 
-                <div className="tech-specs space-y-3">
+                {/* Content */}
+                <div className="p-4 space-y-3 max-h-64 overflow-y-auto">
                     {/* Protocol */}
-                    <div className="spec-item flex justify-between items-start">
-                        <span className="spec-label text-sm font-medium text-gray-600 dark:text-gray-400">
-                            Protocol:
-                        </span>
-                        <span className="spec-value text-sm text-gray-800 dark:text-gray-200 text-right max-w-48 break-words">
-                            {technicalDetails.protocol}
-                        </span>
-                    </div>
-                    
-                    {/* Performance */}
-                    <div className="spec-item flex justify-between items-start">
-                        <span className="spec-label text-sm font-medium text-gray-600 dark:text-gray-400">
-                            Performance:
-                        </span>
-                        <div className="spec-value text-sm text-gray-800 dark:text-gray-200 text-right max-w-48">
-                            {technicalDetails.performance.latency && (
-                                <div className="mb-1">
-                                    <span className={`badge ${getTechnicalColor('performance', 'latency')} text-xs px-2 py-1 rounded`}>
-                                        Latency: {technicalDetails.performance.latency}
-                                    </span>
-                                </div>
-                            )}
-                            {technicalDetails.performance.throughput && (
-                                <div className="mb-1">
-                                    <span className={`badge ${getTechnicalColor('performance', 'throughput')} text-xs px-2 py-1 rounded`}>
-                                        Throughput: {technicalDetails.performance.throughput} req/sec
-                                    </span>
-                                </div>
-                            )}
-                            {technicalDetails.performance.timeout && (
-                                <div className="mb-1">
-                                    <span className="badge bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
-                                        Timeout: {technicalDetails.performance.timeout}s
-                                    </span>
-                                </div>
-                            )}
-                            {!technicalDetails.performance.latency && !technicalDetails.performance.throughput && !technicalDetails.performance.timeout && (
-                                <span className="text-gray-500">N/A</span>
-                            )}
+                    {technicalDetails.protocol !== 'N/A' && (
+                        <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <Network className="w-3 h-3 text-blue-500" />
+                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                                {technicalDetails.protocol}
+                            </span>
                         </div>
-                    </div>
-                    
-                    {/* Security */}
-                    <div className="spec-item flex justify-between items-start">
-                        <span className="spec-label text-sm font-medium text-gray-600 dark:text-gray-400">
-                            Security:
-                        </span>
-                        <div className="spec-value text-sm text-gray-800 dark:text-gray-200 text-right max-w-48">
-                            {technicalDetails.security !== 'N/A' ? (
-                                technicalDetails.security.split(', ').map((sec, index) => (
-                                    <span 
-                                        key={index}
-                                        className={`badge ${getTechnicalColor('security', sec.trim())} text-xs px-2 py-1 rounded mr-1 mb-1 inline-block`}
-                                    >
-                                        {sec.trim()}
-                                    </span>
-                                ))
-                            ) : (
-                                <span className="text-gray-500">N/A</span>
-                            )}
-                        </div>
-                    </div>
-                    
-                    {/* Node-specific details */}
-                    {isNode && (
-                        <>
-                            {/* Scaling */}
-                            <div className="spec-item flex justify-between items-start">
-                                <span className="spec-label text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    Scaling:
-                                </span>
-                                <div className="spec-value text-sm text-gray-800 dark:text-gray-200 text-right max-w-48">
-                                    {technicalDetails.scaling !== 'N/A' ? (
-                                        technicalDetails.scaling.split(', ').map((scale, index) => (
-                                            <span 
-                                                key={index}
-                                                className={`badge ${getTechnicalColor('scaling', scale.trim())} text-xs px-2 py-1 rounded mr-1 mb-1 inline-block`}
-                                            >
-                                                {scale.trim()}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="text-gray-500">N/A</span>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            {/* Infrastructure */}
-                            <div className="spec-item flex justify-between items-start">
-                                <span className="spec-label text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    Infrastructure:
-                                </span>
-                                <div className="spec-value text-sm text-gray-800 dark:text-gray-200 text-right max-w-48">
-                                    {technicalDetails.infrastructure !== 'N/A' ? (
-                                        technicalDetails.infrastructure.split(', ').map((infra, index) => (
-                                            <span 
-                                                key={index}
-                                                className={`badge ${getTechnicalColor('infrastructure', infra.trim())} text-xs px-2 py-1 rounded mr-1 mb-1 inline-block`}
-                                            >
-                                                {infra.trim()}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="text-gray-500">N/A</span>
-                                    )}
-                                </div>
-                            </div>
-                            
-                            {/* Monitoring */}
-                            <div className="spec-item flex justify-between items-start">
-                                <span className="spec-label text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    Monitoring:
-                                </span>
-                                <div className="spec-value text-sm text-gray-800 dark:text-gray-200 text-right max-w-48">
-                                    {technicalDetails.monitoring !== 'N/A' ? (
-                                        technicalDetails.monitoring.split(', ').map((monitor, index) => (
-                                            <span 
-                                                key={index}
-                                                className={`badge ${getTechnicalColor('monitoring', monitor.trim())} text-xs px-2 py-1 rounded mr-1 mb-1 inline-block`}
-                                            >
-                                                {monitor.trim()}
-                                            </span>
-                                        ))
-                                    ) : (
-                                        <span className="text-gray-500">N/A</span>
-                                    )}
-                                </div>
-                            </div>
-                        </>
                     )}
                     
-                    {/* Edge-specific details */}
-                    {!isNode && (
-                        <div className="spec-item flex justify-between items-start">
-                            <span className="spec-label text-sm font-medium text-gray-600 dark:text-gray-400">
-                                Failure Handling:
-                            </span>
-                            <div className="spec-value text-sm text-gray-800 dark:text-gray-200 text-right max-w-48">
-                                {technicalDetails.failureHandling !== 'N/A' ? (
-                                    technicalDetails.failureHandling.split(', ').map((failure, index) => (
-                                        <span 
-                                            key={index}
-                                            className="badge bg-red-100 text-red-800 text-xs px-2 py-1 rounded mr-1 mb-1 inline-block"
-                                        >
-                                            {failure.trim()}
-                                        </span>
-                                    ))
-                                ) : (
-                                    <span className="text-gray-500">N/A</span>
+                    {/* Performance */}
+                    {(technicalDetails.performance.latency || technicalDetails.performance.throughput || technicalDetails.performance.timeout) && (
+                        <div className="flex items-center gap-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                            <Zap className="w-3 h-3 text-yellow-500" />
+                            <div className="flex flex-wrap gap-1">
+                                {technicalDetails.performance.latency && (
+                                    <span className="text-xs bg-yellow-100 dark:bg-yellow-800/30 text-yellow-800 dark:text-yellow-200 px-2 py-0.5 rounded-full">
+                                        {technicalDetails.performance.latency}
+                                    </span>
+                                )}
+                                {technicalDetails.performance.throughput && (
+                                    <span className="text-xs bg-purple-100 dark:bg-purple-800/30 text-purple-800 dark:text-purple-200 px-2 py-0.5 rounded-full">
+                                        {technicalDetails.performance.throughput} req/s
+                                    </span>
+                                )}
+                                {technicalDetails.performance.timeout && (
+                                    <span className="text-xs bg-orange-100 dark:bg-orange-800/30 text-orange-800 dark:text-orange-200 px-2 py-0.5 rounded-full">
+                                        {technicalDetails.performance.timeout}s
+                                    </span>
                                 )}
                             </div>
                         </div>
                     )}
+                    
+                    {/* Security */}
+                    {technicalDetails.security !== 'N/A' && (
+                        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                            <Shield className="w-3 h-3 text-green-500" />
+                            <div className="flex flex-wrap gap-1">
+                                {technicalDetails.security.split(', ').map((sec, index) => (
+                                    <span 
+                                        key={index}
+                                        className="text-xs bg-green-100 dark:bg-green-800/30 text-green-800 dark:text-green-200 px-2 py-0.5 rounded-full"
+                                    >
+                                        {sec.trim()}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Node-specific sections */}
+                    {isNode && (
+                        <>
+                            {/* Scaling */}
+                            {technicalDetails.scaling !== 'N/A' && (
+                                <div className="flex items-center gap-2 p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                                    <Activity className="w-3 h-3 text-indigo-500" />
+                                    <div className="flex flex-wrap gap-1">
+                                        {technicalDetails.scaling.split(', ').map((scale, index) => (
+                                            <span 
+                                                key={index}
+                                                className="text-xs bg-indigo-100 dark:bg-indigo-800/30 text-indigo-800 dark:text-indigo-200 px-2 py-0.5 rounded-full"
+                                            >
+                                                {scale.trim()}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* Infrastructure */}
+                            {technicalDetails.infrastructure !== 'N/A' && (
+                                <div className="flex items-center gap-2 p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
+                                    <Server className="w-3 h-3 text-cyan-500" />
+                                    <div className="flex flex-wrap gap-1">
+                                        {technicalDetails.infrastructure.split(', ').map((infra, index) => (
+                                            <span 
+                                                key={index}
+                                                className="text-xs bg-cyan-100 dark:bg-cyan-800/30 text-cyan-800 dark:text-cyan-200 px-2 py-0.5 rounded-full"
+                                            >
+                                                {infra.trim()}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* Monitoring */}
+                            {technicalDetails.monitoring !== 'N/A' && (
+                                <div className="flex items-center gap-2 p-2 bg-pink-50 dark:bg-pink-900/20 rounded-lg">
+                                    <Activity className="w-3 h-3 text-pink-500" />
+                                    <div className="flex flex-wrap gap-1">
+                                        {technicalDetails.monitoring.split(', ').map((monitor, index) => (
+                                            <span 
+                                                key={index}
+                                                className="text-xs bg-pink-100 dark:bg-pink-800/30 text-pink-800 dark:text-pink-200 px-2 py-0.5 rounded-full"
+                                            >
+                                                {monitor.trim()}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+                    
+                    {/* Edge-specific section */}
+                    {!isNode && technicalDetails.failureHandling !== 'N/A' && (
+                        <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                            <AlertTriangle className="w-3 h-3 text-red-500" />
+                            <div className="flex flex-wrap gap-1">
+                                {technicalDetails.failureHandling.split(', ').map((failure, index) => (
+                                    <span 
+                                        key={index}
+                                        className="text-xs bg-red-100 dark:bg-red-800/30 text-red-800 dark:text-red-200 px-2 py-0.5 rounded-full"
+                                    >
+                                        {failure.trim()}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* Description */}
+                    {selectedElement.data?.description && (
+                        <div className="flex items-start gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                            <Info className="w-3 h-3 text-gray-500 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                                {selectedElement.data.description}
+                            </p>
+                        </div>
+                    )}
+                    
+                    {/* No data message */}
+                    {technicalDetails.protocol === 'N/A' && 
+                     technicalDetails.security === 'N/A' && 
+                     !technicalDetails.performance.latency && 
+                     !technicalDetails.performance.throughput && 
+                     !technicalDetails.performance.timeout && 
+                     technicalDetails.scaling === 'N/A' && 
+                     technicalDetails.infrastructure === 'N/A' && 
+                     technicalDetails.monitoring === 'N/A' && 
+                     technicalDetails.failureHandling === 'N/A' && 
+                     !selectedElement.data?.description && (
+                        <div className="text-center py-4">
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                No technical details available
+                            </p>
+                        </div>
+                    )}
                 </div>
-                
-                {/* Description */}
-                {selectedElement.data?.description && (
-                    <div className="description mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded">
-                        <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                            Description:
-                        </h5>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {selectedElement.data.description}
-                        </p>
-                    </div>
-                )}
             </div>
+            
+            {/* Arrow pointing to element */}
+            <div 
+                className="absolute w-3 h-3 bg-white/95 dark:bg-gray-900/95 border-l border-t border-gray-200/50 dark:border-gray-700/50 transform rotate-45"
+                style={{
+                    left: panelPos.x < window.innerWidth / 2 ? '-6px' : 'auto',
+                    right: panelPos.x >= window.innerWidth / 2 ? '-6px' : 'auto',
+                    top: '20px'
+                }}
+            />
         </div>
     );
 };

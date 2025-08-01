@@ -126,6 +126,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     // Technical details state
     const [technicalDetailsPanelOpen, setTechnicalDetailsPanelOpen] = useState(false);
     const [selectedElementForTechnicalDetails, setSelectedElementForTechnicalDetails] = useState(null);
+    const [technicalDetailsEnabled, setTechnicalDetailsEnabled] = useState(true); // NEW
+    const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 }); // NEW
 
     const getDiagramBounds = useCallback(() => {
         if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
@@ -555,17 +557,22 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         });
         
         // Update technical details panel
-        if (selectedNodes.length === 1) {
-            setSelectedElementForTechnicalDetails({ ...selectedNodes[0], type: 'node' });
-            setTechnicalDetailsPanelOpen(true);
-        } else if (selectedEdges.length === 1) {
-            setSelectedElementForTechnicalDetails({ ...selectedEdges[0], type: 'edge' });
-            setTechnicalDetailsPanelOpen(true);
+        if (technicalDetailsEnabled) {
+            if (selectedNodes.length === 1) {
+                setSelectedElementForTechnicalDetails({ ...selectedNodes[0], type: 'node' });
+                setTechnicalDetailsPanelOpen(true);
+            } else if (selectedEdges.length === 1) {
+                setSelectedElementForTechnicalDetails({ ...selectedEdges[0], type: 'edge' });
+                setTechnicalDetailsPanelOpen(true);
+            } else {
+                setTechnicalDetailsPanelOpen(false);
+                setSelectedElementForTechnicalDetails(null);
+            }
         } else {
             setTechnicalDetailsPanelOpen(false);
             setSelectedElementForTechnicalDetails(null);
         }
-    }, []);
+    }, [technicalDetailsEnabled]);
 
     // Handle edge click - now uses property panel instead of modal
     const onEdgeClick = useCallback((event, edge) => {
@@ -575,10 +582,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             edges: [edge],
         });
         
-        // Update technical details
-        setSelectedElementForTechnicalDetails({ ...edge, type: 'edge' });
-        setTechnicalDetailsPanelOpen(true);
-    }, []);
+        // Update technical details only if enabled
+        if (technicalDetailsEnabled) {
+            setSelectedElementForTechnicalDetails({ ...edge, type: 'edge' });
+            setTechnicalDetailsPanelOpen(true);
+        }
+    }, [technicalDetailsEnabled]);
 
     // Handle property changes for both nodes and edges
     const handleElementPropertyChange = useCallback((elementType, property, value) => {
@@ -1524,6 +1533,49 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         // toast.success(`Pasted ${newNodes.length} nodes and ${newEdges.length} connections`);
     }, [clipboardData, saveToHistory]);
 
+    // Update panel position when node is dragged
+    useEffect(() => {
+        if (!technicalDetailsPanelOpen || !selectedElementForTechnicalDetails) return;
+        
+        // Add a small delay to ensure DOM elements are rendered
+        const timer = setTimeout(() => {
+            const node = nodes.find(n => n.id === selectedElementForTechnicalDetails.id);
+            if (node && node.position) {
+                // Get the React Flow instance and viewport
+                const reactFlowInstance = document.querySelector('.react-flow');
+                if (!reactFlowInstance) return;
+                
+                // Get the actual DOM element of the node
+                const nodeElement = document.querySelector(`[data-id="${node.id}"]`);
+                if (!nodeElement) return;
+                
+                const nodeRect = nodeElement.getBoundingClientRect();
+                const flowRect = reactFlowInstance.getBoundingClientRect();
+                
+                // Calculate panel position relative to the node
+                let x = nodeRect.right + 20; // 20px to the right of the node
+                let y = nodeRect.top;
+                
+                // If panel would go off-screen, position it to the left
+                if (x + 320 > window.innerWidth) {
+                    x = nodeRect.left - 340; // 320px panel width + 20px gap
+                }
+                
+                // Keep panel within viewport height
+                if (y + 400 > window.innerHeight) {
+                    y = window.innerHeight - 420;
+                }
+                if (y < 10) {
+                    y = 10;
+                }
+                
+                setPanelOffset({ x, y });
+            }
+        }, 50); // 50ms delay to ensure DOM is ready
+        
+        return () => clearTimeout(timer);
+    }, [nodes, technicalDetailsPanelOpen, selectedElementForTechnicalDetails]);
+
 
     return (
         <div className="architecture-diagram-editor h-full flex flex-col">
@@ -1545,6 +1597,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             />
             <ContainerSelectorModal
                 isOpen={containerSelectorModal.isOpen}
+                title={containerSelectorModal.title}
+                message={containerSelectorModal.message}
                 containers={containerSelectorModal.containers}
                 onSelect={containerSelectorModal.onSelect}
                 onCancel={() => setContainerSelectorModal(prev => ({ ...prev, isOpen: false }))}
@@ -1675,6 +1729,21 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     >
                         {isFullscreen ? '🗗' : '🗖'}
                     </button>
+                    {/* Replace the current Tech Details button with a modern toggle */}
+                    <div className="flex items-center gap-2 ml-2">
+                        <label className="flex items-center gap-2 cursor-pointer select-none tech-details-toggle">
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Tech Details</span>
+                            <div className="relative inline-flex items-center">
+                                <input
+                                    type="checkbox"
+                                    checked={technicalDetailsEnabled}
+                                    onChange={() => setTechnicalDetailsEnabled(prev => !prev)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </div>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -1869,6 +1938,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     setTechnicalDetailsPanelOpen(false);
                     setSelectedElementForTechnicalDetails(null);
                 }}
+                position={panelOffset} // NEW
             />
             
             {/* Technical Details Tooltip - Removed unused component to fix ESLint errors */}

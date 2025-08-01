@@ -115,21 +115,21 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                     )}
                     
                     {/* Technical Details Badges */}
-                    <div className="technical-badges absolute top-1 right-1 flex gap-1">
+                    <div className="technical-badges absolute top-2 right-2 flex gap-1.5">
                         {technicalDetails.protocol !== 'N/A' && (
-                            <span className={`badge ${getTechnicalColor('protocol', technicalDetails.protocol.split(', ')[0])} text-xs px-1 py-0.5 rounded`}>
+                            <span className={`badge ${getTechnicalColor('protocol', technicalDetails.protocol.split(', ')[0])} text-xs px-2 py-1 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.protocol.split(', ')[0]}
                             </span>
                         )}
                         
                         {technicalDetails.security !== 'N/A' && (
-                            <span className={`badge ${getTechnicalColor('security', technicalDetails.security.split(', ')[0])} text-xs px-1 py-0.5 rounded`}>
+                            <span className={`badge ${getTechnicalColor('security', technicalDetails.security.split(', ')[0])} text-xs px-2 py-1 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.security.split(', ')[0]}
                             </span>
                         )}
                         
                         {technicalDetails.performance.latency && (
-                            <span className={`badge ${getTechnicalColor('performance', 'latency')} text-xs px-1 py-0.5 rounded`}>
+                            <span className={`badge ${getTechnicalColor('performance', 'latency')} text-xs px-2 py-1 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.performance.latency}
                             </span>
                         )}
