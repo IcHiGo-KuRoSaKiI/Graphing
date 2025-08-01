@@ -33,3 +33,7 @@ yarn-error.log*
 /dist/*
 
 /releases.md
+SRS.md
+error.txt
+SRS2.md
+.claude/settings.local.json

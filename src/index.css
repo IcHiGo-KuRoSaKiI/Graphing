@@ -402,3 +402,158 @@ code {
 .dark .react-flow__node {
   filter: brightness(0.85);
 }
+
+/* Draw.io-style connection points */
+.drawio-connection-point {
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s ease;
+  cursor: crosshair;
+}
+.drawio-connection-point:hover {
+  opacity: 1 !important;
+  transform: scale(1.2) !important;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6) !important;
+}
+.react-flow__node:hover .drawio-connection-point {
+  opacity: 0.6;
+  transform: scale(1);
+}
+
+/* Technical Details Panel */
+.technical-details-panel {
+    position: fixed;
+    right: 20px;
+    top: 20px;
+    width: 350px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 1000;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.panel-content {
+    space-y: 3;
+}
+
+.tech-specs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.spec-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.spec-label {
+    font-weight: 600;
+    color: #666;
+    font-size: 14px;
+}
+
+.spec-value {
+    color: #333;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    text-align: right;
+    max-width: 200px;
+    word-wrap: break-word;
+}
+
+/* Technical Badges */
+.tech-badges {
+    display: flex;
+    gap: 4px;
+    margin: 8px 0;
+}
+
+.badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.badge.protocol {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge.performance {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.badge.security {
+    background: #e8f5e8;
+    color: #388e3c;
+}
+
+.badge.scaling {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.badge.infrastructure {
+    background: #fce4ec;
+    color: #c2185b;
+}
+
+.badge.monitoring {
+    background: #f1f8e9;
+    color: #689f38;
+}
+
+/* Technical Tooltip */
+.technical-tooltip {
+    pointer-events: none;
+}
+
+.tooltip-content {
+    pointer-events: auto;
+}
+
+/* Component Node Enhancements */
+.component-node {
+    position: relative;
+}
+
+.component-node .technical-badges {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 10;
+}
+
+.component-node .technical-badges .badge {
+    font-size: 8px;
+    padding: 1px 3px;
+    line-height: 1;
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

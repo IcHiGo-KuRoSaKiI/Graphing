@@ -34,6 +34,7 @@ import JsonValidatorModal from '../modals/JsonValidatorModal';
 
 // Import editor components
 import TailwindPropertyEditor from './TailwindPropertyEditor';
+import TechnicalDetailsPanel from './TechnicalDetailsPanel';
 
 import EnhancedMenuBar from './EnhancedMenuBar';
 import Ajv from 'ajv';
@@ -121,6 +122,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [propertyPanelMinimized, setPropertyPanelMinimized] = useState(false);
     const [statsPanelOpen, setStatsPanelOpen] = useState(true);
     const [panMode, setPanMode] = useState(false);
+    
+    // Technical details state
+    const [technicalDetailsPanelOpen, setTechnicalDetailsPanelOpen] = useState(false);
+    const [selectedElementForTechnicalDetails, setSelectedElementForTechnicalDetails] = useState(null);
 
     const getDiagramBounds = useCallback(() => {
         if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
@@ -283,24 +288,34 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
         // Add connections/edges
         config.connections?.forEach(connection => {
+            // Convert old control points to waypoints and ensure we use adjustable edge type
+            let waypoints = [];
+            if (connection.waypoints) {
+                waypoints = connection.waypoints;
+            } else if (connection.control) {
+                // Migrate old single control point to waypoints array
+                waypoints = [connection.control];
+            }
+            
             flowEdges.push({
                 id: connection.id,
                 source: connection.source,
                 target: connection.target,
                 label: connection.label,
-                type: connection.type || 'floating',
+                type: 'adjustable', // Use adjustable type for waypoint functionality
                 animated: connection.animated || false,
                 style: {
                     strokeWidth: 2,
-                    zIndex: connection.zIndex || 5
+                    stroke: '#2563eb',
+                    zIndex: 5
                 },
-                zIndex: connection.zIndex || 5,
+                zIndex: 5,
                 markerStart: connection.markerStart,
                 markerEnd: connection.markerEnd || { type: 'arrow' },
                 data: {
                     label: connection.label,
                     description: connection.description || '',
-                    control: connection.control,
+                    waypoints: waypoints,
                     intersection: connection.intersection || 'none'
                 }
             });
@@ -309,23 +324,50 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         return { nodes: flowNodes, edges: flowEdges };
     }, [handleNodeLabelChange]);
 
+    // Migrate edges to ensure they have waypoint functionality
+    const migrateEdgesToAdjustable = useCallback((edges) => {
+        return edges.map(edge => {
+            // Ensure all edges use adjustable type for waypoint functionality
+            if (edge.type !== 'adjustable') {
+                const migratedEdge = {
+                    ...edge,
+                    type: 'adjustable',
+                    style: {
+                        ...edge.style,
+                        stroke: edge.style?.stroke || '#2563eb',
+                        strokeWidth: edge.style?.strokeWidth || 2
+                    },
+                    data: {
+                        ...edge.data,
+                        waypoints: edge.data?.waypoints || (edge.data?.control ? [edge.data.control] : []),
+                        intersection: edge.data?.intersection || 'none'
+                    }
+                };
+                return migratedEdge;
+            }
+            return edge;
+        });
+    }, []);
+
     // Initialize diagram from the provided configuration
     useEffect(() => {
         if (!isInitialized) {
             const config = initialDiagram || { containers: [], nodes: [], connections: [] };
             const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(config);
+            // Migrate edges to ensure waypoint functionality
+            const migratedEdges = migrateEdgesToAdjustable(initialEdges);
             const laidOut = autoLayoutNodes(initialNodes);
             setNodes(laidOut);
-            setEdges(initialEdges);
+            setEdges(migratedEdges);
             setHistory({
                 past: [],
-                present: { nodes: laidOut, edges: initialEdges },
+                present: { nodes: laidOut, edges: migratedEdges },
                 future: [],
             });
             laidOut.forEach(n => updateNodeInternals(n.id));
             setIsInitialized(true);
         }
-    }, [isInitialized, jsonToReactFlow, initialDiagram, updateNodeInternals]);
+    }, [isInitialized, jsonToReactFlow, initialDiagram, updateNodeInternals, migrateEdgesToAdjustable]);
 
     // Optimized save to history function
     const saveToHistory = useCallback(() => {
@@ -418,6 +460,28 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const onConnectStart = useCallback(() => { }, []);
     const onConnectEnd = useCallback(() => { }, []);
 
+    const onEdgeDoubleClick = useCallback((event, edge) => {
+        event.preventDefault(); // Prevent default browser behavior (e.g., text selection)
+        event.stopPropagation(); // Stop event propagation
+
+        const flowBounds = reactFlowWrapper.current.getBoundingClientRect();
+        const position = project({
+            x: event.clientX - flowBounds.left,
+            y: event.clientY - flowBounds.top,
+        });
+
+        setEdges((eds) =>
+            eds.map((e) => {
+                if (e.id === edge.id) {
+                    const newWaypoints = [...(e.data.waypoints || []), position];
+                    return { ...e, data: { ...e.data, waypoints: newWaypoints } };
+                }
+                return e;
+            })
+        );
+        saveToHistory();
+    }, [project, setEdges, saveToHistory]);
+
     const defaultEdgeOptions = useMemo(() => ({
         type: 'adjustable',
         animated: true,
@@ -427,6 +491,36 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     // Handle new connections
     const onConnect = useCallback((params) => {
+        const sourceNode = nodes.find(n => n.id === params.source);
+        const targetNode = nodes.find(n => n.id === params.target);
+
+        let defaultWaypoint = [];
+        if (sourceNode && targetNode) {
+            const sourceX = sourceNode.position.x + (sourceNode.width || 150) / 2;
+            const sourceY = sourceNode.position.y + (sourceNode.height || 80) / 2;
+            const targetX = targetNode.position.x + (targetNode.width || 150) / 2;
+            const targetY = targetNode.position.y + (targetNode.height || 80) / 2;
+            
+            // Create orthogonal waypoints for step-like routing
+            const midX = (sourceX + targetX) / 2;
+            const midY = (sourceY + targetY) / 2;
+            
+            // Create a simple L-shaped path (step routing)
+            if (Math.abs(sourceX - targetX) > Math.abs(sourceY - targetY)) {
+                // Horizontal routing preference
+                defaultWaypoint = [
+                    { x: midX, y: sourceY },
+                    { x: midX, y: targetY }
+                ];
+            } else {
+                // Vertical routing preference
+                defaultWaypoint = [
+                    { x: sourceX, y: midY },
+                    { x: targetX, y: midY }
+                ];
+            }
+        }
+
         const newEdge = {
             ...params,
             id: `edge-${Date.now()}`,
@@ -443,13 +537,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             data: {
                 label: '',
                 description: '',
-                intersection: 'none', // Default to no intersection
-                control: null // Will be auto-calculated
+                intersection: 'none',
+                waypoints: defaultWaypoint
             }
         };
         setEdges((eds) => addEdge(newEdge, eds));
         saveToHistory();
-    }, [saveToHistory]);
+    }, [saveToHistory, nodes]);
 
 
 
@@ -459,6 +553,18 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             nodes: selectedNodes || [],
             edges: selectedEdges || [],
         });
+        
+        // Update technical details panel
+        if (selectedNodes.length === 1) {
+            setSelectedElementForTechnicalDetails({ ...selectedNodes[0], type: 'node' });
+            setTechnicalDetailsPanelOpen(true);
+        } else if (selectedEdges.length === 1) {
+            setSelectedElementForTechnicalDetails({ ...selectedEdges[0], type: 'edge' });
+            setTechnicalDetailsPanelOpen(true);
+        } else {
+            setTechnicalDetailsPanelOpen(false);
+            setSelectedElementForTechnicalDetails(null);
+        }
     }, []);
 
     // Handle edge click - now uses property panel instead of modal
@@ -468,6 +574,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             nodes: [],
             edges: [edge],
         });
+        
+        // Update technical details
+        setSelectedElementForTechnicalDetails({ ...edge, type: 'edge' });
+        setTechnicalDetailsPanelOpen(true);
     }, []);
 
     // Handle property changes for both nodes and edges
@@ -580,7 +690,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             setNodes((nds) => [...nds, newNode]);
             saveToHistory();
         });
-    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal]);
+    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal, project]);
 
     // Add new component node
     const addComponentNode = useCallback(() => {
@@ -665,6 +775,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         }
     }, [nodes, handleNodeLabelChange, saveToHistory, showContainerSelectorModal, showPromptModal]);
 
+    // Duplicate a node - Removed unused function to fix ESLint warning
+
     // Add new shape node
     const addShapeNode = useCallback((shapeType) => {
         showPromptModal('Add Shape', 'Enter shape name:', 'New Shape', (name) => {
@@ -693,7 +805,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             setNodes((nds) => [...nds, newNode]);
             saveToHistory();
         });
-    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal]);
+    }, [handleNodeLabelChange, saveToHistory, showPromptModal]);
 
     // Copy selected elements
     const copySelected = useCallback(() => {
@@ -728,7 +840,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             setEdges((eds) => [...eds, ...newEdges]);
             saveToHistory();
         }
-    }, [nodes, clipboardData, saveToHistory]);
+    }, [clipboardData, saveToHistory]);
 
     // Delete selected elements
     const deleteSelected = useCallback(() => {
@@ -882,7 +994,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 type: edge.type,
                 animated: edge.animated,
                 description: edge.data?.description,
-                control: edge.data?.control,
+                waypoints: edge.data?.waypoints, // Export waypoints instead of control
                 markerStart: edge.markerStart,
                 markerEnd: edge.markerEnd,
                 intersection: edge.data?.intersection,
@@ -1144,8 +1256,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     try {
                         const importedData = JSON.parse(e.target.result);
                         const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(importedData);
+                        // Migrate edges to ensure waypoint functionality 
+                        const migratedEdges = migrateEdgesToAdjustable(importedEdges);
                         applyAutoLayout(importedNodes);
-                        setEdges(importedEdges);
+                        setEdges(migratedEdges);
                         saveToHistory();
                     } catch (error) {
                         console.error('Error importing diagram:', error);
@@ -1156,7 +1270,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             }
         };
         inputElement.click();
-    }, [jsonToReactFlow, applyAutoLayout, saveToHistory]);
+    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToAdjustable]);
 
     const importDiagramObject = useCallback((data) => {
         if (!validateDiagram(data)) {
@@ -1164,10 +1278,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             return;
         }
         const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
+        // Migrate edges to ensure waypoint functionality
+        const migratedEdges = migrateEdgesToAdjustable(importedEdges);
         applyAutoLayout(importedNodes);
-        setEdges(importedEdges);
+        setEdges(migratedEdges);
         saveToHistory();
-    }, [jsonToReactFlow, applyAutoLayout, saveToHistory]);
+    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToAdjustable]);
 
 
     const handleJsonPasteImport = useCallback((data) => {
@@ -1406,7 +1522,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
         // Optionally show a toast notification
         // toast.success(`Pasted ${newNodes.length} nodes and ${newEdges.length} connections`);
-    }, [nodes, clipboardData, saveToHistory]);
+    }, [clipboardData, saveToHistory]);
 
 
     return (
@@ -1441,6 +1557,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 }}
                 onCancel={() => setShapeSelectorModal({ isOpen: false })}
             />
+
+            {/* Context Menu Handler - Removed unused code to fix ESLint errors */}
 
             {/* Header */}
             <div className="flex flex-col bg-gray-100 dark:bg-gray-900 shadow z-10">
@@ -1507,7 +1625,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 {/* Quick Action Buttons */}
                 <div className="flex items-center gap-2 p-2 bg-white/5 border-t border-white/10">
                     <button
-                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${history.past.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
+                        className={`p-2 rounded flex items-center justify-center w-11 h-11 text-white bg-white/10 border border-white/20 transition-all touch-manipulation ${history.past.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md active:scale-95'
                             }`}
                         onClick={undo}
                         disabled={history.past.length === 0}
@@ -1516,7 +1634,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         ↩️
                     </button>
                     <button
-                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${history.future.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
+                        className={`p-2 rounded flex items-center justify-center w-11 h-11 text-white bg-white/10 border border-white/20 transition-all touch-manipulation ${history.future.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md active:scale-95'
                             }`}
                         onClick={redo}
                         disabled={history.future.length === 0}
@@ -1526,7 +1644,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     </button>
                     <div className="w-px h-6 bg-white/20 mx-1"></div>
                     <button
-                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${selectedElements.nodes.length === 0 && selectedElements.edges.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
+                        className={`p-2 rounded flex items-center justify-center w-11 h-11 text-white bg-white/10 border border-white/20 transition-all touch-manipulation ${selectedElements.nodes.length === 0 && selectedElements.edges.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md active:scale-95'
                             }`}
                         onClick={copySelectedWithLinks}
                         disabled={selectedElements.nodes.length === 0 && selectedElements.edges.length === 0}
@@ -1535,7 +1653,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         📋
                     </button>
                     <button
-                        className={`p-2 rounded flex items-center justify-center w-9 h-9 text-white bg-white/10 border border-white/20 transition-all ${!clipboardData ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md'
+                        className={`p-2 rounded flex items-center justify-center w-11 h-11 text-white bg-white/10 border border-white/20 transition-all touch-manipulation ${!clipboardData ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md active:scale-95'
                             }`}
                         onClick={pasteElementsWithLinks}
                         disabled={!clipboardData}
@@ -1544,14 +1662,14 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         📄
                     </button>
                     <button
-                        className={`p-2 rounded flex items-center justify-center w-9 h-9 border transition-colors ${panMode ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                        className={`p-2 rounded flex items-center justify-center w-11 h-11 border transition-colors touch-manipulation active:scale-95 ${panMode ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                         onClick={togglePanMode}
                         title={panMode ? 'Selection Mode' : 'Pan Mode'}
                     >
                         <Move size={16} />
                     </button>
                     <button
-                        className="p-2 rounded flex items-center justify-center w-9 h-9 border bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+                        className="p-2 rounded flex items-center justify-center w-11 h-11 border bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 transition-colors touch-manipulation hover:bg-gray-200 dark:hover:bg-gray-700 active:scale-95"
                         onClick={onToggleFullscreen}
                         title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                     >
@@ -1603,10 +1721,24 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     zoomOnPinch={true}
                     panOnScroll={false}
                     preventScrolling={true}
+                    onTouchStart={(e) => {
+                        // Enhanced touch support for mobile devices
+                        if (e.touches.length === 2) {
+                            // Two finger touch - enable pan mode temporarily for better navigation
+                            setPanMode(true);
+                        }
+                    }}
+                    onTouchEnd={(e) => {
+                        // Reset pan mode after touch interaction
+                        if (e.touches.length === 0) {
+                            // Could implement logic to restore previous pan mode state
+                        }
+                    }}
                     connectOnClick={true}  // Allow connections by clicking handles
                     onPaneContextMenu={handleContextMenu}
                     onNodeContextMenu={handleContextMenu}
                     onEdgeContextMenu={handleContextMenu}
+                    onEdgeDoubleClick={onEdgeDoubleClick} // Add this line
                     isValidConnection={(connection) => {
                         // Allow all connections between different nodes
                         return connection.source !== connection.target;
@@ -1728,6 +1860,18 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 onValidate={validateJson}
                 onClose={() => setJsonValidatorModal({ isOpen: false })}
             />
+            
+            {/* Technical Details Panel */}
+            <TechnicalDetailsPanel
+                selectedElement={selectedElementForTechnicalDetails}
+                isOpen={technicalDetailsPanelOpen}
+                onClose={() => {
+                    setTechnicalDetailsPanelOpen(false);
+                    setSelectedElementForTechnicalDetails(null);
+                }}
+            />
+            
+            {/* Technical Details Tooltip - Removed unused component to fix ESLint errors */}
         </div>
     );
 

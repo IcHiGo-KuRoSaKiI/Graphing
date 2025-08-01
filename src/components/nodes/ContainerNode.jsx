@@ -1,20 +1,31 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
 
-const handleStyle = {
+// Draw.io-style connection point styles
+const drawioHandleStyle = {
     background: '#3b82f6',
-    border: '2px solid #fff',
-    width: 8,
-    height: 8,
+    border: '2px solid #ffffff',
+    width: 12,
+    height: 12,
     borderRadius: '50%',
     zIndex: 10,
     cursor: 'crosshair',
-    transition: 'all 0.15s ease',
+    transition: 'all 0.2s ease',
+    opacity: 0,
+    transform: 'scale(0.8)',
+};
+
+const drawioHandleHoverStyle = {
+    ...drawioHandleStyle,
+    opacity: 1,
+    transform: 'scale(1.2)',
+    boxShadow: '0 0 8px rgba(59, 130, 246, 0.6)',
 };
 
 const ContainerNode = ({ data, id, selected, isConnectable }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [label, setLabel] = useState(data.label || 'Container');
+    const [hoveredHandle, setHoveredHandle] = useState(null);
 
     useEffect(() => {
         setLabel(data.label || 'Container');
@@ -44,6 +55,15 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
         }
     }, [handleLabelSubmit, data.label]);
 
+    // Draw.io-style connection point handlers
+    const handleConnectionPointMouseEnter = useCallback((position) => {
+        setHoveredHandle(position);
+    }, []);
+
+    const handleConnectionPointMouseLeave = useCallback(() => {
+        setHoveredHandle(null);
+    }, []);
+
     return (
         <>
             <NodeResizer
@@ -70,6 +90,8 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     boxSizing: 'border-box',
                     position: 'relative'
                 }}
+                onMouseEnter={() => setHoveredHandle('node')}
+                onMouseLeave={() => setHoveredHandle(null)}
             >
                 <div
                     className="px-2 py-1 border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t-lg flex items-center gap-2"
@@ -119,69 +141,159 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     )}
                 </div>
 
-                {/* Simplified connection handles - one per position that can act as both source and target */}
+                {/* Draw.io-style connection points - visible on hover */}
                 <Handle
                     type="source"
                     position={Position.Top}
                     id="top"
-                    style={handleStyle}
+                    style={hoveredHandle === 'top' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
-                    className="container-handle"
+                    className="drawio-connection-point"
+                    onMouseEnter={() => handleConnectionPointMouseEnter('top')}
+                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
                 <Handle
                     type="source"
                     position={Position.Right}
                     id="right"
-                    style={handleStyle}
+                    style={hoveredHandle === 'right' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
-                    className="container-handle"
+                    className="drawio-connection-point"
+                    onMouseEnter={() => handleConnectionPointMouseEnter('right')}
+                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
                 <Handle
                     type="source"
                     position={Position.Bottom}
                     id="bottom"
-                    style={handleStyle}
+                    style={hoveredHandle === 'bottom' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
-                    className="container-handle"
+                    className="drawio-connection-point"
+                    onMouseEnter={() => handleConnectionPointMouseEnter('bottom')}
+                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
                 <Handle
                     type="source"
                     position={Position.Left}
                     id="left"
-                    style={handleStyle}
+                    style={hoveredHandle === 'left' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
-                    className="container-handle"
+                    className="drawio-connection-point"
+                    onMouseEnter={() => handleConnectionPointMouseEnter('left')}
+                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
 
-                {/* Target handles - invisible but active for connections */}
+                {/* Target handles for receiving connections */}
                 <Handle
                     type="target"
                     position={Position.Top}
                     id="top-target"
-                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    style={hoveredHandle === 'top' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
+                    className="drawio-connection-point"
+                    onMouseEnter={() => handleConnectionPointMouseEnter('top')}
+                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
                 <Handle
                     type="target"
                     position={Position.Right}
                     id="right-target"
-                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    style={hoveredHandle === 'right' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
+                    className="drawio-connection-point"
+                    onMouseEnter={() => handleConnectionPointMouseEnter('right')}
+                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
                 <Handle
                     type="target"
                     position={Position.Bottom}
                     id="bottom-target"
-                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    style={hoveredHandle === 'bottom' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
+                    className="drawio-connection-point"
+                    onMouseEnter={() => handleConnectionPointMouseEnter('bottom')}
+                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
                 <Handle
                     type="target"
                     position={Position.Left}
                     id="left-target"
-                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    style={hoveredHandle === 'left' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
+                    className="drawio-connection-point"
+                    onMouseEnter={() => handleConnectionPointMouseEnter('left')}
+                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
+
+                {/* Show all connection points when node is hovered */}
+                {hoveredHandle === 'node' && (
+                    <>
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '-6px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                width: '12px',
+                                height: '12px',
+                                background: '#3b82f6',
+                                border: '2px solid #ffffff',
+                                borderRadius: '50%',
+                                opacity: 0.6,
+                                pointerEvents: 'none',
+                                zIndex: 5,
+                            }}
+                        />
+                        <div
+                            style={{
+                                position: 'absolute',
+                                right: '-6px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '12px',
+                                height: '12px',
+                                background: '#3b82f6',
+                                border: '2px solid #ffffff',
+                                borderRadius: '50%',
+                                opacity: 0.6,
+                                pointerEvents: 'none',
+                                zIndex: 5,
+                            }}
+                        />
+                        <div
+                            style={{
+                                position: 'absolute',
+                                bottom: '-6px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                width: '12px',
+                                height: '12px',
+                                background: '#3b82f6',
+                                border: '2px solid #ffffff',
+                                borderRadius: '50%',
+                                opacity: 0.6,
+                                pointerEvents: 'none',
+                                zIndex: 5,
+                            }}
+                        />
+                        <div
+                            style={{
+                                position: 'absolute',
+                                left: '-6px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '12px',
+                                height: '12px',
+                                background: '#3b82f6',
+                                border: '2px solid #ffffff',
+                                borderRadius: '50%',
+                                opacity: 0.6,
+                                pointerEvents: 'none',
+                                zIndex: 5,
+                            }}
+                        />
+                    </>
+                )}
             </div>
         </>
     );
