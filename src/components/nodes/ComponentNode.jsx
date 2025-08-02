@@ -90,6 +90,11 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                 <div
                     className="px-2 py-1 flex items-center gap-2 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t relative"
                     onDoubleClick={handleDoubleClick}
+                    style={{ 
+                        minHeight: '32px',
+                        position: 'relative',
+                        zIndex: 2
+                    }}
                 >
                     {data.icon && <span style={{ fontSize: '14px' }}>{data.icon}</span>}
                     {isEditing ? (
@@ -111,25 +116,33 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                             }}
                         />
                     ) : (
-                        <span style={{ fontSize: '14px', fontWeight: 'bold', color: data.textColor }} className={!data.textColor ? 'text-gray-800 dark:text-white' : ''}>{label}</span>
+                        <span style={{ 
+                            fontSize: '14px', 
+                            fontWeight: 'bold', 
+                            color: data.textColor,
+                            flex: 1,
+                            paddingRight: '90px' // Space for badges
+                        }} className={!data.textColor ? 'text-gray-800 dark:text-white' : ''}>
+                            {label}
+                        </span>
                     )}
                     
-                    {/* Technical Details Badges */}
-                    <div className="technical-badges absolute top-2 right-2 flex gap-1.5">
+                    {/* Technical Details Badges - Positioned in header but not overlapping */}
+                    <div className="technical-badges absolute top-1 right-1 flex gap-1 z-10">
                         {technicalDetails.protocol !== 'N/A' && (
-                            <span className={`badge ${getTechnicalColor('protocol', technicalDetails.protocol.split(', ')[0])} text-xs px-2 py-1 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
+                            <span className={`badge ${getTechnicalColor('protocol', technicalDetails.protocol.split(', ')[0])} text-xs px-1 py-0.5 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.protocol.split(', ')[0]}
                             </span>
                         )}
                         
                         {technicalDetails.security !== 'N/A' && (
-                            <span className={`badge ${getTechnicalColor('security', technicalDetails.security.split(', ')[0])} text-xs px-2 py-1 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
+                            <span className={`badge ${getTechnicalColor('security', technicalDetails.security.split(', ')[0])} text-xs px-1 py-0.5 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.security.split(', ')[0]}
                             </span>
                         )}
                         
                         {technicalDetails.performance.latency && (
-                            <span className={`badge ${getTechnicalColor('performance', 'latency')} text-xs px-2 py-1 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
+                            <span className={`badge ${getTechnicalColor('performance', 'latency')} text-xs px-1 py-0.5 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.performance.latency}
                             </span>
                         )}

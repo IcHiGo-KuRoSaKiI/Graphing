@@ -1,0 +1,42 @@
+{
+  "name": "graphing-mcp-server",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server for architecture diagram creation and management",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "http": "node http-server.js",
+    "test": "node test-server.js",
+    "test:http": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "architecture",
+    "diagram",
+    "graphing",
+    "ai",
+    "agent"
+  ],
+  "author": "Graphing Tool Team",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.4.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "graphing-mcp": "./index.js"
+  }
+}

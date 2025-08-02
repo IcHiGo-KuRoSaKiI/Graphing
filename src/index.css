@@ -536,15 +536,42 @@ code {
 
 .component-node .technical-badges {
     position: absolute;
-    top: 4px;
-    right: 4px;
+    top: 2px;
+    right: 2px;
     z-index: 10;
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+    max-width: 60px; /* Prevent badges from taking too much space */
 }
 
 .component-node .technical-badges .badge {
-    font-size: 8px;
+    font-size: 7px;
     padding: 1px 3px;
     line-height: 1;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Badge hover effects */
+.badge:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+    z-index: 15;
+}
+
+/* Responsive badge sizing */
+@media (max-width: 768px) {
+    .component-node .technical-badges .badge {
+        font-size: 6px;
+        padding: 1px 2px;
+    }
 }
 
 /* Line clamp utility */
