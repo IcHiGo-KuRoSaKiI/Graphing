@@ -21,6 +21,7 @@ import HexagonNode from '../nodes/HexagonNode';
 import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
+import UniversalShapeNode from '../nodes/UniversalShapeNode';
 import { AdjustableEdge } from '../edges';
 
 // Import modal components
@@ -34,6 +35,7 @@ import JsonValidatorModal from '../modals/JsonValidatorModal';
 // Import editor components
 import TailwindPropertyEditor from './TailwindPropertyEditor';
 import TechnicalDetailsPanel from './TechnicalDetailsPanel';
+import ShapeLibraryPanel from './ShapeLibraryPanel';
 
 import EnhancedMenuBar from './EnhancedMenuBar';
 import { autoLayoutNodes } from '../utils/autoLayout';
@@ -79,6 +81,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [propertyPanelMinimized, setPropertyPanelMinimized] = useState(false);
     const [statsPanelOpen, setStatsPanelOpen] = useState(true);
     const [panMode, setPanMode] = useState(false);
+    const [shapeLibraryOpen, setShapeLibraryOpen] = useState(false);
     
     // Technical details state
     const [technicalDetailsPanelOpen, setTechnicalDetailsPanelOpen] = useState(false);
@@ -152,6 +155,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         triangle: TriangleNode,
         container: ContainerNode,
         component: ComponentNode,
+        universalShape: UniversalShapeNode,
     }), []);
 
     const edgeTypes = useMemo(() => ({
@@ -869,6 +873,40 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             saveToHistory();
         });
     }, [handleNodeLabelChange, saveToHistory, showPromptModal]);
+
+    // Handle shape selection from shape library
+    const handleShapeSelect = useCallback((shapeData) => {
+        let position = { x: 100, y: 100 };
+        
+        // Try to position at viewport center
+        if (reactFlowWrapper.current) {
+            const { left, top, width, height } = reactFlowWrapper.current.getBoundingClientRect();
+            const center = { x: left + width / 2, y: top + height / 2 };
+            position = project({ x: center.x - left, y: center.y - top });
+        }
+
+        const newNode = {
+            id: `shape-${Date.now()}`,
+            type: shapeData.type,
+            position,
+            data: {
+                ...shapeData,
+                onLabelChange: handleNodeLabelChange
+            },
+            style: {
+                width: shapeData.defaultSize?.width || 100,
+                height: shapeData.defaultSize?.height || 80,
+                zIndex: 15
+            },
+            draggable: true,
+            selectable: true,
+            zIndex: 15
+        };
+
+        setNodes((nds) => [...nds, newNode]);
+        setShapeLibraryOpen(false);
+        saveToHistory();
+    }, [handleNodeLabelChange, saveToHistory, project]);
 
     // Copy selected elements
     const copySelected = useCallback(() => {
@@ -1823,6 +1861,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     onAddContainer={addContainerNode}
                     onAddComponent={addComponentNode}
                     onAddShape={showShapeSelectorModal}
+                    onToggleShapeLibrary={() => setShapeLibraryOpen(prev => !prev)}
 
                     // Link operations
                     onLinkNodes={linkSelectedNodes}
@@ -2097,6 +2136,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 isOpen={jsonValidatorModal.isOpen}
                 onValidate={validateJson}
                 onClose={() => setJsonValidatorModal({ isOpen: false })}
+            />
+            
+            {/* Shape Library Panel */}
+            <ShapeLibraryPanel
+                isOpen={shapeLibraryOpen}
+                onClose={() => setShapeLibraryOpen(false)}
+                onShapeSelect={handleShapeSelect}
             />
             
             {/* Technical Details Panel */}

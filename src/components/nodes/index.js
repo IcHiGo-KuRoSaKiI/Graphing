@@ -4,6 +4,7 @@ import HexagonNode from './HexagonNode';
 import TriangleNode from './TriangleNode';
 import ContainerNode from './ContainerNode';
 import ComponentNode from './ComponentNode';
+import UniversalShapeNode from './UniversalShapeNode';
 
 export {
     DiamondNode,
@@ -11,5 +12,6 @@ export {
     HexagonNode,
     TriangleNode,
     ContainerNode,
-    ComponentNode
+    ComponentNode,
+    UniversalShapeNode
 };

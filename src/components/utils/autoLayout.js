@@ -17,7 +17,7 @@ export const autoLayoutNodes = (nodes) => {
     let isHeader = true;
     let inParentheses = false;
     
-    parts.forEach(word => {
+    parts.forEach(word => { 
       // Check if we're entering parentheses (technical details)
       if (word.includes('(')) {
         isHeader = false;

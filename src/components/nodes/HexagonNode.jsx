@@ -67,7 +67,7 @@ const HexagonNode = ({ data, id, selected, isConnectable }) => {
                 isVisible={selected}
                 minWidth={80}
                 minHeight={80}
-                handleClassName="w-2.5 h-2.5 bg-gray-500 rounded-full border-2 border-white shadow"
+                handleClassName="w-2.5 h-2.5 bg-gray-500 rounded-full border-2 border-white"
                 lineClassName="border-2 border-dashed border-indigo-500 opacity-60"
                 nodeWidth={data.width}
                 nodeHeight={data.height}
@@ -84,7 +84,7 @@ const HexagonNode = ({ data, id, selected, isConnectable }) => {
                     justifyContent: 'center',
                     cursor: 'move',
                     transition: 'all 0.2s ease',
-                    boxShadow: selected ? '0 0 0 2px #2196F3' : '0 2px 4px rgba(0,0,0,0.1)',
+                    boxShadow: selected ? '0 0 0 2px #2196F3' : 'none',
                     boxSizing: 'border-box'
                 }}
                 onDoubleClick={handleDoubleClick}

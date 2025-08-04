@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { ChevronDown, File, Edit, Eye, Settings, HelpCircle, Plus, Link, Unlink, Copy, Trash } from 'lucide-react';
+import { ChevronDown, File, Edit, Eye, Settings, HelpCircle, Plus, Link, Unlink, Copy, Trash, Library } from 'lucide-react';
 
 const EnhancedMenuBar = ({
   onNew,
@@ -25,6 +25,7 @@ const EnhancedMenuBar = ({
   onAddContainer,
   onAddComponent,
   onAddShape,
+  onToggleShapeLibrary,
   onLinkNodes,
   onUnlinkNodes,
   onValidateJSON,
@@ -201,6 +202,10 @@ const EnhancedMenuBar = ({
         </MenuItem>
         <MenuItem onClick={onAddShape}>
           Add Shape
+        </MenuItem>
+        <MenuItem separator />
+        <MenuItem onClick={onToggleShapeLibrary} icon={Library}>
+          Shape Library
         </MenuItem>
       </MenuButton>
 

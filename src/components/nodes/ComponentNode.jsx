@@ -18,7 +18,7 @@ const drawioHandleHoverStyle = {
     ...drawioHandleStyle,
     opacity: 1,
     transform: 'scale(1.2)',
-    boxShadow: '0 0 8px rgba(59, 130, 246, 0.6)',
+    boxShadow: 'none',
 };
 
 const ComponentNode = ({ data, id, selected, isConnectable }) => {
@@ -64,7 +64,7 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                 isVisible={selected}
                 minWidth={100}
                 minHeight={50}
-                handleClassName="w-2.5 h-2.5 bg-gray-500 rounded-full border-2 border-white shadow"
+                handleClassName="w-2.5 h-2.5 bg-gray-500 rounded-full border-2 border-white"
                 lineClassName="border-2 border-dashed border-indigo-500 opacity-60"
                 nodeWidth={data.width}
                 nodeHeight={data.height}
@@ -80,7 +80,7 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                     flexDirection: 'column',
                     cursor: 'move',
                     transition: 'all 0.2s ease',
-                    boxShadow: selected ? '0 0 0 2px #2196F3' : '0 2px 4px rgba(0,0,0,0.1)',
+                    boxShadow: selected ? '0 0 0 2px #2196F3' : 'none',
                     boxSizing: 'border-box',
                     position: 'relative'
                 }}
@@ -143,19 +143,19 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                         justifyItems: 'center'
                     }}>
                         {technicalDetails.protocol !== 'N/A' && (
-                            <span className={`badge ${getTechnicalColor('protocol', technicalDetails.protocol.split(', ')[0])} text-xs px-1 py-0.5 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
+                            <span className={`badge ${getTechnicalColor('protocol', technicalDetails.protocol.split(', ')[0])} text-xs px-1 py-0.5 rounded-full border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.protocol.split(', ')[0]}
                             </span>
                         )}
                         
                         {technicalDetails.security !== 'N/A' && (
-                            <span className={`badge ${getTechnicalColor('security', technicalDetails.security.split(', ')[0])} text-xs px-1 py-0.5 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
+                            <span className={`badge ${getTechnicalColor('security', technicalDetails.security.split(', ')[0])} text-xs px-1 py-0.5 rounded-full border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.security.split(', ')[0]}
                             </span>
                         )}
                         
                         {technicalDetails.performance.latency && (
-                            <span className={`badge ${getTechnicalColor('performance', 'latency')} text-xs px-1 py-0.5 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
+                            <span className={`badge ${getTechnicalColor('performance', 'latency')} text-xs px-1 py-0.5 rounded-full border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.performance.latency}
                             </span>
                         )}
