@@ -57,7 +57,7 @@ export const autoLayoutNodes = (nodes) => {
     
     // Calculate header size (including badges)
     const headerCharWidth = 9; // Slightly larger for bold header text
-    const headerLineHeight = 24; // More space for header
+    const headerLineHeight = 28; // Increased from 24 to 28 for better spacing
     const headerPadding = 32;
     
     // Count badges/technical terms in header
@@ -73,16 +73,16 @@ export const autoLayoutNodes = (nodes) => {
     const titleMinWidth = Math.min(headerText.length * headerCharWidth, 200); // Limit title width
     const minRowWidth = titleMinWidth + totalBadgeWidth + headerPadding + 20; // Extra spacing
     
-    // Calculate header width accounting for flex layout
-    const availableWidthForText = maxW - totalBadgeWidth - headerPadding - 20;
-    const maxHeaderCharsPerLine = Math.max(10, Math.floor(availableWidthForText / headerCharWidth));
-    const headerLines = Math.ceil(headerText.length / maxHeaderCharsPerLine) || 1;
-    
     // Set header width - prefer single row layout, allow wrapping if needed
     let headerWidth = Math.max(minRowWidth, Math.min(maxW, titleMinWidth + totalBadgeWidth + headerPadding));
     
-    // Adjust height for multiple header lines
-    const headerMultilineHeight = headerLines * headerLineHeight;
+    // Calculate actual header lines based on final header width - this is the key fix
+    const actualAvailableWidthForText = headerWidth - totalBadgeWidth - headerPadding - 20;
+    const actualMaxHeaderCharsPerLine = Math.max(15, Math.floor(actualAvailableWidthForText / headerCharWidth)); // Increased minimum from 10 to 15
+    const actualHeaderLines = Math.ceil(headerText.length / actualMaxHeaderCharsPerLine) || 1;
+    
+    // Adjust height for multiple header lines with proper spacing
+    const headerMultilineHeight = actualHeaderLines * headerLineHeight + (headerBadges > 0 ? 8 : 0); // Extra space for badges
     
     // Calculate description size with word wrapping
     const descWords = descriptionText.split(/\s+/);
@@ -117,7 +117,7 @@ export const autoLayoutNodes = (nodes) => {
     
     // Combine header and description dimensions
     let totalWidth = Math.max(headerWidth, descWidth);
-    let totalHeight = headerMultilineHeight + descHeight;
+    let totalHeight = headerMultilineHeight + descHeight + 16; // Added extra spacing between header and description
     
     // Add extra space for technical details
     const hasTechnicalDetails = text.includes('HTTP') || text.includes('OAuth') || text.includes('RBAC') || 
