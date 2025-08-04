@@ -3,6 +3,54 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
 
+// Container preview component
+const ContainerPreview = ({ 
+    width, height, padding, borderRadius, borderWidth, 
+    headerHeight, headerColor, contentColor, borderColor,
+    headerFontSize, fontSize 
+}) => {
+    return (
+        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Preview:</label>
+            <div 
+                style={{
+                    width: Math.min(width * 0.4, 120),
+                    height: Math.min(height * 0.4, 80),
+                    border: `${borderWidth}px solid ${borderColor}`,
+                    borderRadius: `${borderRadius}px`,
+                    overflow: 'hidden',
+                    backgroundColor: contentColor,
+                    margin: '0 auto'
+                }}
+            >
+                <div 
+                    style={{
+                        height: `${headerHeight * 0.4}px`,
+                        backgroundColor: headerColor,
+                        padding: `${padding * 0.4}px`,
+                        fontSize: `${Math.max(headerFontSize * 0.4, 8)}px`,
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        borderBottom: headerHeight > 0 ? `1px solid ${borderColor}` : 'none'
+                    }}
+                >
+                    Sample Container
+                </div>
+                <div 
+                    style={{
+                        padding: `${padding * 0.4}px`,
+                        fontSize: `${Math.max(fontSize * 0.4, 6)}px`,
+                        color: '#666'
+                    }}
+                >
+                    Content area
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // Simple preview for the different intersection styles
 const IntersectionStylePreview = ({ style, size = 40, className = '' }) => {
     const cx = size / 2;
@@ -84,6 +132,18 @@ const TailwindPropertyEditor = ({
     const [nodeColor, setNodeColor] = useState('#ffffff');
     const [nodeBorderColor, setNodeBorderColor] = useState('#dddddd');
     const [nodeZIndex, setNodeZIndex] = useState(1);
+    
+    // Container-specific properties
+    const [containerWidth, setContainerWidth] = useState(200);
+    const [containerHeight, setContainerHeight] = useState(150);
+    const [containerPadding, setContainerPadding] = useState(8);
+    const [containerBorderRadius, setContainerBorderRadius] = useState(8);
+    const [containerBorderWidth, setContainerBorderWidth] = useState(2);
+    const [containerHeaderHeight, setContainerHeaderHeight] = useState(32);
+    const [containerHeaderColor, setContainerHeaderColor] = useState('#f9f9f9');
+    const [containerContentColor, setContainerContentColor] = useState('#ffffff');
+    const [containerFontSize, setContainerFontSize] = useState(14);
+    const [containerHeaderFontSize, setContainerHeaderFontSize] = useState(14);
 
     // Edge properties
     const [edgeLabel, setEdgeLabel] = useState('');
@@ -101,6 +161,8 @@ const TailwindPropertyEditor = ({
     const [expandedSections, setExpandedSections] = useState({
         basic: true,
         style: true,
+        layout: false,
+        container: false,
         advanced: false
     });
 
@@ -123,6 +185,18 @@ const TailwindPropertyEditor = ({
             setNodeColor(selectedNode.data.color || '#ffffff');
             setNodeBorderColor(selectedNode.data.borderColor || '#dddddd');
             setNodeZIndex(selectedNode.zIndex || selectedNode.style?.zIndex || 1);
+            
+            // Container-specific properties
+            setContainerWidth(selectedNode.data.width || selectedNode.width || 200);
+            setContainerHeight(selectedNode.data.height || selectedNode.height || 150);
+            setContainerPadding(selectedNode.data.padding || 8);
+            setContainerBorderRadius(selectedNode.data.borderRadius || 8);
+            setContainerBorderWidth(selectedNode.data.borderWidth || 2);
+            setContainerHeaderHeight(selectedNode.data.headerHeight || 32);
+            setContainerHeaderColor(selectedNode.data.headerColor || '#f9f9f9');
+            setContainerContentColor(selectedNode.data.contentColor || '#ffffff');
+            setContainerFontSize(selectedNode.data.fontSize || 14);
+            setContainerHeaderFontSize(selectedNode.data.headerFontSize || 14);
         }
 
         if (selectedEdge) {
@@ -226,6 +300,67 @@ const TailwindPropertyEditor = ({
         setNodeTextColor(value);
         onElementPropertyChange('node', 'textColor', value);
     }, [onElementPropertyChange]);
+    
+    // Container property handlers
+    const handleContainerWidthChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 200;
+        setContainerWidth(value);
+        onElementPropertyChange('node', 'width', value);
+    }, [onElementPropertyChange]);
+    
+    const handleContainerHeightChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 150;
+        setContainerHeight(value);
+        onElementPropertyChange('node', 'height', value);
+    }, [onElementPropertyChange]);
+    
+    const handleContainerPaddingChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 0;
+        setContainerPadding(value);
+        onElementPropertyChange('node', 'padding', value);
+    }, [onElementPropertyChange]);
+    
+    const handleContainerBorderRadiusChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 0;
+        setContainerBorderRadius(value);
+        onElementPropertyChange('node', 'borderRadius', value);
+    }, [onElementPropertyChange]);
+    
+    const handleContainerBorderWidthChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 1;
+        setContainerBorderWidth(value);
+        onElementPropertyChange('node', 'borderWidth', value);
+    }, [onElementPropertyChange]);
+    
+    const handleContainerHeaderHeightChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 20;
+        setContainerHeaderHeight(value);
+        onElementPropertyChange('node', 'headerHeight', value);
+    }, [onElementPropertyChange]);
+    
+    const handleContainerHeaderColorChange = useCallback((e) => {
+        const value = e.target.value;
+        setContainerHeaderColor(value);
+        onElementPropertyChange('node', 'headerColor', value);
+    }, [onElementPropertyChange]);
+    
+    const handleContainerContentColorChange = useCallback((e) => {
+        const value = e.target.value;
+        setContainerContentColor(value);
+        onElementPropertyChange('node', 'contentColor', value);
+    }, [onElementPropertyChange]);
+    
+    const handleContainerFontSizeChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 12;
+        setContainerFontSize(value);
+        onElementPropertyChange('node', 'fontSize', value);
+    }, [onElementPropertyChange]);
+    
+    const handleContainerHeaderFontSizeChange = useCallback((e) => {
+        const value = parseInt(e.target.value, 10) || 12;
+        setContainerHeaderFontSize(value);
+        onElementPropertyChange('node', 'headerFontSize', value);
+    }, [onElementPropertyChange]);
 
     // Edge handlers
     const handleEdgeLabel = useCallback((e) => {
@@ -304,6 +439,44 @@ const TailwindPropertyEditor = ({
         const value = e.target.value;
         setEdgeIntersection(value);
         onElementPropertyChange('edge', 'intersection', value);
+    }, [onElementPropertyChange]);
+    
+    // Container preset functions
+    const applyContainerPreset = useCallback((preset) => {
+        switch (preset) {
+            case 'small':
+                setContainerWidth(150);
+                setContainerHeight(100);
+                onElementPropertyChange('node', 'width', 150);
+                onElementPropertyChange('node', 'height', 100);
+                break;
+            case 'medium':
+                setContainerWidth(200);
+                setContainerHeight(150);
+                onElementPropertyChange('node', 'width', 200);
+                onElementPropertyChange('node', 'height', 150);
+                break;
+            case 'large':
+                setContainerWidth(300);
+                setContainerHeight(200);
+                onElementPropertyChange('node', 'width', 300);
+                onElementPropertyChange('node', 'height', 200);
+                break;
+            case 'wide':
+                setContainerWidth(400);
+                setContainerHeight(150);
+                onElementPropertyChange('node', 'width', 400);
+                onElementPropertyChange('node', 'height', 150);
+                break;
+            case 'tall':
+                setContainerWidth(200);
+                setContainerHeight(300);
+                onElementPropertyChange('node', 'width', 200);
+                onElementPropertyChange('node', 'height', 300);
+                break;
+            default:
+                break;
+        }
     }, [onElementPropertyChange]);
 
     if (!selectedNode && !selectedEdge) {
@@ -647,6 +820,219 @@ const TailwindPropertyEditor = ({
                             </div>
                         )}
                     </div>
+
+                    {/* Layout Properties Section - Container Specific */}
+                    {selectedNode && selectedNode.type === 'container' && (
+                        <div className="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                            <div
+                                className="flex items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
+                                onClick={() => toggleSection('layout')}
+                            >
+                                <ChevronRight className={`mr-2 text-gray-500 transition-transform ${expandedSections.layout ? 'rotate-90' : ''}`} size={16} />
+                                <span className="font-medium text-gray-700 dark:text-gray-200">Layout & Dimensions</span>
+                            </div>
+                            {expandedSections.layout && (
+                                <div className="p-4">
+                                    {/* Size Presets */}
+                                    <div className="mb-4">
+                                        <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Size Presets:</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['small', 'medium', 'large', 'wide', 'tall'].map((preset) => (
+                                                <button
+                                                    key={preset}
+                                                    onClick={() => applyContainerPreset(preset)}
+                                                    className="px-3 py-1.5 text-sm border-2 rounded-md transition-all bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 capitalize"
+                                                >
+                                                    {preset}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Dimensions */}
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div>
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Width:</label>
+                                            <input
+                                                type="number"
+                                                value={containerWidth}
+                                                onChange={handleContainerWidthChange}
+                                                min="50"
+                                                max="1000"
+                                                className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Height:</label>
+                                            <input
+                                                type="number"
+                                                value={containerHeight}
+                                                onChange={handleContainerHeightChange}
+                                                min="50"
+                                                max="1000"
+                                                className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Padding */}
+                                    <div className="mb-4">
+                                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Padding:</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="50"
+                                                value={containerPadding}
+                                                onChange={handleContainerPaddingChange}
+                                                className="flex-1 h-2 bg-gray-300 rounded-full appearance-none"
+                                            />
+                                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded min-w-[45px] text-center">{containerPadding}px</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Container Style Properties */}
+                    {selectedNode && selectedNode.type === 'container' && (
+                        <div className="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                            <div
+                                className="flex items-center px-4 py-3 bg-gray-50 dark:bg-gray-800 cursor-pointer"
+                                onClick={() => toggleSection('container')}
+                            >
+                                <ChevronRight className={`mr-2 text-gray-500 transition-transform ${expandedSections.container ? 'rotate-90' : ''}`} size={16} />
+                                <span className="font-medium text-gray-700 dark:text-gray-200">Container Styling</span>
+                            </div>
+                            {expandedSections.container && (
+                                <div className="p-4">
+                                    {/* Preview */}
+                                    <ContainerPreview
+                                        width={containerWidth}
+                                        height={containerHeight}
+                                        padding={containerPadding}
+                                        borderRadius={containerBorderRadius}
+                                        borderWidth={containerBorderWidth}
+                                        headerHeight={containerHeaderHeight}
+                                        headerColor={containerHeaderColor}
+                                        contentColor={containerContentColor}
+                                        borderColor={nodeBorderColor}
+                                        headerFontSize={containerHeaderFontSize}
+                                        fontSize={containerFontSize}
+                                    />
+                                    
+                                    {/* Border Properties */}
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div>
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Border Radius:</label>
+                                            <input
+                                                type="number"
+                                                value={containerBorderRadius}
+                                                onChange={handleContainerBorderRadiusChange}
+                                                min="0"
+                                                max="50"
+                                                className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Border Width:</label>
+                                            <input
+                                                type="number"
+                                                value={containerBorderWidth}
+                                                onChange={handleContainerBorderWidthChange}
+                                                min="0"
+                                                max="10"
+                                                className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Header Properties */}
+                                    <div className="mb-4">
+                                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Header Height:</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="range"
+                                                min="20"
+                                                max="80"
+                                                value={containerHeaderHeight}
+                                                onChange={handleContainerHeaderHeightChange}
+                                                className="flex-1 h-2 bg-gray-300 rounded-full appearance-none"
+                                            />
+                                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded min-w-[45px] text-center">{containerHeaderHeight}px</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Header Color */}
+                                    <div className="mb-4">
+                                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Header Color:</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="color"
+                                                value={containerHeaderColor}
+                                                onChange={handleContainerHeaderColorChange}
+                                                className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={containerHeaderColor}
+                                                onChange={handleContainerHeaderColorChange}
+                                                placeholder="#f9f9f9"
+                                                className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Content Area Color */}
+                                    <div className="mb-4">
+                                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Content Color:</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="color"
+                                                value={containerContentColor}
+                                                onChange={handleContainerContentColorChange}
+                                                className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={containerContentColor}
+                                                onChange={handleContainerContentColorChange}
+                                                placeholder="#ffffff"
+                                                className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Typography */}
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div>
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Header Font Size:</label>
+                                            <input
+                                                type="number"
+                                                value={containerHeaderFontSize}
+                                                onChange={handleContainerHeaderFontSizeChange}
+                                                min="8"
+                                                max="32"
+                                                className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Content Font Size:</label>
+                                            <input
+                                                type="number"
+                                                value={containerFontSize}
+                                                onChange={handleContainerFontSizeChange}
+                                                min="8"
+                                                max="24"
+                                                className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Advanced Properties Section - Icon Library */}
                     {selectedNode && (

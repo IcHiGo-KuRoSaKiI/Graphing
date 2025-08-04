@@ -77,9 +77,9 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
             />
             <div
                 style={{
-                    background: data.color || '#f9f9f9',
-                    border: `2px solid ${data.borderColor || '#ddd'}`,
-                    borderRadius: '8px',
+                    background: data.contentColor || data.color || '#ffffff',
+                    border: `${data.borderWidth || 2}px solid ${data.borderColor || '#ddd'}`,
+                    borderRadius: `${data.borderRadius || 8}px`,
                     width: '100%',
                     height: '100%',
                     display: 'flex',
@@ -88,13 +88,23 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     transition: 'all 0.2s ease',
                     boxShadow: selected ? '0 0 0 2px #2196F3' : 'none',
                     boxSizing: 'border-box',
-                    position: 'relative'
+                    position: 'relative',
+                    fontSize: `${data.fontSize || 14}px`
                 }}
                 onMouseEnter={() => setHoveredHandle('node')}
                 onMouseLeave={() => setHoveredHandle(null)}
             >
                 <div
-                    className="px-2 py-1 border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t-lg flex items-center gap-2"
+                    className="border-b border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 flex items-center gap-2"
+                    style={{
+                        background: data.headerColor || '#f9f9f9',
+                        height: `${data.headerHeight || 32}px`,
+                        padding: `${data.padding || 8}px`,
+                        borderRadius: `${(data.borderRadius || 8) - 1}px ${(data.borderRadius || 8) - 1}px 0 0`,
+                        fontSize: `${data.headerFontSize || 14}px`,
+                        minHeight: '24px',
+                        alignItems: 'center'
+                    }}
                     onDoubleClick={handleDoubleClick}
                 >
                     {data.icon && <span style={{ fontSize: '14px' }}>{data.icon}</span>}
@@ -107,33 +117,40 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                             onKeyDown={handleKeyDown}
                             autoFocus
                             style={{
-                                fontSize: '14px',
+                                fontSize: `${data.headerFontSize || 14}px`,
                                 border: 'none',
                                 borderBottom: '2px solid #2196F3',
                                 outline: 'none',
                                 background: 'transparent',
                                 padding: '4px',
-                                width: '100%'
+                                width: '100%',
+                                color: data.textColor || '#000000'
                             }}
                         />
                     ) : (
-                        <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{label}</span>
+                        <span style={{ 
+                            fontSize: `${data.headerFontSize || 14}px`, 
+                            fontWeight: 'bold',
+                            color: data.textColor || '#000000'
+                        }}>{label}</span>
                     )}
                 </div>
                 <div
                     style={{
                         flex: 1,
-                        padding: '8px',
+                        padding: `${data.padding || 8}px`,
                         overflow: 'hidden',
-                        position: 'relative'
+                        position: 'relative',
+                        fontSize: `${data.fontSize || 14}px`
                     }}
                 >
                     {data.description && (
                         <div
                             style={{
-                                fontSize: '12px',
-                                color: '#666',
-                                marginBottom: '8px'
+                                fontSize: `${Math.max((data.fontSize || 14) - 2, 10)}px`,
+                                color: data.textColor || '#666',
+                                marginBottom: '8px',
+                                lineHeight: '1.4'
                             }}
                         >
                             {data.description}
