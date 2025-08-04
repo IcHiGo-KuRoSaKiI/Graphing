@@ -66,23 +66,29 @@ export const autoLayoutNodes = (nodes) => {
     const badgeWidth = 50; // Width per badge
     const badgeHeight = 20; // Height for badge row
     
-    // Calculate total badge width - badges now share same row as title
-    const totalBadgeWidth = headerBadges * badgeWidth + (headerBadges > 0 ? headerBadges * 8 : 0); // 8px gap between badges
+    // Force title to get 70% of width, badges get 30%
+    const titleAreaWidth = Math.floor(maxW * 0.7); // Title gets 70% of total width
+    const badgeAreaWidth = headerBadges > 0 ? Math.floor(maxW * 0.25) : 0; // Badges get 25% max
     
-    // Calculate minimum width needed for title + badges in same row
-    const titleMinWidth = Math.min(headerText.length * headerCharWidth, 200); // Limit title width
-    const minRowWidth = titleMinWidth + totalBadgeWidth + headerPadding + 20; // Extra spacing
+    // Calculate title layout with generous space
+    const titleMaxCharsPerLine = Math.max(30, Math.floor(titleAreaWidth / headerCharWidth));
+    const titleLines = Math.ceil(headerText.length / titleMaxCharsPerLine) || 1;
+    const titleAreaHeight = titleLines * headerLineHeight;
     
-    // Set header width - prefer single row layout, allow wrapping if needed
-    let headerWidth = Math.max(minRowWidth, Math.min(maxW, titleMinWidth + totalBadgeWidth + headerPadding));
+    // Calculate badge layout - force into smaller area
+    const badgesPerRow = headerBadges > 0 ? Math.max(2, Math.floor(badgeAreaWidth / 40)) : 0; // Force 2+ badges per row
+    const badgeRows = headerBadges > 0 ? Math.ceil(headerBadges / badgesPerRow) : 0;
+    const badgeAreaHeight = badgeRows * (badgeHeight + 3); // Compact vertical spacing
     
-    // Calculate actual header lines based on final header width - this is the key fix
-    const actualAvailableWidthForText = headerWidth - totalBadgeWidth - headerPadding - 20;
-    const actualMaxHeaderCharsPerLine = Math.max(15, Math.floor(actualAvailableWidthForText / headerCharWidth)); // Increased minimum from 10 to 15
-    const actualHeaderLines = Math.ceil(headerText.length / actualMaxHeaderCharsPerLine) || 1;
+    // Header width calculation - use full available width with fixed ratio
+    let headerWidth = Math.max(
+      titleAreaWidth + badgeAreaWidth + headerPadding, // Total space for both areas
+      minW
+    );
+    headerWidth = Math.min(headerWidth, maxW);
     
-    // Adjust height for multiple header lines with proper spacing
-    const headerMultilineHeight = actualHeaderLines * headerLineHeight + (headerBadges > 0 ? 8 : 0); // Extra space for badges
+    // Header height is the maximum of title height and badge height
+    const headerMultilineHeight = Math.max(titleAreaHeight, badgeAreaHeight) + 8; // Extra padding
     
     // Calculate description size with word wrapping
     const descWords = descriptionText.split(/\s+/);
@@ -134,7 +140,7 @@ export const autoLayoutNodes = (nodes) => {
     // Apply flexible aspect ratio - prefer wider boxes to prevent text wrapping  
     const targetRatio = headerBadges > 2 ? 2.5/1 : 3/2; // Wider ratio for many badges
     const currentRatio = totalWidth / totalHeight;
-    const minWidthForFlexLayout = Math.max(minRowWidth, 150); // Minimum for flex layout
+    const minWidthForFlexLayout = Math.max(titleAreaWidth + badgeAreaWidth + headerPadding + 20, 150); // Minimum for flex layout
     
     // Prioritize preventing text wrapping over strict aspect ratio
     if (totalWidth < minWidthForFlexLayout) {

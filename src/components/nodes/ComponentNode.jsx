@@ -88,49 +88,60 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                 onMouseLeave={() => setHoveredHandle(null)}
             >
                 <div
-                    className="px-2 py-1 flex flex-wrap items-start gap-2 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t"
+                    className="px-2 py-1 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t"
                     onDoubleClick={handleDoubleClick}
                     style={{ 
-                        minHeight: '32px'
+                        minHeight: '32px',
+                        display: 'grid',
+                        gridTemplateColumns: '1fr auto',
+                        gap: '8px',
+                        alignItems: 'start'
                     }}
                 >
-                    {data.icon && <span style={{ fontSize: '14px' }}>{data.icon}</span>}
-                    {isEditing ? (
-                        <input
-                            ref={inputRef}
-                            value={label}
-                            onChange={(e) => setLabel(e.target.value)}
-                            onBlur={handleLabelSubmit}
-                            onKeyDown={handleKeyDown}
-                            autoFocus
-                            style={{
-                                fontSize: '14px',
-                                border: 'none',
-                                borderBottom: '2px solid #2196F3',
-                                outline: 'none',
-                                background: 'transparent',
-                                padding: '4px',
-                                width: '100%'
-                            }}
-                        />
-                    ) : (
-                        <span style={{ 
-                            fontSize: '14px', 
-                            fontWeight: 'bold', 
-                            color: data.textColor,
-                            flex: 1,
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word',
-                            hyphens: 'auto',
-                            lineHeight: '1.2',
-                            minWidth: 0
-                        }} className={!data.textColor ? 'text-gray-800 dark:text-white' : ''}>
-                            {label}
-                        </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0 }}>
+                        {data.icon && <span style={{ fontSize: '14px' }}>{data.icon}</span>}
+                        {isEditing ? (
+                            <input
+                                ref={inputRef}
+                                value={label}
+                                onChange={(e) => setLabel(e.target.value)}
+                                onBlur={handleLabelSubmit}
+                                onKeyDown={handleKeyDown}
+                                autoFocus
+                                style={{
+                                    fontSize: '14px',
+                                    border: 'none',
+                                    borderBottom: '2px solid #2196F3',
+                                    outline: 'none',
+                                    background: 'transparent',
+                                    padding: '4px',
+                                    width: '100%'
+                                }}
+                            />
+                        ) : (
+                            <span style={{ 
+                                fontSize: '14px', 
+                                fontWeight: 'bold', 
+                                color: data.textColor,
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word',
+                                hyphens: 'auto',
+                                lineHeight: '1.2',
+                                minWidth: 0
+                            }} className={!data.textColor ? 'text-gray-800 dark:text-white' : ''}>
+                                {label}
+                            </span>
+                        )}
+                    </div>
                     
-                    {/* Technical Details Badges - Now in flex flow */}
-                    <div className="technical-badges flex flex-wrap gap-1 items-center">
+                    {/* Technical Details Badges - Grid layout with wrapping */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(50px, 1fr))',
+                        gap: '2px',
+                        maxWidth: '120px',
+                        justifyItems: 'center'
+                    }}>
                         {technicalDetails.protocol !== 'N/A' && (
                             <span className={`badge ${getTechnicalColor('protocol', technicalDetails.protocol.split(', ')[0])} text-xs px-1 py-0.5 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.protocol.split(', ')[0]}

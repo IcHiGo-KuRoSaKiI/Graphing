@@ -535,14 +535,21 @@ code {
 }
 
 .component-node .technical-badges {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    z-index: 10;
     display: flex;
     gap: 2px;
     flex-wrap: wrap;
-    max-width: 60px; /* Prevent badges from taking too much space */
+    max-width: 30%; /* Badges get maximum 30% of header width */
+    min-width: 80px; /* Minimum width for badges */
+    justify-content: flex-end; /* Align badges to the right */
+    align-items: flex-start;
+}
+
+/* Title gets majority of space */
+.component-node .node-title {
+    flex: 1 1 70%; /* Title gets 70% of available space */
+    min-width: 0; /* Allow text to wrap */
+    max-width: 70%; /* Don't exceed 70% */
+    margin-right: 8px; /* Gap between title and badges */
 }
 
 .component-node .technical-badges .badge {
