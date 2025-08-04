@@ -88,12 +88,10 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                 onMouseLeave={() => setHoveredHandle(null)}
             >
                 <div
-                    className="px-2 py-1 flex items-center gap-2 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t relative"
+                    className="px-2 py-1 flex flex-wrap items-start gap-2 border-b border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-t"
                     onDoubleClick={handleDoubleClick}
                     style={{ 
-                        minHeight: '32px',
-                        position: 'relative',
-                        zIndex: 2
+                        minHeight: '32px'
                     }}
                 >
                     {data.icon && <span style={{ fontSize: '14px' }}>{data.icon}</span>}
@@ -121,14 +119,18 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                             fontWeight: 'bold', 
                             color: data.textColor,
                             flex: 1,
-                            paddingRight: '90px' // Space for badges
+                            wordWrap: 'break-word',
+                            overflowWrap: 'break-word',
+                            hyphens: 'auto',
+                            lineHeight: '1.2',
+                            minWidth: 0
                         }} className={!data.textColor ? 'text-gray-800 dark:text-white' : ''}>
                             {label}
                         </span>
                     )}
                     
-                    {/* Technical Details Badges - Positioned in header but not overlapping */}
-                    <div className="technical-badges absolute top-1 right-1 flex gap-1 z-10">
+                    {/* Technical Details Badges - Now in flex flow */}
+                    <div className="technical-badges flex flex-wrap gap-1 items-center">
                         {technicalDetails.protocol !== 'N/A' && (
                             <span className={`badge ${getTechnicalColor('protocol', technicalDetails.protocol.split(', ')[0])} text-xs px-1 py-0.5 rounded-full shadow-sm border border-white/20 backdrop-blur-sm`}>
                                 {technicalDetails.protocol.split(', ')[0]}
