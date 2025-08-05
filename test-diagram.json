@@ -1,0 +1,92 @@
+{
+  "containers": [
+    {
+      "id": "container-1",
+      "label": "Frontend Layer",
+      "position": { "x": 100, "y": 100 },
+      "size": { "width": 400, "height": 300 },
+      "color": "#E3F2FD",
+      "bgColor": "#ffffff",
+      "borderColor": "#90CAF9",
+      "icon": "🌐",
+      "description": "Web application and user interface components"
+    },
+    {
+      "id": "container-2", 
+      "label": "Backend Services",
+      "position": { "x": 600, "y": 100 },
+      "size": { "width": 400, "height": 300 },
+      "color": "#F3E5F5",
+      "bgColor": "#ffffff",
+      "borderColor": "#CE93D8",
+      "icon": "⚙️",
+      "description": "API services and business logic"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "frontend",
+      "label": "React App",
+      "type": "component",
+      "position": { "x": 150, "y": 150 },
+      "parentContainer": "container-1",
+      "size": { "width": 150, "height": 80 },
+      "color": "#E3F2FD",
+      "borderColor": "#90CAF9",
+      "icon": "⚛️",
+      "description": "Main React application"
+    },
+    {
+      "id": "api-gateway",
+      "label": "API Gateway",
+      "type": "component", 
+      "position": { "x": 650, "y": 150 },
+      "parentContainer": "container-2",
+      "size": { "width": 150, "height": 80 },
+      "color": "#F3E5F5",
+      "borderColor": "#CE93D8",
+      "icon": "🚪",
+      "description": "API Gateway service"
+    },
+    {
+      "id": "auth-service",
+      "label": "Auth Service",
+      "type": "component",
+      "position": { "x": 650, "y": 250 },
+      "parentContainer": "container-2", 
+      "size": { "width": 150, "height": 80 },
+      "color": "#F3E5F5",
+      "borderColor": "#CE93D8",
+      "icon": "🔐",
+      "description": "Authentication service"
+    }
+  ],
+  "connections": [
+    {
+      "id": "frontend-to-api",
+      "source": "frontend",
+      "target": "api-gateway",
+      "label": "API Calls",
+      "type": "intelligent",
+      "animated": false,
+      "description": "HTTP requests to API Gateway",
+      "style": {
+        "strokeWidth": 2,
+        "stroke": "#2563eb"
+      }
+    },
+    {
+      "id": "api-to-auth",
+      "source": "api-gateway", 
+      "target": "auth-service",
+      "label": "Auth Validation",
+      "type": "intelligent",
+      "animated": false,
+      "description": "Authentication validation requests",
+      "style": {
+        "strokeWidth": 2,
+        "stroke": "#2563eb"
+      }
+    }
+  ]
+} 

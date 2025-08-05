@@ -14,14 +14,16 @@ const drawioHandleStyle = {
     zIndex: 10,
     cursor: 'crosshair',
     transition: 'all 0.2s ease',
-    opacity: 0,
-    transform: 'scale(0.8)',
+    opacity: 0.8,
+    transform: 'scale(0.9)',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
 };
 const drawioHandleHoverStyle = {
     ...drawioHandleStyle,
     opacity: 1,
-    transform: 'scale(1.2)',
-    boxShadow: 'none',
+    transform: 'scale(1.3)',
+    boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.4)',
+    background: '#2563eb',
 };
 
 const hiddenTargetHandleStyle = {

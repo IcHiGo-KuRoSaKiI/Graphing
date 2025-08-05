@@ -1,0 +1,92 @@
+{
+  "containers": [
+    {
+      "id": "container-1",
+      "label": "Frontend Layer",
+      "position": { "x": 100, "y": 100 },
+      "size": { "width": 400, "height": 300 },
+      "color": "#E3F2FD",
+      "bgColor": "#ffffff",
+      "borderColor": "#90CAF9",
+      "icon": "🌐",
+      "description": "Web application and user interface components"
+    },
+    {
+      "id": "container-2", 
+      "label": "Backend Services",
+      "position": { "x": 600, "y": 100 },
+      "size": { "width": 400, "height": 300 },
+      "color": "#F3E5F5",
+      "bgColor": "#ffffff",
+      "borderColor": "#CE93D8",
+      "icon": "⚙️",
+      "description": "API services and business logic"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "frontend",
+      "label": "Web Frontend",
+      "type": "component",
+      "position": { "x": 150, "y": 150 },
+      "parentContainer": "container-1",
+      "size": { "width": 150, "height": 80 },
+      "color": "#3B82F6",
+      "borderColor": "#1E40AF",
+      "icon": "🌐",
+      "description": "React-based user interface"
+    },
+    {
+      "id": "api",
+      "label": "API Gateway",
+      "type": "component", 
+      "position": { "x": 650, "y": 150 },
+      "parentContainer": "container-2",
+      "size": { "width": 150, "height": 80 },
+      "color": "#8B5CF6",
+      "borderColor": "#6D28D9",
+      "icon": "🔗",
+      "description": "API routing and authentication"
+    },
+    {
+      "id": "database",
+      "label": "Database",
+      "type": "component",
+      "position": { "x": 650, "y": 250 },
+      "parentContainer": "container-2", 
+      "size": { "width": 150, "height": 80 },
+      "color": "#10B981",
+      "borderColor": "#059669",
+      "icon": "🗄️",
+      "description": "PostgreSQL database"
+    }
+  ],
+  "connections": [
+    {
+      "id": "frontend-to-api",
+      "source": "frontend",
+      "target": "api",
+      "label": "HTTP Requests",
+      "type": "intelligent",
+      "animated": false,
+      "description": "REST API calls",
+      "style": {
+        "strokeWidth": 2,
+        "stroke": "#6B7280"
+      }
+    },
+    {
+      "id": "api-to-database", 
+      "source": "api",
+      "target": "database",
+      "label": "SQL Queries",
+      "type": "intelligent",
+      "animated": false,
+      "description": "Database operations",
+      "style": {
+        "strokeWidth": 2,
+        "stroke": "#6B7280"
+      }
+    }
+  ]
+} 
