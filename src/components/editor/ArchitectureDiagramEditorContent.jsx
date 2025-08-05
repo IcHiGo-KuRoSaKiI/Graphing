@@ -43,6 +43,8 @@ import { autoLayoutNodes } from '../utils/autoLayout';
 // Import new service layer
 import { ServiceFactory } from '../../services/ServiceFactory';
 
+// Remove competing connection services - stick with React Flow's built-in system
+
 
 
 const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showThemeToggle, onToggleFullscreen, isFullscreen, onToggleMini, showMiniToggle }) => {
@@ -487,8 +489,17 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
     }, []);
 
-    const onConnectStart = useCallback(() => { }, []);
-    const onConnectEnd = useCallback(() => { }, []);
+    // Use React Flow's built-in connection system
+
+    // Simple connection start handling
+    const onConnectStart = useCallback((event, params) => {
+        // Basic connection start logic
+    }, []);
+
+    // Simple connection end handling
+    const onConnectEnd = useCallback((event) => {
+        // Basic connection end logic
+    }, []);
 
     const onEdgeDoubleClick = useCallback((event, edge) => {
         event.preventDefault(); // Prevent default browser behavior (e.g., text selection)
@@ -512,54 +523,26 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         saveToHistory();
     }, [project, setEdges, saveToHistory]);
 
+    // Default edge options for new connections
     const defaultEdgeOptions = useMemo(() => ({
         type: 'adjustable',
-        animated: true,
-        style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5' },
+        animated: false,
+        style: { strokeWidth: 2, stroke: '#2563eb' },
         data: { intersection: 'none' }
     }), []);
 
-    // Handle new connections
+    // Simple connection handling with working AdjustableEdge
     const onConnect = useCallback((params) => {
-        const sourceNode = nodes.find(n => n.id === params.source);
-        const targetNode = nodes.find(n => n.id === params.target);
-
-        let defaultWaypoint = [];
-        if (sourceNode && targetNode) {
-            const sourceX = sourceNode.position.x + (sourceNode.width || 150) / 2;
-            const sourceY = sourceNode.position.y + (sourceNode.height || 80) / 2;
-            const targetX = targetNode.position.x + (targetNode.width || 150) / 2;
-            const targetY = targetNode.position.y + (targetNode.height || 80) / 2;
-            
-            // Create orthogonal waypoints for step-like routing
-            const midX = (sourceX + targetX) / 2;
-            const midY = (sourceY + targetY) / 2;
-            
-            // Create a simple L-shaped path (step routing)
-            if (Math.abs(sourceX - targetX) > Math.abs(sourceY - targetY)) {
-                // Horizontal routing preference
-                defaultWaypoint = [
-                    { x: midX, y: sourceY },
-                    { x: midX, y: targetY }
-                ];
-            } else {
-                // Vertical routing preference
-                defaultWaypoint = [
-                    { x: sourceX, y: midY },
-                    { x: targetX, y: midY }
-                ];
-            }
-        }
-
+        console.log('Connection params:', params);
+        
         const newEdge = {
             ...params,
             id: `edge-${Date.now()}`,
             type: 'adjustable',
-            animated: true,
+            animated: false,
             style: {
                 strokeWidth: 2,
                 stroke: '#2563eb',
-                strokeDasharray: '5 5',
                 zIndex: 5
             },
             zIndex: 5,
@@ -568,12 +551,18 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 label: '',
                 description: '',
                 intersection: 'none',
-                waypoints: defaultWaypoint
+                waypoints: [] // Start with direct connection
             }
         };
+        
+        console.log('Creating new edge:', newEdge);
+        
+        // Use React Flow's built-in addEdge
         setEdges((eds) => addEdge(newEdge, eds));
         saveToHistory();
-    }, [saveToHistory, nodes]);
+    }, [saveToHistory]);
+
+
 
 
 
@@ -1977,7 +1966,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
-                    connectionMode="loose"  // Changed from "strict" to "loose"
+                    connectionMode="loose"
                     connectionLineStyle={{ stroke: '#2563eb', strokeWidth: 2 }}
                     fitView
                     snapToGrid={false}

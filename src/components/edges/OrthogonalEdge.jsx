@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { BaseEdge, EdgeLabelRenderer, useReactFlow, Position } from 'reactflow';
+import OrthogonalRouter from '../../services/OrthogonalRouter';
 
 const getConnectionPoint = (x, y, width, height, position) => {
   switch (position) {
@@ -16,7 +17,7 @@ const getConnectionPoint = (x, y, width, height, position) => {
   }
 };
 
-const AdjustableEdge = ({
+const OrthogonalEdge = ({
   id,
   sourceX,
   sourceY,
@@ -33,6 +34,7 @@ const AdjustableEdge = ({
   const { screenToFlowPosition, setEdges, getEdges, getNodes } = useReactFlow();
   const [hoveredSegmentInfo, setHoveredSegmentInfo] = useState(null);
   const [draggedSegmentIndex, setDraggedSegmentIndex] = useState(null);
+  const [router] = useState(() => new OrthogonalRouter());
 
   // Get node dimensions and positions for source/target
   const nodes = getNodes();
@@ -51,39 +53,25 @@ const AdjustableEdge = ({
       : { x: targetX, y: targetY };
   }, [targetNode, targetPosition, targetX, targetY]);
 
-  // Calculate orthogonal bends for new edges - always use connection points
-  const calculateOrthogonalBends = (source, target) => {
-    const dx = target.x - source.x;
-    const dy = target.y - source.y;
-    const needsTwoBends = Math.abs(dx) > 50 && Math.abs(dy) > 50;
-    if (needsTwoBends) {
-      // L or Z shape
-      if (Math.abs(dx) > Math.abs(dy)) {
-        // Horizontal first
-        const midX = source.x + dx / 2;
-        return [
-          { x: midX, y: source.y },
-          { x: midX, y: target.y }
-        ];
-      } else {
-        // Vertical first
-        return [
-          { x: source.x, y: source.y + dy / 2 },
-          { x: target.x, y: target.y - dy / 2 }
-        ];
-      }
-    } else {
-      // Single bend
-      if (Math.abs(dx) > Math.abs(dy)) {
-        const midX = source.x + dx / 2;
-        return [{ x: midX, y: source.y }];
-      } else {
-        return [{ x: source.x, y: source.y + dy / 2 }];
-      }
-    }
-  };
+  // Auto-calculate route when source or target changes
+  const autoCalculatedRoute = useMemo(() => {
+    if (!sourceNode || !targetNode) return { waypoints: [] };
+    
+    // Get all nodes as obstacles (excluding source and target)
+    const obstacles = nodes
+      .filter(node => node.id !== sourceNode.id && node.id !== targetNode.id)
+      .map(node => ({
+        x: node.position.x,
+        y: node.position.y,
+        width: node.width || 100,
+        height: node.height || 100
+      }));
+    
+    // Calculate optimal route
+    return router.calculateOptimalRoute(sourceNode, targetNode, obstacles);
+  }, [sourceNode, targetNode, nodes, router]);
 
-  // Use the waypoints from the edge's data, or start with no waypoints for clean direct connection
+  // Use existing waypoints or auto-calculated route
   const waypoints = useMemo(() => {
     if (data?.waypoints && data.waypoints.length > 0) {
       const validWaypoints = data.waypoints.filter(wp => 
@@ -92,11 +80,10 @@ const AdjustableEdge = ({
       );
       return validWaypoints;
     }
-    // Start with no waypoints - direct connection
-    return [];
-  }, [data?.waypoints]);
-
-  // Don't auto-save waypoints - let user create them by dragging segments
+    
+    // Use auto-calculated route
+    return autoCalculatedRoute.waypoints || [];
+  }, [data?.waypoints, autoCalculatedRoute.waypoints]);
 
   // This function generates the SVG path string for the edge.
   const path = useMemo(() => {
@@ -108,7 +95,7 @@ const AdjustableEdge = ({
     return pathString;
   }, [sourcePoint, targetPoint, waypoints]);
 
-  // Draw.io-style segment dragging - moves the entire segment orthogonally
+  // Enhanced segment dragging with collision avoidance
   const handleSegmentMouseDown = useCallback((event, segmentIndex) => {
     event.stopPropagation();
     event.preventDefault();
@@ -120,28 +107,12 @@ const AdjustableEdge = ({
     const clickedEdge = initialEdges.find(e => e.id === id);
     if (!clickedEdge) return;
 
-    // Get current waypoints or create them if they don't exist
+    // Get current waypoints
     let currentWaypoints = clickedEdge.data?.waypoints || [];
     
-    // If no waypoints exist, create simple orthogonal waypoints when user drags
+    // If no waypoints exist, use auto-calculated route
     if (currentWaypoints.length === 0) {
-      const dx = targetPoint.x - sourcePoint.x;
-      const dy = targetPoint.y - sourcePoint.y;
-      
-      // Create simple L-shaped path
-      if (Math.abs(dx) > Math.abs(dy)) {
-        // Horizontal then vertical
-        currentWaypoints = [
-          { x: sourcePoint.x + dx * 0.5, y: sourcePoint.y },
-          { x: sourcePoint.x + dx * 0.5, y: targetPoint.y }
-        ];
-      } else {
-        // Vertical then horizontal  
-        currentWaypoints = [
-          { x: sourcePoint.x, y: sourcePoint.y + dy * 0.5 },
-          { x: targetPoint.x, y: sourcePoint.y + dy * 0.5 }
-        ];
-      }
+      currentWaypoints = autoCalculatedRoute.waypoints || [];
     }
 
     const points = [sourcePoint, ...currentWaypoints, targetPoint];
@@ -154,104 +125,42 @@ const AdjustableEdge = ({
     const isHorizontal = Math.abs(p1.y - p2.y) < 10;
     const isVertical = Math.abs(p1.x - p2.x) < 10;
 
-    console.log('Dragging segment:', segmentIndex, 'isHorizontal:', isHorizontal, 'isVertical:', isVertical, 'points:', points);
+    console.log('Dragging segment:', segmentIndex, 'isHorizontal:', isHorizontal, 'isVertical:', isVertical);
 
     const onMouseMove = (moveEvent) => {
       const position = screenToFlowPosition({ x: moveEvent.clientX, y: moveEvent.clientY });
       console.log('Mouse position:', position);
 
+      // Get obstacles for collision avoidance
+      const obstacles = nodes
+        .filter(node => node.id !== sourceNode?.id && node.id !== targetNode?.id)
+        .map(node => ({
+          x: node.position.x,
+          y: node.position.y,
+          width: node.width || 100,
+          height: node.height || 100
+        }));
+
       setEdges((eds) =>
         eds.map((e) => {
           if (e.id === id) {
-            // Get waypoints from multiple possible sources
             let currentWaypoints = e.data?.waypoints || [];
             
-            // If waypoints are empty, create them based on current drag action
+            // If waypoints are empty, use auto-calculated route
             if (currentWaypoints.length === 0) {
-              const dx = targetPoint.x - sourcePoint.x;
-              const dy = targetPoint.y - sourcePoint.y;
-              
-              // Create simple L-shaped path based on drag direction
-              if (Math.abs(dx) > Math.abs(dy)) {
-                currentWaypoints = [
-                  { x: sourcePoint.x + dx * 0.5, y: sourcePoint.y },
-                  { x: sourcePoint.x + dx * 0.5, y: targetPoint.y }
-                ];
-              } else {
-                currentWaypoints = [
-                  { x: sourcePoint.x, y: sourcePoint.y + dy * 0.5 },
-                  { x: targetPoint.x, y: sourcePoint.y + dy * 0.5 }
-                ];
-              }
-              console.log('Created waypoints for dragging:', currentWaypoints);
+              currentWaypoints = autoCalculatedRoute.waypoints || [];
             }
             
-            console.log('Current waypoints:', currentWaypoints);
+            // Adjust path for obstacles during dragging
+            const adjustedWaypoints = router.adjustPathForObstacles(
+              currentWaypoints, 
+              obstacles, 
+              segmentIndex - 1, // Adjust for source point offset
+              position
+            );
             
-            const newWaypoints = [...currentWaypoints];
-
-            if (isHorizontal) {
-              // Move horizontal segment vertically - maintain orthogonality
-              const newY = position.y;
-              console.log('Moving horizontal segment to Y:', newY);
-              
-              // Update the waypoint before this segment (if it exists)
-              if (segmentIndex > 0 && newWaypoints[segmentIndex - 1]) {
-                newWaypoints[segmentIndex - 1] = { ...newWaypoints[segmentIndex - 1], y: newY };
-                console.log('Updated waypoint', segmentIndex - 1, 'to Y:', newY);
-              }
-              
-              // Update the waypoint after this segment (if it exists)
-              if (segmentIndex < newWaypoints.length && newWaypoints[segmentIndex]) {
-                newWaypoints[segmentIndex] = { ...newWaypoints[segmentIndex], y: newY };
-                console.log('Updated waypoint', segmentIndex, 'to Y:', newY);
-              }
-              
-              // Maintain orthogonality by ensuring adjacent segments are perpendicular
-              if (segmentIndex > 0 && newWaypoints[segmentIndex - 1]) {
-                // Keep the previous waypoint's X coordinate to maintain vertical segment
-                const prevWaypoint = newWaypoints[segmentIndex - 1];
-                newWaypoints[segmentIndex - 1] = { x: prevWaypoint.x, y: newY };
-              }
-              
-              if (segmentIndex < newWaypoints.length && newWaypoints[segmentIndex]) {
-                // Keep the next waypoint's X coordinate to maintain vertical segment
-                const nextWaypoint = newWaypoints[segmentIndex];
-                newWaypoints[segmentIndex] = { x: nextWaypoint.x, y: newY };
-              }
-            } else if (isVertical) {
-              // Move vertical segment horizontally - maintain orthogonality
-              const newX = position.x;
-              console.log('Moving vertical segment to X:', newX);
-              
-              // Update the waypoint before this segment (if it exists)
-              if (segmentIndex > 0 && newWaypoints[segmentIndex - 1]) {
-                newWaypoints[segmentIndex - 1] = { ...newWaypoints[segmentIndex - 1], x: newX };
-                console.log('Updated waypoint', segmentIndex - 1, 'to X:', newX);
-              }
-              
-              // Update the waypoint after this segment (if it exists)
-              if (segmentIndex < newWaypoints.length && newWaypoints[segmentIndex]) {
-                newWaypoints[segmentIndex] = { ...newWaypoints[segmentIndex], x: newX };
-                console.log('Updated waypoint', segmentIndex, 'to X:', newX);
-              }
-              
-              // Maintain orthogonality by ensuring adjacent segments are perpendicular
-              if (segmentIndex > 0 && newWaypoints[segmentIndex - 1]) {
-                // Keep the previous waypoint's Y coordinate to maintain horizontal segment
-                const prevWaypoint = newWaypoints[segmentIndex - 1];
-                newWaypoints[segmentIndex - 1] = { x: newX, y: prevWaypoint.y };
-              }
-              
-              if (segmentIndex < newWaypoints.length && newWaypoints[segmentIndex]) {
-                // Keep the next waypoint's Y coordinate to maintain horizontal segment
-                const nextWaypoint = newWaypoints[segmentIndex];
-                newWaypoints[segmentIndex] = { x: newX, y: nextWaypoint.y };
-              }
-            }
-            
-            console.log('New waypoints:', newWaypoints);
-            return { ...e, data: { ...e.data, waypoints: newWaypoints } };
+            console.log('Adjusted waypoints:', adjustedWaypoints);
+            return { ...e, data: { ...e.data, waypoints: adjustedWaypoints } };
           }
           return e;
         })
@@ -268,9 +177,9 @@ const AdjustableEdge = ({
     // Add event listeners to window
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-  }, [id, sourcePoint, targetPoint, getEdges, setEdges, screenToFlowPosition]);
+  }, [id, sourcePoint, targetPoint, getEdges, setEdges, screenToFlowPosition, nodes, sourceNode, targetNode, router, autoCalculatedRoute]);
 
-  // Draw.io-style waypoint dragging - maintains orthogonality
+  // Enhanced waypoint dragging with collision avoidance
   const onWaypointMouseDown = useCallback((event, index) => {
     event.stopPropagation();
     event.preventDefault();
@@ -280,63 +189,39 @@ const AdjustableEdge = ({
     const onMouseMove = (e) => {
       const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       
+      // Get obstacles for collision avoidance
+      const obstacles = nodes
+        .filter(node => node.id !== sourceNode?.id && node.id !== targetNode?.id)
+        .map(node => ({
+          x: node.position.x,
+          y: node.position.y,
+          width: node.width || 100,
+          height: node.height || 100
+        }));
+      
       setEdges((eds) =>
         eds.map((edge) => {
           if (edge.id === id) {
             let currentWaypoints = edge.data?.waypoints || [];
             
-            // If waypoints are empty but we have points, extract waypoints from the points
+            // If waypoints are empty, use auto-calculated route
             if (currentWaypoints.length === 0) {
-              const points = [sourcePoint, ...(edge.data?.waypoints || []), targetPoint];
-              if (points && points.length > 2) {
-                currentWaypoints = points.slice(1, -1);
-                console.log('Extracted waypoints for dragging:', currentWaypoints);
-              }
+              currentWaypoints = autoCalculatedRoute.waypoints || [];
             }
             
             if (!currentWaypoints || currentWaypoints.length === 0 || index >= currentWaypoints.length) {
               return edge;
             }
             
-            const newWaypoints = [...currentWaypoints];
+            // Adjust path for obstacles during waypoint dragging
+            const adjustedWaypoints = router.adjustPathForObstacles(
+              currentWaypoints, 
+              obstacles, 
+              index, 
+              position
+            );
             
-            // Move the waypoint
-            newWaypoints[index] = position;
-            
-            // Maintain orthogonality by adjusting adjacent waypoints
-            if (index > 0) {
-              const prevWaypoint = newWaypoints[index - 1];
-              const currentWaypoint = newWaypoints[index];
-              
-              // Determine if the segment to the left is horizontal or vertical
-              const isPrevHorizontal = Math.abs(prevWaypoint.y - currentWaypoint.y) < 5;
-              
-              if (isPrevHorizontal) {
-                // Keep the previous waypoint at the same Y level
-                newWaypoints[index - 1] = { ...prevWaypoint, y: currentWaypoint.y };
-              } else {
-                // Keep the previous waypoint at the same X level
-                newWaypoints[index - 1] = { ...prevWaypoint, x: currentWaypoint.x };
-              }
-            }
-            
-            if (index < newWaypoints.length - 1) {
-              const nextWaypoint = newWaypoints[index + 1];
-              const currentWaypoint = newWaypoints[index];
-              
-              // Determine if the segment to the right is horizontal or vertical
-              const isNextHorizontal = Math.abs(currentWaypoint.y - nextWaypoint.y) < 5;
-              
-              if (isNextHorizontal) {
-                // Keep the next waypoint at the same Y level
-                newWaypoints[index + 1] = { ...nextWaypoint, y: currentWaypoint.y };
-              } else {
-                // Keep the next waypoint at the same X level
-                newWaypoints[index + 1] = { ...nextWaypoint, x: currentWaypoint.x };
-              }
-            }
-            
-            return { ...edge, data: { ...edge.data, waypoints: newWaypoints } };
+            return { ...edge, data: { ...edge.data, waypoints: adjustedWaypoints } };
           }
           return edge;
         })
@@ -350,7 +235,7 @@ const AdjustableEdge = ({
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-  }, [id, setEdges, screenToFlowPosition, sourcePoint, targetPoint]);
+  }, [id, setEdges, screenToFlowPosition, nodes, sourceNode, targetNode, router, autoCalculatedRoute]);
 
   // Waypoint double-click handler - removes waypoint
   const onWaypointDoubleClick = useCallback((event, index) => {
@@ -392,6 +277,34 @@ const AdjustableEdge = ({
     };
   }, [sourcePoint, targetPoint, waypoints]);
 
+  // Auto-reroute when nodes move
+  useEffect(() => {
+    if (sourceNode && targetNode && !data?.waypoints) {
+      // Auto-reroute only if no manual waypoints exist
+      const obstacles = nodes
+        .filter(node => node.id !== sourceNode.id && node.id !== targetNode.id)
+        .map(node => ({
+          x: node.position.x,
+          y: node.position.y,
+          width: node.width || 100,
+          height: node.height || 100
+        }));
+      
+      const newRoute = router.calculateOptimalRoute(sourceNode, targetNode, obstacles);
+      
+      if (newRoute.waypoints.length > 0) {
+        setEdges((eds) =>
+          eds.map((edge) => {
+            if (edge.id === id && (!edge.data?.waypoints || edge.data.waypoints.length === 0)) {
+              return { ...edge, data: { ...edge.data, waypoints: newRoute.waypoints } };
+            }
+            return edge;
+          })
+        );
+      }
+    }
+  }, [sourceNode?.position, targetNode?.position, nodes, router, id, setEdges, data?.waypoints]);
+
   return (
     <>
       {/* The base edge path */}
@@ -430,7 +343,7 @@ const AdjustableEdge = ({
         </div>
       </EdgeLabelRenderer>
 
-      {/* Draggable segments - Draw.io style */}
+      {/* Draggable segments - Enhanced with collision avoidance */}
       {(() => {
         const points = [sourcePoint, ...waypoints, targetPoint];
         return points.slice(0, -1).map((p1, i) => {
@@ -529,22 +442,21 @@ const AdjustableEdge = ({
         </g>
       ))}
 
-      {/* Hover waypoint preview */}
-      {/* hoveredWaypoint && (
-        <g className="react-flow__custom-edge-hover">
-          <circle 
-            cx={hoveredWaypoint.x} 
-            cy={hoveredWaypoint.y} 
-            r={4}
-            fill="rgba(59, 130, 246, 0.5)" 
-            stroke="rgb(59, 130, 246)" 
+      {/* Auto-routing indicator */}
+      {(!data?.waypoints || data.waypoints.length === 0) && (
+        <g>
+          <circle
+            cx={labelPosition.x}
+            cy={labelPosition.y - 20}
+            r={3}
+            fill="rgba(34, 197, 94, 0.8)"
+            stroke="rgba(34, 197, 94, 1)"
             strokeWidth={1}
-            style={{ pointerEvents: 'none' }}
           />
         </g>
-      ) */}
+      )}
     </>
   );
 };
 
-export default AdjustableEdge; 
+export default OrthogonalEdge; 

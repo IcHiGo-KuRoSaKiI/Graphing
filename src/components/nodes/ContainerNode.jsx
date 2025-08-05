@@ -25,17 +25,26 @@ const drawioHandleHoverStyle = {
     boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)',
 };
 
+const drawioHandleActiveStyle = {
+    ...drawioHandleHoverStyle,
+    background: '#10b981',
+    boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.4)',
+};
+
 const hiddenTargetHandleStyle = {
     opacity: 0,
     pointerEvents: 'none',
-    width: 12,
-    height: 12,
+    width: 1,
+    height: 1,
+    background: 'transparent',
+    border: 'none',
 };
 
 const ContainerNode = ({ data, id, selected, isConnectable }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [label, setLabel] = useState(data.label || 'Container');
     const [hoveredHandle, setHoveredHandle] = useState(null);
+    const [activeHandle, setActiveHandle] = useState(null);
 
     useEffect(() => {
         setLabel(data.label || 'Container');
@@ -65,7 +74,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
         }
     }, [handleLabelSubmit, data.label]);
 
-    // Draw.io-style connection point handlers
+    // Enhanced connection point handlers
     const handleConnectionPointMouseEnter = useCallback((position) => {
         setHoveredHandle(position);
     }, []);
@@ -73,6 +82,18 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
     const handleConnectionPointMouseLeave = useCallback(() => {
         setHoveredHandle(null);
     }, []);
+
+
+
+    const getHandleStyle = useCallback((position) => {
+        if (activeHandle === position) {
+            return drawioHandleActiveStyle;
+        }
+        if (hoveredHandle === position) {
+            return drawioHandleHoverStyle;
+        }
+        return drawioHandleStyle;
+    }, [hoveredHandle, activeHandle]);
 
     return (
         <>
@@ -174,12 +195,12 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     )}
                 </div>
 
-                {/* Source handles for creating connections */}
+                {/* Source handles for creating connections - unique IDs */}
                 <Handle
                     type="source"
                     position={Position.Top}
                     id="top-source"
-                    style={hoveredHandle === 'top' ? drawioHandleHoverStyle : drawioHandleStyle}
+                    style={getHandleStyle('top')}
                     isConnectable={isConnectable}
                     className="drawio-connection-point"
                     onMouseEnter={() => handleConnectionPointMouseEnter('top')}
@@ -189,7 +210,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     type="source"
                     position={Position.Right}
                     id="right-source"
-                    style={hoveredHandle === 'right' ? drawioHandleHoverStyle : drawioHandleStyle}
+                    style={getHandleStyle('right')}
                     isConnectable={isConnectable}
                     className="drawio-connection-point"
                     onMouseEnter={() => handleConnectionPointMouseEnter('right')}
@@ -199,7 +220,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     type="source"
                     position={Position.Bottom}
                     id="bottom-source"
-                    style={hoveredHandle === 'bottom' ? drawioHandleHoverStyle : drawioHandleStyle}
+                    style={getHandleStyle('bottom')}
                     isConnectable={isConnectable}
                     className="drawio-connection-point"
                     onMouseEnter={() => handleConnectionPointMouseEnter('bottom')}
@@ -209,40 +230,40 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     type="source"
                     position={Position.Left}
                     id="left-source"
-                    style={hoveredHandle === 'left' ? drawioHandleHoverStyle : drawioHandleStyle}
+                    style={getHandleStyle('left')}
                     isConnectable={isConnectable}
                     className="drawio-connection-point"
                     onMouseEnter={() => handleConnectionPointMouseEnter('left')}
                     onMouseLeave={handleConnectionPointMouseLeave}
                 />
 
-                {/* Hidden target handles for receiving connections */}
+                {/* Target handles for receiving connections - offset to avoid conflicts */}
                 <Handle
                     type="target"
                     position={Position.Top}
                     id="top-target"
-                    style={hiddenTargetHandleStyle}
+                    style={{...hiddenTargetHandleStyle, top: -2}}
                     isConnectable={isConnectable}
                 />
                 <Handle
                     type="target"
                     position={Position.Right}
                     id="right-target"
-                    style={hiddenTargetHandleStyle}
+                    style={{...hiddenTargetHandleStyle, right: -2}}
                     isConnectable={isConnectable}
                 />
                 <Handle
                     type="target"
                     position={Position.Bottom}
                     id="bottom-target"
-                    style={hiddenTargetHandleStyle}
+                    style={{...hiddenTargetHandleStyle, bottom: -2}}
                     isConnectable={isConnectable}
                 />
                 <Handle
                     type="target"
                     position={Position.Left}
                     id="left-target"
-                    style={hiddenTargetHandleStyle}
+                    style={{...hiddenTargetHandleStyle, left: -2}}
                     isConnectable={isConnectable}
                 />
 
