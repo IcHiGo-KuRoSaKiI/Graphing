@@ -1,5 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
+import { ensureBackwardCompatibility } from '../utils/gradientUtils';
+import { ensureShadowCompatibility } from '../utils/shadowUtils';
+import { createTransformStyles } from '../utils/transformUtils';
 
 // Draw.io-style connection point styles
 const drawioHandleStyle = {
@@ -11,7 +14,7 @@ const drawioHandleStyle = {
     zIndex: 10,
     cursor: 'crosshair',
     transition: 'all 0.2s ease',
-    opacity: 0,
+    opacity: 0.7,
     transform: 'scale(0.8)',
 };
 
@@ -19,7 +22,14 @@ const drawioHandleHoverStyle = {
     ...drawioHandleStyle,
     opacity: 1,
     transform: 'scale(1.2)',
-    boxShadow: 'none',
+    boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.3)',
+};
+
+const hiddenTargetHandleStyle = {
+    opacity: 0,
+    pointerEvents: 'none',
+    width: 12,
+    height: 12,
 };
 
 const ContainerNode = ({ data, id, selected, isConnectable }) => {
@@ -77,8 +87,10 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
             />
             <div
                 style={{
-                    background: data.contentColor || data.color || '#ffffff',
-                    border: `${data.borderWidth || 2}px solid ${data.borderColor || '#ddd'}`,
+                    background: ensureBackwardCompatibility(
+                        data.background || data.contentColor || data.color || '#ffffff'
+                    ),
+                    border: `${data.borderWidth || 2}px ${data.borderStyle || 'solid'} ${data.borderColor || '#ddd'}`,
                     borderRadius: `${data.borderRadius || 8}px`,
                     width: '100%',
                     height: '100%',
@@ -86,10 +98,14 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     flexDirection: 'column',
                     cursor: 'move',
                     transition: 'all 0.2s ease',
-                    boxShadow: selected ? '0 0 0 2px #2196F3' : 'none',
+                    boxShadow: selected 
+                        ? `${ensureShadowCompatibility(data.boxShadow || 'none')}, 0 0 0 2px #2196F3`
+                        : ensureShadowCompatibility(data.boxShadow || 'none'),
                     boxSizing: 'border-box',
                     position: 'relative',
-                    fontSize: `${data.fontSize || 14}px`
+                    fontSize: `${data.fontSize || 14}px`,
+                    opacity: data.opacity ?? 1,
+                    ...createTransformStyles(data, 'container')
                 }}
                 onMouseEnter={() => setHoveredHandle('node')}
                 onMouseLeave={() => setHoveredHandle(null)}
@@ -97,7 +113,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 <div
                     className="border-b border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 flex items-center gap-2"
                     style={{
-                        background: data.headerColor || '#f9f9f9',
+                        background: ensureBackwardCompatibility(data.headerColor || '#f9f9f9'),
                         height: `${data.headerHeight || 32}px`,
                         padding: `${data.padding || 8}px`,
                         borderRadius: `${(data.borderRadius || 8) - 1}px ${(data.borderRadius || 8) - 1}px 0 0`,
@@ -158,11 +174,11 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     )}
                 </div>
 
-                {/* Draw.io-style connection points - visible on hover */}
+                {/* Source handles for creating connections */}
                 <Handle
                     type="source"
                     position={Position.Top}
-                    id="top"
+                    id="top-source"
                     style={hoveredHandle === 'top' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
                     className="drawio-connection-point"
@@ -172,7 +188,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 <Handle
                     type="source"
                     position={Position.Right}
-                    id="right"
+                    id="right-source"
                     style={hoveredHandle === 'right' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
                     className="drawio-connection-point"
@@ -182,7 +198,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 <Handle
                     type="source"
                     position={Position.Bottom}
-                    id="bottom"
+                    id="bottom-source"
                     style={hoveredHandle === 'bottom' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
                     className="drawio-connection-point"
@@ -192,7 +208,7 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                 <Handle
                     type="source"
                     position={Position.Left}
-                    id="left"
+                    id="left-source"
                     style={hoveredHandle === 'left' ? drawioHandleHoverStyle : drawioHandleStyle}
                     isConnectable={isConnectable}
                     className="drawio-connection-point"
@@ -200,46 +216,34 @@ const ContainerNode = ({ data, id, selected, isConnectable }) => {
                     onMouseLeave={handleConnectionPointMouseLeave}
                 />
 
-                {/* Target handles for receiving connections */}
+                {/* Hidden target handles for receiving connections */}
                 <Handle
                     type="target"
                     position={Position.Top}
                     id="top-target"
-                    style={hoveredHandle === 'top' ? drawioHandleHoverStyle : drawioHandleStyle}
+                    style={hiddenTargetHandleStyle}
                     isConnectable={isConnectable}
-                    className="drawio-connection-point"
-                    onMouseEnter={() => handleConnectionPointMouseEnter('top')}
-                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
                 <Handle
                     type="target"
                     position={Position.Right}
                     id="right-target"
-                    style={hoveredHandle === 'right' ? drawioHandleHoverStyle : drawioHandleStyle}
+                    style={hiddenTargetHandleStyle}
                     isConnectable={isConnectable}
-                    className="drawio-connection-point"
-                    onMouseEnter={() => handleConnectionPointMouseEnter('right')}
-                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
                 <Handle
                     type="target"
                     position={Position.Bottom}
                     id="bottom-target"
-                    style={hoveredHandle === 'bottom' ? drawioHandleHoverStyle : drawioHandleStyle}
+                    style={hiddenTargetHandleStyle}
                     isConnectable={isConnectable}
-                    className="drawio-connection-point"
-                    onMouseEnter={() => handleConnectionPointMouseEnter('bottom')}
-                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
                 <Handle
                     type="target"
                     position={Position.Left}
                     id="left-target"
-                    style={hoveredHandle === 'left' ? drawioHandleHoverStyle : drawioHandleStyle}
+                    style={hiddenTargetHandleStyle}
                     isConnectable={isConnectable}
-                    className="drawio-connection-point"
-                    onMouseEnter={() => handleConnectionPointMouseEnter('left')}
-                    onMouseLeave={handleConnectionPointMouseLeave}
                 />
 
                 {/* Show all connection points when node is hovered */}

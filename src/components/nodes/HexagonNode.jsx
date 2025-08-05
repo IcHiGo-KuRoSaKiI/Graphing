@@ -1,5 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
+import { ensureBackwardCompatibility } from '../utils/gradientUtils';
+import { ensureShadowCompatibility } from '../utils/shadowUtils';
+import { createTransformStyles } from '../utils/transformUtils';
 
 const sourceHandleStyle = {
     background: '#3b82f6',
@@ -11,12 +14,10 @@ const sourceHandleStyle = {
 };
 
 const targetHandleStyle = {
-    background: '#1e40af',
-    border: '2px solid #fff',
+    opacity: 0,
+    pointerEvents: 'none',
     width: 8,
     height: 8,
-    borderRadius: '50%',
-    zIndex: 10,
 };
 
 const overlayHandleStyle = {
@@ -75,8 +76,10 @@ const HexagonNode = ({ data, id, selected, isConnectable }) => {
             <div
                 style={{
                     clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-                    background: data.color || '#FFCC80',
-                    border: `2px solid ${data.borderColor || '#ddd'}`,
+                    background: ensureBackwardCompatibility(data.background || data.color || '#FFCC80'),
+                    border: `${data.borderWidth || 2}px ${data.borderStyle || 'solid'} ${data.borderColor || '#ddd'}`,
+                    opacity: data.opacity ?? 1,
+                    ...createTransformStyles(data, 'hexagon'),
                     width: '100%',
                     height: '100%',
                     display: 'flex',
@@ -84,7 +87,7 @@ const HexagonNode = ({ data, id, selected, isConnectable }) => {
                     justifyContent: 'center',
                     cursor: 'move',
                     transition: 'all 0.2s ease',
-                    boxShadow: selected ? '0 0 0 2px #2196F3' : 'none',
+                    boxShadow: selected ? `${ensureShadowCompatibility(data.boxShadow || 'none')}, 0 0 0 2px #2196F3` : ensureShadowCompatibility(data.boxShadow || 'none'),
                     boxSizing: 'border-box'
                 }}
                 onDoubleClick={handleDoubleClick}

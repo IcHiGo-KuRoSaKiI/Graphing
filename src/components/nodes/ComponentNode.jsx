@@ -1,6 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
+import { ensureBackwardCompatibility } from '../utils/gradientUtils';
+import { ensureShadowCompatibility } from '../utils/shadowUtils';
 import { extractTechnicalDetails, getTechnicalColor } from '../utils/technicalDetailsParser';
+import { createTransformStyles } from '../utils/transformUtils';
 
 const drawioHandleStyle = {
     background: '#3b82f6',
@@ -71,8 +74,10 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
             />
             <div
                 style={{
-                    background: data.color || '#E3F2FD',
-                    border: `2px solid ${data.borderColor || '#ddd'}`,
+                    background: ensureBackwardCompatibility(data.background || data.color || '#E3F2FD'),
+                    border: `${data.borderWidth || 2}px ${data.borderStyle || 'solid'} ${data.borderColor || '#ddd'}`,
+                    opacity: data.opacity ?? 1,
+                    ...createTransformStyles(data, 'component'),
                     borderRadius: '4px',
                     width: '100%',
                     height: '100%',
@@ -80,7 +85,7 @@ const ComponentNode = ({ data, id, selected, isConnectable }) => {
                     flexDirection: 'column',
                     cursor: 'move',
                     transition: 'all 0.2s ease',
-                    boxShadow: selected ? '0 0 0 2px #2196F3' : 'none',
+                    boxShadow: selected ? `${ensureShadowCompatibility(data.boxShadow || 'none')}, 0 0 0 2px #2196F3` : ensureShadowCompatibility(data.boxShadow || 'none'),
                     boxSizing: 'border-box',
                     position: 'relative'
                 }}

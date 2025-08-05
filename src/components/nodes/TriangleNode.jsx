@@ -1,5 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Handle, Position, NodeResizer } from 'reactflow';
+import { ensureBackwardCompatibility } from '../utils/gradientUtils';
+import { ensureShadowCompatibility } from '../utils/shadowUtils';
+import { createTransformStyles } from '../utils/transformUtils';
 
 const handleStyle = {
     background: '#3b82f6',
@@ -10,6 +13,7 @@ const handleStyle = {
     zIndex: 10,
     cursor: 'crosshair',
     transition: 'all 0.15s ease',
+    opacity: 0.7,
 };
 
 const TriangleNode = ({ data, id, selected }) => {
@@ -58,8 +62,10 @@ const TriangleNode = ({ data, id, selected }) => {
             <div
                 style={{
                     clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
-                    background: data.color || '#FFD54F',
-                    border: `2px solid ${data.borderColor || '#ddd'}`,
+                    background: ensureBackwardCompatibility(data.background || data.color || '#FFD54F'),
+                    border: `${data.borderWidth || 2}px ${data.borderStyle || 'solid'} ${data.borderColor || '#ddd'}`,
+                    opacity: data.opacity ?? 1,
+                    ...createTransformStyles(data, 'triangle'),
                     width: '100%',
                     height: '100%',
                     display: 'flex',
@@ -67,7 +73,7 @@ const TriangleNode = ({ data, id, selected }) => {
                     justifyContent: 'center',
                     cursor: 'move',
                     transition: 'all 0.2s ease',
-                    boxShadow: selected ? '0 0 0 2px #2196F3' : 'none',
+                    boxShadow: selected ? `${ensureShadowCompatibility(data.boxShadow || 'none')}, 0 0 0 2px #2196F3` : ensureShadowCompatibility(data.boxShadow || 'none'),
                     boxSizing: 'border-box'
                 }}
                 onDoubleClick={handleDoubleClick}
@@ -96,11 +102,11 @@ const TriangleNode = ({ data, id, selected }) => {
                     <span style={{ fontSize: '14px' }}>{label}</span>
                 )}
 
-                {/* Simplified connection handles - one per position that can act as both source and target */}
+                {/* Source handles for creating connections */}
                 <Handle
                     type="source"
                     position={Position.Top}
-                    id="top"
+                    id="top-source"
                     style={handleStyle}
                     isConnectable={true}
                     className="triangle-handle"
@@ -108,7 +114,7 @@ const TriangleNode = ({ data, id, selected }) => {
                 <Handle
                     type="source"
                     position={Position.Right}
-                    id="right"
+                    id="right-source"
                     style={handleStyle}
                     isConnectable={true}
                     className="triangle-handle"
@@ -116,7 +122,7 @@ const TriangleNode = ({ data, id, selected }) => {
                 <Handle
                     type="source"
                     position={Position.Bottom}
-                    id="bottom"
+                    id="bottom-source"
                     style={handleStyle}
                     isConnectable={true}
                     className="triangle-handle"
@@ -124,39 +130,39 @@ const TriangleNode = ({ data, id, selected }) => {
                 <Handle
                     type="source"
                     position={Position.Left}
-                    id="left"
+                    id="left-source"
                     style={handleStyle}
                     isConnectable={true}
                     className="triangle-handle"
                 />
 
-                {/* Target handles - invisible but active for connections */}
+                {/* Hidden target handles for receiving connections */}
                 <Handle
                     type="target"
                     position={Position.Top}
                     id="top-target"
-                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    style={{ opacity: 0, pointerEvents: 'none', width: 8, height: 8 }}
                     isConnectable={true}
                 />
                 <Handle
                     type="target"
                     position={Position.Right}
                     id="right-target"
-                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    style={{ opacity: 0, pointerEvents: 'none', width: 8, height: 8 }}
                     isConnectable={true}
                 />
                 <Handle
                     type="target"
                     position={Position.Bottom}
                     id="bottom-target"
-                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    style={{ opacity: 0, pointerEvents: 'none', width: 8, height: 8 }}
                     isConnectable={true}
                 />
                 <Handle
                     type="target"
                     position={Position.Left}
                     id="left-target"
-                    style={{ opacity: 0, pointerEvents: 'none' }}
+                    style={{ opacity: 0, pointerEvents: 'none', width: 8, height: 8 }}
                     isConnectable={true}
                 />
             </div>

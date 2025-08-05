@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
+import GradientPicker from './GradientPicker';
+import ShadowPicker from './ShadowPicker';
+import { ensureBackwardCompatibility } from '../utils/gradientUtils';
+import { ensureShadowCompatibility } from '../utils/shadowUtils';
 
 // Container preview component
 const ContainerPreview = ({ 
@@ -165,6 +169,20 @@ const TailwindPropertyEditor = ({
         container: false,
         advanced: false
     });
+    
+    // Advanced styling state
+    const [useAdvancedStyling, setUseAdvancedStyling] = useState(false);
+    
+    // Store original colors before applying gradients
+    const [originalColors, setOriginalColors] = useState({
+        background: null,
+        headerColor: null,
+        contentColor: null
+    });
+    
+    // Shadow state
+    const [nodeShadow, setNodeShadow] = useState('none');
+    const [originalShadow, setOriginalShadow] = useState(null);
 
     // Common emojis with categories
     const emojiCategories = {
@@ -197,6 +215,38 @@ const TailwindPropertyEditor = ({
             setContainerContentColor(selectedNode.data.contentColor || '#ffffff');
             setContainerFontSize(selectedNode.data.fontSize || 14);
             setContainerHeaderFontSize(selectedNode.data.headerFontSize || 14);
+            
+            // Initialize shadow state
+            setNodeShadow(selectedNode.data.boxShadow || selectedNode.style?.boxShadow || 'none');
+            
+            // Auto-detect advanced styling mode
+            const hasAdvancedBackground = selectedNode.data.background && 
+                                        (selectedNode.data.background.includes('gradient') || 
+                                         typeof selectedNode.data.background === 'object');
+            const hasAdvancedHeaderBg = selectedNode.data.headerColor && 
+                                      selectedNode.data.headerColor.includes('gradient');
+            const hasAdvancedContentBg = selectedNode.data.contentColor && 
+                                       selectedNode.data.contentColor.includes('gradient');
+            const hasAdvancedShadow = selectedNode.data.boxShadow && 
+                                    selectedNode.data.boxShadow !== 'none';
+            
+            setUseAdvancedStyling(hasAdvancedBackground || hasAdvancedHeaderBg || hasAdvancedContentBg || hasAdvancedShadow);
+            
+            // Store original simple colors for reversion
+            setOriginalColors({
+                background: selectedNode.data.color || '#ffffff',
+                headerColor: (selectedNode.data.headerColor && !selectedNode.data.headerColor.includes('gradient')) 
+                           ? selectedNode.data.headerColor 
+                           : '#f9f9f9',
+                contentColor: (selectedNode.data.contentColor && !selectedNode.data.contentColor.includes('gradient'))
+                            ? selectedNode.data.contentColor 
+                            : (selectedNode.data.color || '#ffffff')
+            });
+            
+            // Store original shadow for reversion
+            setOriginalShadow((!selectedNode.data.boxShadow || selectedNode.data.boxShadow === 'none') 
+                            ? 'none' 
+                            : null);
         }
 
         if (selectedEdge) {
@@ -361,6 +411,124 @@ const TailwindPropertyEditor = ({
         setContainerHeaderFontSize(value);
         onElementPropertyChange('node', 'headerFontSize', value);
     }, [onElementPropertyChange]);
+    
+    // Advanced gradient handlers
+    const handleAdvancedBackgroundChange = useCallback((gradientCss) => {
+        // Store original color before first gradient application
+        if (!selectedNode?.data?.background && originalColors.background === null) {
+            setOriginalColors(prev => ({
+                ...prev,
+                background: nodeColor
+            }));
+        }
+        
+        // Store the CSS value - the components will handle rendering
+        onElementPropertyChange('node', 'background', gradientCss);
+        // Also update the simple color for backward compatibility
+        if (typeof gradientCss === 'string' && gradientCss.startsWith('#')) {
+            setNodeColor(gradientCss);
+            onElementPropertyChange('node', 'color', gradientCss);
+        }
+    }, [onElementPropertyChange, selectedNode, nodeColor, originalColors.background]);
+    
+    const handleAdvancedHeaderBackgroundChange = useCallback((gradientCss) => {
+        // Store original header color before first gradient application
+        if (!selectedNode?.data?.headerColor?.includes('gradient') && originalColors.headerColor === null) {
+            setOriginalColors(prev => ({
+                ...prev,
+                headerColor: containerHeaderColor
+            }));
+        }
+        
+        setContainerHeaderColor(gradientCss);
+        onElementPropertyChange('node', 'headerColor', gradientCss);
+    }, [onElementPropertyChange, selectedNode, containerHeaderColor, originalColors.headerColor]);
+    
+    const handleAdvancedContentBackgroundChange = useCallback((gradientCss) => {
+        // Store original content color before first gradient application
+        if (!selectedNode?.data?.contentColor?.includes('gradient') && originalColors.contentColor === null) {
+            setOriginalColors(prev => ({
+                ...prev,
+                contentColor: containerContentColor
+            }));
+        }
+        
+        setContainerContentColor(gradientCss);
+        onElementPropertyChange('node', 'contentColor', gradientCss);
+    }, [onElementPropertyChange, selectedNode, containerContentColor, originalColors.contentColor]);
+    
+    // Shadow handlers
+    const handleShadowChange = useCallback((shadowCss) => {
+        // Store original shadow before first shadow application
+        if ((!selectedNode?.data?.boxShadow || selectedNode?.data?.boxShadow === 'none') && originalShadow === null) {
+            setOriginalShadow('none');
+        }
+        
+        setNodeShadow(shadowCss);
+        onElementPropertyChange('node', 'boxShadow', shadowCss);
+    }, [onElementPropertyChange, selectedNode, originalShadow]);
+    
+    // Extract simple color from gradient or advanced background
+    const extractSimpleColor = useCallback((background, fallback = '#ffffff') => {
+        if (!background) return fallback;
+        
+        // If it's already a simple hex color, return it
+        if (typeof background === 'string' && background.startsWith('#')) {
+            return background;
+        }
+        
+        // If it's a gradient string, try to extract the first color
+        if (typeof background === 'string' && background.includes('gradient')) {
+            const colorMatch = background.match(/#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|rgba?\([^)]+\)/);
+            if (colorMatch) {
+                return colorMatch[0];
+            }
+        }
+        
+        return fallback;
+    }, []);
+
+    // Handle advanced styling toggle
+    const handleAdvancedStylingToggle = useCallback((enabled) => {
+        setUseAdvancedStyling(enabled);
+        
+        if (!enabled) {
+            // Revert to original colors when advanced styling is disabled
+            
+            // Revert main background to original color
+            const originalBg = originalColors.background || nodeColor;
+            setNodeColor(originalBg);
+            onElementPropertyChange('node', 'color', originalBg);
+            
+            // Clear any advanced background properties
+            onElementPropertyChange('node', 'background', undefined);
+            
+            // For containers, also revert header/content backgrounds
+            if (selectedNode?.type === 'container') {
+                const originalHeaderColor = originalColors.headerColor || '#f9f9f9';
+                const originalContentColor = originalColors.contentColor || originalColors.background || '#ffffff';
+                
+                setContainerHeaderColor(originalHeaderColor);
+                setContainerContentColor(originalContentColor);
+                
+                onElementPropertyChange('node', 'headerColor', originalHeaderColor);
+                onElementPropertyChange('node', 'contentColor', originalContentColor);
+            }
+            
+            // Revert shadow to original state
+            const originalShadowValue = originalShadow || 'none';
+            setNodeShadow(originalShadowValue);
+            onElementPropertyChange('node', 'boxShadow', originalShadowValue);
+            
+            // Reset stored values for next time
+            setOriginalColors({
+                background: null,
+                headerColor: null,
+                contentColor: null
+            });
+            setOriginalShadow(null);
+        }
+    }, [onElementPropertyChange, selectedNode, nodeColor, originalColors, originalShadow]);
 
     // Edge handlers
     const handleEdgeLabel = useCallback((e) => {
@@ -667,44 +835,402 @@ const TailwindPropertyEditor = ({
                             <div className="p-4">
                                 {selectedNode && (
                                     <>
-                                        {/* Node Colors */}
-                                        <div className="mb-4">
-                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Background Color:</label>
-                                            <div className="flex items-center gap-2">
+                                        {/* Advanced Styling Toggle */}
+                                        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                            <label className="flex items-center gap-2 cursor-pointer">
                                                 <input
-                                                    type="color"
-                                                    value={nodeColor}
-                                                    onChange={handleNodeColorChange}
-                                                    className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
+                                                    type="checkbox"
+                                                    checked={useAdvancedStyling}
+                                                    onChange={(e) => handleAdvancedStylingToggle(e.target.checked)}
+                                                    className="rounded"
                                                 />
-                                                <input
-                                                    type="text"
-                                                    value={nodeColor}
-                                                    onChange={handleNodeColorChange}
-                                                    placeholder="#ffffff"
-                                                    className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
-                                                />
-                                            </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        Advanced Styling (Gradients & Effects)
+                                                    </span>
+                                                    {useAdvancedStyling && (
+                                                        <span className="text-xs text-indigo-600 dark:text-indigo-400">
+                                                            Gradients active - toggle off to revert to simple colors
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </label>
                                         </div>
 
-                                        <div className="mb-4">
-                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Border Color:</label>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="color"
-                                                    value={nodeBorderColor}
-                                                    onChange={handleNodeBorderColorChange}
-                                                    className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={nodeBorderColor}
-                                                    onChange={handleNodeBorderColorChange}
-                                                    placeholder="#dddddd"
-                                                    className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
-                                                />
+                                        {/* Style Presets */}
+                                        {useAdvancedStyling && (
+                                            <div className="mb-4">
+                                                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    Style Presets:
+                                                </label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {/* Elegant */}
+                                                    <button
+                                                        onClick={() => {
+                                                            handleAdvancedBackgroundChange('linear-gradient(135deg, #667eea 0%, #764ba2 100%)');
+                                                            handleShadowChange('0 4px 8px rgba(0, 0, 0, 0.12)');
+                                                            onElementPropertyChange('node', 'borderRadius', 12);
+                                                            onElementPropertyChange('node', 'opacity', 0.95);
+                                                        }}
+                                                        className="p-3 bg-gradient-to-br from-indigo-400 to-purple-500 text-white text-xs font-medium rounded shadow hover:shadow-md transition-all"
+                                                    >
+                                                        Elegant
+                                                    </button>
+
+                                                    {/* Modern */}
+                                                    <button
+                                                        onClick={() => {
+                                                            handleAdvancedBackgroundChange('linear-gradient(to right, #00c6ff 0%, #0072ff 100%)');
+                                                            handleShadowChange('0 8px 16px rgba(0, 114, 255, 0.2)');
+                                                            onElementPropertyChange('node', 'borderWidth', 0);
+                                                            onElementPropertyChange('node', 'borderRadius', 16);
+                                                        }}
+                                                        className="p-3 bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-xs font-medium rounded shadow hover:shadow-md transition-all"
+                                                    >
+                                                        Modern
+                                                    </button>
+
+                                                    {/* Soft */}
+                                                    <button
+                                                        onClick={() => {
+                                                            handleAdvancedBackgroundChange('linear-gradient(to bottom right, #ffecd2 0%, #fcb69f 100%)');
+                                                            handleShadowChange('0 2px 4px rgba(0, 0, 0, 0.08)');
+                                                            onElementPropertyChange('node', 'borderWidth', 1);
+                                                            onElementPropertyChange('node', 'borderColor', '#f0f0f0');
+                                                        }}
+                                                        className="p-3 bg-gradient-to-br from-orange-200 to-pink-200 text-gray-700 text-xs font-medium rounded shadow hover:shadow-md transition-all"
+                                                    >
+                                                        Soft
+                                                    </button>
+
+                                                    {/* Bold */}
+                                                    <button
+                                                        onClick={() => {
+                                                            handleAdvancedBackgroundChange('linear-gradient(45deg, #ff6b6b 0%, #ee5a24 100%)');
+                                                            handleShadowChange('0 6px 12px rgba(238, 90, 36, 0.3)');
+                                                            onElementPropertyChange('node', 'borderWidth', 3);
+                                                            onElementPropertyChange('node', 'borderColor', '#c44569');
+                                                            onElementPropertyChange('node', 'scale', 1.05);
+                                                        }}
+                                                        className="p-3 bg-gradient-to-r from-red-400 to-red-600 text-white text-xs font-medium rounded shadow hover:shadow-md transition-all"
+                                                    >
+                                                        Bold
+                                                    </button>
+
+                                                    {/* Glass */}
+                                                    <button
+                                                        onClick={() => {
+                                                            handleAdvancedBackgroundChange('rgba(255, 255, 255, 0.2)');
+                                                            handleShadowChange('0 8px 32px rgba(31, 38, 135, 0.37)');
+                                                            onElementPropertyChange('node', 'borderWidth', 1);
+                                                            onElementPropertyChange('node', 'borderColor', 'rgba(255, 255, 255, 0.18)');
+                                                            onElementPropertyChange('node', 'borderRadius', 10);
+                                                            onElementPropertyChange('node', 'opacity', 0.9);
+                                                        }}
+                                                        className="p-3 bg-white bg-opacity-20 backdrop-blur-sm border border-white border-opacity-20 text-gray-700 text-xs font-medium rounded shadow hover:shadow-md transition-all"
+                                                    >
+                                                        Glass
+                                                    </button>
+
+                                                    {/* Dark */}
+                                                    <button
+                                                        onClick={() => {
+                                                            handleAdvancedBackgroundChange('linear-gradient(135deg, #2c3e50 0%, #34495e 100%)');
+                                                            handleShadowChange('0 4px 8px rgba(0, 0, 0, 0.3)');
+                                                            onElementPropertyChange('node', 'borderWidth', 1);
+                                                            onElementPropertyChange('node', 'borderColor', '#4a5568');
+                                                            onElementPropertyChange('node', 'textColor', '#ffffff');
+                                                        }}
+                                                        className="p-3 bg-gradient-to-br from-gray-700 to-gray-800 text-white text-xs font-medium rounded shadow hover:shadow-md transition-all"
+                                                    >
+                                                        Dark
+                                                    </button>
+                                                </div>
+                                                
+                                                {/* Reset button */}
+                                                <button
+                                                    onClick={() => {
+                                                        // Reset to defaults
+                                                        handleAdvancedBackgroundChange(originalColors.background || '#ffffff');
+                                                        handleShadowChange('none');
+                                                        onElementPropertyChange('node', 'borderWidth', 2);
+                                                        onElementPropertyChange('node', 'borderColor', '#dddddd');
+                                                        onElementPropertyChange('node', 'borderRadius', 8);
+                                                        onElementPropertyChange('node', 'opacity', 1);
+                                                        onElementPropertyChange('node', 'scale', 1);
+                                                        onElementPropertyChange('node', 'rotation', 0);
+                                                        onElementPropertyChange('node', 'textColor', '#000000');
+                                                    }}
+                                                    className="w-full mt-2 px-3 py-2 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                                                >
+                                                    Reset to Default
+                                                </button>
                                             </div>
-                                        </div>
+                                        )}
+
+                                        {/* Background */}
+                                        {useAdvancedStyling ? (
+                                            <GradientPicker
+                                                label="Background"
+                                                value={selectedNode.data?.background || nodeColor}
+                                                onChange={handleAdvancedBackgroundChange}
+                                            />
+                                        ) : (
+                                            <div className="mb-4">
+                                                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Background Color:</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="color"
+                                                        value={nodeColor}
+                                                        onChange={handleNodeColorChange}
+                                                        className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={nodeColor}
+                                                        onChange={handleNodeColorChange}
+                                                        placeholder="#ffffff"
+                                                        className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Shadow Effects */}
+                                        {useAdvancedStyling && (
+                                            <ShadowPicker
+                                                label="Shadow Effects"
+                                                value={selectedNode.data?.boxShadow || nodeShadow}
+                                                onChange={handleShadowChange}
+                                            />
+                                        )}
+
+                                        {/* Opacity Control */}
+                                        {useAdvancedStyling && (
+                                            <div className="mb-4">
+                                                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    Opacity:
+                                                </label>
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="100"
+                                                        value={Math.round((selectedNode.data?.opacity ?? 1) * 100)}
+                                                        onChange={(e) => onElementPropertyChange('node', 'opacity', parseFloat(e.target.value) / 100)}
+                                                        className="flex-1 h-2 bg-gray-300 rounded-full appearance-none"
+                                                    />
+                                                    <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded min-w-[50px] text-center">
+                                                        {Math.round((selectedNode.data?.opacity ?? 1) * 100)}%
+                                                    </span>
+                                                </div>
+                                                <div className="flex gap-1 mt-2">
+                                                    {[0.25, 0.5, 0.75, 1].map(opacity => (
+                                                        <button
+                                                            key={opacity}
+                                                            onClick={() => onElementPropertyChange('node', 'opacity', opacity)}
+                                                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                                                                Math.abs((selectedNode.data?.opacity ?? 1) - opacity) < 0.01
+                                                                    ? 'bg-indigo-500 text-white'
+                                                                    : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                                                            }`}
+                                                        >
+                                                            {Math.round(opacity * 100)}%
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Transform Effects */}
+                                        {useAdvancedStyling && (
+                                            <div className="mb-4">
+                                                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    Transform Effects:
+                                                </label>
+                                                
+                                                {/* Rotation */}
+                                                <div className="mb-3">
+                                                    <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-400">Rotation:</label>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="range"
+                                                            min="-180"
+                                                            max="180"
+                                                            value={selectedNode.data?.rotation || 0}
+                                                            onChange={(e) => onElementPropertyChange('node', 'rotation', parseInt(e.target.value))}
+                                                            className="flex-1 h-2 bg-gray-300 rounded-full appearance-none"
+                                                        />
+                                                        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded min-w-[45px] text-center">
+                                                            {selectedNode.data?.rotation || 0}°
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex gap-1 mt-2">
+                                                        {[-90, -45, 0, 45, 90].map(rotation => (
+                                                            <button
+                                                                key={rotation}
+                                                                onClick={() => onElementPropertyChange('node', 'rotation', rotation)}
+                                                                className={`px-2 py-1 text-xs rounded transition-colors ${
+                                                                    (selectedNode.data?.rotation || 0) === rotation
+                                                                        ? 'bg-indigo-500 text-white'
+                                                                        : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                                                                }`}
+                                                            >
+                                                                {rotation}°
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Scale */}
+                                                <div className="mb-3">
+                                                    <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-400">Scale:</label>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="range"
+                                                            min="0.25"
+                                                            max="2"
+                                                            step="0.05"
+                                                            value={selectedNode.data?.scale || 1}
+                                                            onChange={(e) => onElementPropertyChange('node', 'scale', parseFloat(e.target.value))}
+                                                            className="flex-1 h-2 bg-gray-300 rounded-full appearance-none"
+                                                        />
+                                                        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded min-w-[50px] text-center">
+                                                            {Math.round((selectedNode.data?.scale || 1) * 100)}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex gap-1 mt-2">
+                                                        {[0.5, 0.75, 1, 1.25, 1.5].map(scale => (
+                                                            <button
+                                                                key={scale}
+                                                                onClick={() => onElementPropertyChange('node', 'scale', scale)}
+                                                                className={`px-2 py-1 text-xs rounded transition-colors ${
+                                                                    Math.abs((selectedNode.data?.scale || 1) - scale) < 0.01
+                                                                        ? 'bg-indigo-500 text-white'
+                                                                        : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                                                                }`}
+                                                            >
+                                                                {Math.round(scale * 100)}%
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Reset Transform */}
+                                                <button
+                                                    onClick={() => {
+                                                        onElementPropertyChange('node', 'rotation', 0);
+                                                        onElementPropertyChange('node', 'scale', 1);
+                                                    }}
+                                                    className="w-full px-3 py-2 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                                                >
+                                                    Reset Transform
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Border Controls */}
+                                        {useAdvancedStyling ? (
+                                            <div className="mb-4">
+                                                <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Border Styling:</label>
+                                                
+                                                {/* Border Width */}
+                                                <div className="mb-3">
+                                                    <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-400">Width:</label>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="10"
+                                                            value={selectedNode.data?.borderWidth || 2}
+                                                            onChange={(e) => onElementPropertyChange('node', 'borderWidth', parseInt(e.target.value))}
+                                                            className="flex-1 h-2 bg-gray-300 rounded-full appearance-none"
+                                                        />
+                                                        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded min-w-[40px] text-center">
+                                                            {selectedNode.data?.borderWidth || 2}px
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Border Style */}
+                                                <div className="mb-3">
+                                                    <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-400">Style:</label>
+                                                    <select
+                                                        value={selectedNode.data?.borderStyle || 'solid'}
+                                                        onChange={(e) => onElementPropertyChange('node', 'borderStyle', e.target.value)}
+                                                        className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    >
+                                                        <option value="solid">Solid</option>
+                                                        <option value="dashed">Dashed</option>
+                                                        <option value="dotted">Dotted</option>
+                                                        <option value="double">Double</option>
+                                                        <option value="groove">Groove</option>
+                                                        <option value="ridge">Ridge</option>
+                                                        <option value="inset">Inset</option>
+                                                        <option value="outset">Outset</option>
+                                                    </select>
+                                                </div>
+
+                                                {/* Border Color */}
+                                                <div className="mb-3">
+                                                    <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-400">Color:</label>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="color"
+                                                            value={nodeBorderColor}
+                                                            onChange={handleNodeBorderColorChange}
+                                                            className="w-10 h-8 p-0 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={nodeBorderColor}
+                                                            onChange={handleNodeBorderColorChange}
+                                                            placeholder="#dddddd"
+                                                            className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Border Radius for applicable nodes */}
+                                                {(selectedNode?.type === 'component' || selectedNode?.type === 'container') && (
+                                                    <div className="mb-3">
+                                                        <label className="block mb-1 text-xs font-medium text-gray-600 dark:text-gray-400">Radius:</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="range"
+                                                                min="0"
+                                                                max="50"
+                                                                value={selectedNode.data?.borderRadius || 8}
+                                                                onChange={(e) => onElementPropertyChange('node', 'borderRadius', parseInt(e.target.value))}
+                                                                className="flex-1 h-2 bg-gray-300 rounded-full appearance-none"
+                                                            />
+                                                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 rounded min-w-[40px] text-center">
+                                                                {selectedNode.data?.borderRadius || 8}px
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="mb-4">
+                                                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Border Color:</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="color"
+                                                        value={nodeBorderColor}
+                                                        onChange={handleNodeBorderColorChange}
+                                                        className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={nodeBorderColor}
+                                                        onChange={handleNodeBorderColorChange}
+                                                        placeholder="#dddddd"
+                                                        className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="mb-4">
                                             <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Text Color:</label>
@@ -964,45 +1490,61 @@ const TailwindPropertyEditor = ({
                                         </div>
                                     </div>
 
-                                    {/* Header Color */}
-                                    <div className="mb-4">
-                                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Header Color:</label>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="color"
-                                                value={containerHeaderColor}
-                                                onChange={handleContainerHeaderColorChange}
-                                                className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
-                                            />
-                                            <input
-                                                type="text"
-                                                value={containerHeaderColor}
-                                                onChange={handleContainerHeaderColorChange}
-                                                placeholder="#f9f9f9"
-                                                className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
-                                            />
+                                    {/* Header Background */}
+                                    {useAdvancedStyling ? (
+                                        <GradientPicker
+                                            label="Header Background"
+                                            value={containerHeaderColor}
+                                            onChange={handleAdvancedHeaderBackgroundChange}
+                                        />
+                                    ) : (
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Header Color:</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="color"
+                                                    value={containerHeaderColor}
+                                                    onChange={handleContainerHeaderColorChange}
+                                                    className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={containerHeaderColor}
+                                                    onChange={handleContainerHeaderColorChange}
+                                                    placeholder="#f9f9f9"
+                                                    className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    {/* Content Area Color */}
-                                    <div className="mb-4">
-                                        <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Content Color:</label>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="color"
-                                                value={containerContentColor}
-                                                onChange={handleContainerContentColorChange}
-                                                className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
-                                            />
-                                            <input
-                                                type="text"
-                                                value={containerContentColor}
-                                                onChange={handleContainerContentColorChange}
-                                                placeholder="#ffffff"
-                                                className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
-                                            />
+                                    {/* Content Area Background */}
+                                    {useAdvancedStyling ? (
+                                        <GradientPicker
+                                            label="Content Background"
+                                            value={containerContentColor}
+                                            onChange={handleAdvancedContentBackgroundChange}
+                                        />
+                                    ) : (
+                                        <div className="mb-4">
+                                            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Content Color:</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="color"
+                                                    value={containerContentColor}
+                                                    onChange={handleContainerContentColorChange}
+                                                    className="w-12 h-10 p-0 border-2 border-gray-200 dark:border-gray-600 rounded cursor-pointer"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={containerContentColor}
+                                                    onChange={handleContainerContentColorChange}
+                                                    placeholder="#ffffff"
+                                                    className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
                                     {/* Typography */}
                                     <div className="grid grid-cols-2 gap-3 mb-4">
