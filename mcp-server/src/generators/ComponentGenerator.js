@@ -196,25 +196,33 @@ export class ComponentGenerator {
     async generateFromComponents(parsedComponents, options) {
         const diagram = {
             metadata: {
-                name: 'Custom Architecture Diagram',
+                title: 'Custom Architecture Diagram',
                 description: 'Generated from natural language description',
                 version: '1.0',
-                generatedAt: new Date().toISOString(),
-                template: 'custom',
-                style: options.style || 'modern'
+                author: 'MCP Agent',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             },
             containers: [],
             nodes: [],
-            connections: []
+            edges: []
         };
 
         // Add containers
         if (parsedComponents.containers) {
             parsedComponents.containers.forEach((container, index) => {
                 diagram.containers.push({
-                    ...container,
-                    position: { x: 50 + index * 250, y: 50 },
-                    size: container.size || { width: 200, height: 100 }
+                    id: container.id || `container_${index + 1}`,
+                    label: container.label,
+                    position: { x: 50 + index * 300, y: 50 },
+                    size: { width: 250, height: 150 },
+                    color: container.color || this.getContainerColor(index),
+                    bgColor: container.color || this.getContainerColor(index),
+                    borderColor: '#E2E8F0',
+                    textColor: '#1F2937',
+                    icon: this.getContainerIcon(container.type),
+                    description: container.description || `Container for ${container.label}`,
+                    zIndex: index + 1
                 });
             });
         }
@@ -222,23 +230,64 @@ export class ComponentGenerator {
         // Add nodes
         if (parsedComponents.nodes) {
             parsedComponents.nodes.forEach((node, index) => {
+                const containerIndex = Math.floor(index / 2); // Distribute nodes across containers
+                const parentContainer = parsedComponents.containers && parsedComponents.containers[containerIndex] 
+                    ? parsedComponents.containers[containerIndex].id 
+                    : undefined;
+                
                 diagram.nodes.push({
-                    ...node,
-                    position: { x: 100 + index * 150, y: 100 },
-                    size: node.size || { width: 120, height: 60 }
+                    id: node.id || `node_${index + 1}`,
+                    label: node.label,
+                    type: this.mapNodeType(node.type),
+                    position: { x: 100 + (index % 2) * 150, y: 100 + Math.floor(index / 2) * 100 },
+                    size: { width: 120, height: 60 },
+                    parentContainer: parentContainer,
+                    color: node.color || this.getNodeColor(node.type),
+                    bgColor: node.color || this.getNodeColor(node.type),
+                    borderColor: '#E5E7EB',
+                    textColor: '#065F46',
+                    icon: this.getNodeIcon(node.type),
+                    description: node.description || `${node.label} component`,
+                    technicalDetails: this.formatTechnicalDetails(node),
+                    zIndex: index + 1
                 });
             });
         }
 
-        // Add connections
+        // Add edges (connections)
         if (parsedComponents.connections) {
             parsedComponents.connections.forEach((connection, index) => {
-                diagram.connections.push({
-                    ...connection,
-                    id: connection.id || `conn_${index + 1}`
+                diagram.edges.push({
+                    id: connection.id || `edge_${index + 1}`,
+                    source: connection.source,
+                    target: connection.target,
+                    sourceHandle: 'right-source',
+                    targetHandle: 'left-target',
+                    type: 'intelligent',
+                    label: connection.label || `${connection.source} to ${connection.target}`,
+                    animated: false,
+                    style: {
+                        stroke: '#6B7280',
+                        strokeWidth: 2,
+                        strokeDasharray: 'none'
+                    },
+                    markerStart: { type: 'none' },
+                    markerEnd: { type: 'arrow' },
+                    data: {
+                        label: connection.label || `${connection.source} to ${connection.target}`,
+                        description: connection.description || `Connection from ${connection.source} to ${connection.target}`,
+                        autoRouted: true
+                    }
                 });
             });
         }
+
+        // Add viewport
+        diagram.viewport = {
+            x: 0,
+            y: 0,
+            zoom: 1
+        };
 
         return diagram;
     }
@@ -434,5 +483,108 @@ export class ComponentGenerator {
             errors,
             warnings
         };
+    }
+
+    /**
+     * Map node type to schema-compliant type
+     * @param {string} nodeType - Original node type
+     * @returns {string} Schema-compliant type
+     */
+    mapNodeType(nodeType) {
+        const typeMap = {
+            'service': 'component',
+            'api': 'component',
+            'database': 'component',
+            'gateway': 'component',
+            'load_balancer': 'component',
+            'proxy': 'component',
+            'external': 'component',
+            'client': 'component',
+            'server': 'component',
+            'storage': 'component',
+            'function': 'component',
+            'decision': 'diamond',
+            'start': 'circle',
+            'end': 'circle',
+            'process': 'hexagon',
+            'subprocess': 'triangle'
+        };
+        
+        return typeMap[nodeType] || 'component';
+    }
+
+    /**
+     * Format technical details as string
+     * @param {Object} node - Node object
+     * @returns {string} Formatted technical details
+     */
+    formatTechnicalDetails(node) {
+        if (!node.technicalDetails) {
+            return '';
+        }
+
+        const details = [];
+        
+        if (node.technicalDetails.type) {
+            details.push(node.technicalDetails.type);
+        }
+        
+        if (node.technicalDetails.category) {
+            details.push(node.technicalDetails.category);
+        }
+        
+        if (node.technicalDetails.protocol) {
+            details.push(node.technicalDetails.protocol);
+        }
+        
+        if (node.technicalDetails.responseTime) {
+            details.push(`<${node.technicalDetails.responseTime}`);
+        }
+        
+        return details.join(', ');
+    }
+
+    /**
+     * Get container icon based on type
+     * @param {string} containerType - Container type
+     * @returns {string} Icon emoji
+     */
+    getContainerIcon(containerType) {
+        const iconMap = {
+            'web': '🌐',
+            'gateway': '🚪',
+            'services': '⚙️',
+            'storage': '🗄️',
+            'functions': '⚡',
+            'monolith': '🏢',
+            'container': '📦'
+        };
+        
+        return iconMap[containerType] || '📦';
+    }
+
+    /**
+     * Get node icon based on type
+     * @param {string} nodeType - Node type
+     * @returns {string} Icon emoji
+     */
+    getNodeIcon(nodeType) {
+        const iconMap = {
+            'service': '🔧',
+            'api': '🔗',
+            'database': '🗄️',
+            'gateway': '🚪',
+            'load_balancer': '⚖️',
+            'proxy': '🔄',
+            'external': '🌍',
+            'client': '💻',
+            'server': '🖥️',
+            'storage': '💾',
+            'function': '⚡',
+            'spa': '📱',
+            'component': '🔧'
+        };
+        
+        return iconMap[nodeType] || '🔧';
     }
 } 

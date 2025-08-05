@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { ChevronDown, File, Edit, Eye, Settings, HelpCircle, Plus, Link, Unlink, Copy, Trash, Library } from 'lucide-react';
+import { ChevronDown, File, Edit, Eye, Settings, HelpCircle, Plus, Link, Unlink, Copy, Trash, Library, Layout } from 'lucide-react';
 
 const EnhancedMenuBar = ({
   onNew,
@@ -30,6 +30,7 @@ const EnhancedMenuBar = ({
   onUnlinkNodes,
   onValidateJSON,
   onAutoLayout,
+  onLayoutSettings,
   onTogglePropertiesPanel,
   onToggleStatsPanel,
   onToggleTheme,
@@ -267,6 +268,9 @@ const EnhancedMenuBar = ({
         <MenuItem separator />
         <MenuItem onClick={onAutoLayout}>
           Auto-Layout
+        </MenuItem>
+        <MenuItem onClick={onLayoutSettings} icon={Layout}>
+          Layout Settings...
         </MenuItem>
         <MenuItem onClick={() => { }}>
           Align Elements

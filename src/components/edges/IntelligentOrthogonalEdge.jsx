@@ -67,12 +67,20 @@ const IntelligentOrthogonalEdge = ({
 
     const sourceNode = useMemo(() => {
         const sourceId = currentEdge?.source || data?.source;
-        return nodes.find(n => n.id === sourceId);
+        const foundNode = nodes.find(n => n.id === sourceId);
+        if (!foundNode && process.env.NODE_ENV === 'development') {
+            console.warn('Source node not found:', { sourceId, availableNodes: nodes.map(n => n.id) });
+        }
+        return foundNode;
     }, [nodes, currentEdge, data?.source]);
 
     const targetNode = useMemo(() => {
         const targetId = currentEdge?.target || data?.target;
-        return nodes.find(n => n.id === targetId);
+        const foundNode = nodes.find(n => n.id === targetId);
+        if (!foundNode && process.env.NODE_ENV === 'development') {
+            console.warn('Target node not found:', { targetId, availableNodes: nodes.map(n => n.id) });
+        }
+        return foundNode;
     }, [nodes, currentEdge, data?.target]);
 
     // Calculate optimal path using intelligent routing
@@ -100,6 +108,20 @@ const IntelligentOrthogonalEdge = ({
             // Get actual connection points from nodes with intelligent defaults
             const sourceHandle = currentEdge?.sourceHandle || 'right-source';
             const targetHandle = currentEdge?.targetHandle || 'left-target';
+            
+            // Ensure we have valid source and target nodes
+            if (!sourceNode || !targetNode) {
+                console.warn('IntelligentOrthogonalEdge: Missing source or target node', {
+                    sourceId: currentEdge?.source,
+                    targetId: currentEdge?.target,
+                    sourceNode: !!sourceNode,
+                    targetNode: !!targetNode
+                });
+                return [
+                    { x: sourceX, y: sourceY },
+                    { x: targetX, y: targetY }
+                ];
+            }
             
             const sourcePoint = pathfindingEngine.getConnectionPoint(sourceNode, sourceHandle);
             const targetPoint = pathfindingEngine.getConnectionPoint(targetNode, targetHandle);
@@ -232,7 +254,11 @@ const IntelligentOrthogonalEdge = ({
     const pathString = useMemo(() => {
         if (optimalPath.length < 2) {
             // If no path is available, create a simple direct line
-            return `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
+            const directPath = `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`Edge ${id}: Using direct path:`, directPath);
+            }
+            return directPath;
         }
         
         let path = `M ${optimalPath[0].x},${optimalPath[0].y}`;
@@ -241,17 +267,28 @@ const IntelligentOrthogonalEdge = ({
             path += ` L ${optimalPath[i].x},${optimalPath[i].y}`;
         }
         
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`Edge ${id}: Generated path:`, path, 'from optimalPath:', optimalPath);
+        }
+        
         return path;
-    }, [optimalPath, sourceX, sourceY, targetX, targetY]);
+    }, [optimalPath, sourceX, sourceY, targetX, targetY, id]);
 
     // Final fallback - ensure we always have a valid path
     const finalPathString = useMemo(() => {
         if (pathString && pathString.length > 0) {
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`Edge ${id}: Final path string:`, pathString);
+            }
             return pathString;
         }
         // Ultimate fallback - direct line
-        return `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
-    }, [pathString, sourceX, sourceY, targetX, targetY]);
+        const fallbackPath = `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`Edge ${id}: Using fallback path:`, fallbackPath);
+        }
+        return fallbackPath;
+    }, [pathString, sourceX, sourceY, targetX, targetY, id]);
 
     // Calculate label position (center of path)
     const labelPosition = useMemo(() => {
@@ -290,6 +327,9 @@ const IntelligentOrthogonalEdge = ({
     return (
         <>
             {/* Main edge path */}
+            {process.env.NODE_ENV === 'development' && (
+                console.log(`Edge ${id}: Rendering BaseEdge with path:`, finalPathString)
+            )}
             <BaseEdge
                 id={id}
                 path={finalPathString}
@@ -302,6 +342,29 @@ const IntelligentOrthogonalEdge = ({
                 markerStart={markerStart}
                 markerEnd={markerEnd}
             />
+            
+            {/* Debug info - only show in development */}
+            {process.env.NODE_ENV === 'development' && (
+                <EdgeLabelRenderer>
+                    <div
+                        style={{
+                            position: 'absolute',
+                            left: (sourceX + targetX) / 2,
+                            top: (sourceY + targetY) / 2 - 30,
+                            fontSize: '10px',
+                            padding: '2px 4px',
+                            backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                            color: 'white',
+                            borderRadius: '2px',
+                            pointerEvents: 'none',
+                            whiteSpace: 'nowrap',
+                            zIndex: 1000
+                        }}
+                    >
+                        Edge: {id} | Path: {finalPathString.length} chars
+                    </div>
+                </EdgeLabelRenderer>
+            )}
 
             {/* Waypoint indicators for debugging */}
             {selected && optimalPath.length > 2 && (

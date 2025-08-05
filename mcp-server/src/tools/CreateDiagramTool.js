@@ -87,7 +87,7 @@ export class CreateDiagramTool extends BaseTool {
                 
                 // Generate diagram from components
                 const generator = new ComponentGenerator();
-                diagramData = generator.generateFromComponents(components, {
+                diagramData = await generator.generateFromComponents(components, {
                     template,
                     style,
                     includeTechnicalDetails
@@ -115,20 +115,11 @@ export class CreateDiagramTool extends BaseTool {
             }
 
             // Store diagram in session
-            if (session) {
+            if (session && session.setDiagram) {
                 session.setDiagram(diagramData);
             }
 
-            return this.createSuccessResponse({
-                diagram: diagramData,
-                components: {
-                    containers: diagramData.containers?.length || 0,
-                    nodes: diagramData.nodes?.length || 0,
-                    connections: diagramData.connections?.length || 0
-                },
-                template: template || 'custom',
-                style
-            }, 'Architecture diagram created successfully');
+            return diagramData;
 
         } catch (error) {
             return this.createErrorResponse(error.message, { args });

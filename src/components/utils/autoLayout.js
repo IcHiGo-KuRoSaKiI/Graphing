@@ -1,250 +1,607 @@
-export const autoLayoutNodes = (nodes) => {
-  const updated = [...nodes];
+/**
+ * Enhanced Auto Layout System - Based on draw.io's spacing algorithms
+ * Prevents node overlap and maintains proper spacing using collision detection
+ */
 
+/**
+ * Check if two rectangles overlap with optional margin
+ */
+const rectanglesOverlap = (rect1, rect2, margin = 0) => {
+  return !(
+    rect1.x + rect1.width + margin <= rect2.x ||
+    rect2.x + rect2.width + margin <= rect1.x ||
+    rect1.y + rect1.height + margin <= rect2.y ||
+    rect2.y + rect2.height + margin <= rect1.y
+  );
+};
+
+/**
+ * Calculate dynamic spacing based on node dimensions (draw.io approach)
+ */
+const calculateDynamicSpacing = (nodeWidth, nodeHeight, baseSpacing = 20) => {
+  // Use larger dimension + percentage for dynamic spacing
+  const maxDimension = Math.max(nodeWidth, nodeHeight);
+  return Math.max(baseSpacing, maxDimension * 0.3);
+};
+
+/**
+ * Smart layout algorithm selection based on graph structure
+ */
+const selectLayoutAlgorithm = (nodes) => {
+  const containers = nodes.filter(n => n.type === 'container');
+  const components = nodes.filter(n => n.type === 'component');
+  const totalNodes = nodes.length;
+  
+  // Hierarchical for container-heavy structures
+  if (containers.length > components.length) {
+    return 'hierarchical';
+  }
+  
+  // Grid for many small components
+  if (totalNodes > 15 && components.length > containers.length * 3) {
+    return 'grid';
+  }
+  
+  // Force-directed for mixed structures
+  if (totalNodes > 5 && totalNodes <= 15) {
+    return 'force';
+  }
+  
+  // Smart circular for smaller sets
+  return 'smart-circular';
+};
+
+/**
+ * Hierarchical Layout (draw.io style) - Enhanced
+ */
+const hierarchicalLayout = (nodes, viewportWidth = 1400, viewportHeight = 800) => {
+  const containers = nodes.filter(n => n.type === 'container' && !n.parentNode);
+  const components = nodes.filter(n => n.type === 'component' && !n.parentNode);
+  
+  // Layout parameters based on draw.io
+  const intraCellSpacing = 80; // Increased horizontal spacing
+  const interRankCellSpacing = 140; // Increased vertical spacing
+  const margin = 60;
+  
+  let currentY = margin;
+  
+  // For containers, use intelligent multi-row layout
+  if (containers.length > 0) {
+    // Calculate optimal layout grid for containers
+    const containerWidths = containers.map(c => c.style?.width || 300);
+    const containerHeights = containers.map(c => c.style?.height || 200);
+    const avgWidth = containerWidths.reduce((a, b) => a + b, 0) / containerWidths.length;
+    const maxWidth = Math.max(...containerWidths);
+    
+    // Determine containers per row based on viewport and container sizes
+    const minSpacingNeeded = maxWidth + intraCellSpacing;
+    const maxContainersPerRow = Math.max(2, Math.floor((viewportWidth - 2 * margin) / minSpacingNeeded));
+    const containersPerRow = Math.min(maxContainersPerRow, Math.ceil(Math.sqrt(containers.length)));
+    
+    let currentX = margin;
+    let rowMaxHeight = 0;
+    
+    containers.forEach((container, idx) => {
+      // Start new row if needed
+      if (idx > 0 && idx % containersPerRow === 0) {
+        currentY += rowMaxHeight + interRankCellSpacing;
+        currentX = margin;
+        rowMaxHeight = 0;
+      }
+      
+      const containerWidth = container.style?.width || 300;
+      const containerHeight = container.style?.height || 200;
+      const spacing = calculateDynamicSpacing(containerWidth, containerHeight, intraCellSpacing);
+      
+      container.position = { x: currentX, y: currentY };
+      currentX += containerWidth + spacing;
+      rowMaxHeight = Math.max(rowMaxHeight, containerHeight);
+    });
+    
+    // Move Y position for next level
+    currentY += rowMaxHeight + interRankCellSpacing;
+  }
+  
+  // For components, use grid layout with proper spacing
+  if (components.length > 0) {
+    const componentWidths = components.map(c => c.style?.width || 200);
+    const componentHeights = components.map(c => c.style?.height || 100);
+    const avgCompWidth = componentWidths.reduce((a, b) => a + b, 0) / componentWidths.length;
+    const maxCompWidth = Math.max(...componentWidths);
+    
+    const minCompSpacing = maxCompWidth + intraCellSpacing;
+    const maxComponentsPerRow = Math.max(3, Math.floor((viewportWidth - 2 * margin) / minCompSpacing));
+    const componentsPerRow = Math.min(maxComponentsPerRow, Math.ceil(Math.sqrt(components.length)));
+    
+    let currentX = margin;
+    let rowMaxHeight = 0;
+    
+    components.forEach((component, idx) => {
+      // Start new row if needed
+      if (idx > 0 && idx % componentsPerRow === 0) {
+        currentY += rowMaxHeight + 100; // Smaller spacing for components
+        currentX = margin;
+        rowMaxHeight = 0;
+      }
+      
+      const componentWidth = component.style?.width || 200;
+      const componentHeight = component.style?.height || 100;
+      const spacing = calculateDynamicSpacing(componentWidth, componentHeight, intraCellSpacing);
+      
+      component.position = { x: currentX, y: currentY };
+      currentX += componentWidth + spacing;
+      rowMaxHeight = Math.max(rowMaxHeight, componentHeight);
+    });
+  }
+  
+  return nodes;
+};
+
+/**
+ * Smart Grid Layout with collision detection
+ */
+const gridLayout = (nodes, viewportWidth = 1400, viewportHeight = 800) => {
+  const margin = 50;
+  const baseSpacing = 40;
+  
+  // Sort nodes by size (larger first)
+  const sortedNodes = [...nodes].sort((a, b) => {
+    const aSize = (a.style?.width || 150) * (a.style?.height || 100);
+    const bSize = (b.style?.width || 150) * (b.style?.height || 100);
+    return bSize - aSize;
+  });
+  
+  // Calculate optimal grid dimensions
+  const avgWidth = sortedNodes.reduce((sum, n) => sum + (n.style?.width || 150), 0) / sortedNodes.length;
+  const avgHeight = sortedNodes.reduce((sum, n) => sum + (n.style?.height || 100), 0) / sortedNodes.length;
+  
+  const cols = Math.max(2, Math.floor((viewportWidth - 2 * margin) / (avgWidth + baseSpacing)));
+  const rows = Math.ceil(sortedNodes.length / cols);
+  
+  sortedNodes.forEach((node, idx) => {
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    
+    const nodeWidth = node.style?.width || 150;
+    const nodeHeight = node.style?.height || 100;
+    const spacing = calculateDynamicSpacing(nodeWidth, nodeHeight, baseSpacing);
+    
+    node.position = {
+      x: margin + col * (avgWidth + spacing),
+      y: margin + row * (avgHeight + spacing)
+    };
+  });
+  
+  return sortedNodes;
+};
+
+/**
+ * Force-directed layout with collision avoidance (WebCola inspired)
+ */
+const forceDirectedLayout = (nodes, viewportWidth = 1400, viewportHeight = 800) => {
+  const center = { x: viewportWidth / 2, y: viewportHeight / 2 };
+  const iterations = 50;
+  const cellSpacing = 30; // Base collision margin
+  
+  // Initialize positions randomly but avoid edges
+  nodes.forEach(node => {
+    if (!node.position) {
+      node.position = {
+        x: 100 + Math.random() * (viewportWidth - 200),
+        y: 100 + Math.random() * (viewportHeight - 200)
+      };
+    }
+  });
+  
+  // Force-directed simulation with collision detection
+  for (let iter = 0; iter < iterations; iter++) {
+    const forces = nodes.map(() => ({ x: 0, y: 0 }));
+    
+    // Repulsion forces (prevent overlap)
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const node1 = nodes[i];
+        const node2 = nodes[j];
+        
+        const dx = node2.position.x - node1.position.x;
+        const dy = node2.position.y - node1.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+        
+        // Calculate minimum safe distance
+        const w1 = node1.style?.width || 150;
+        const h1 = node1.style?.height || 100;
+        const w2 = node2.style?.width || 150;  
+        const h2 = node2.style?.height || 100;
+        const minDistance = Math.max(w1, h1, w2, h2) / 2 + cellSpacing;
+        
+        if (distance < minDistance * 2) {
+          const force = (minDistance * 2 - distance) / distance * 0.1;
+          const fx = (dx / distance) * force;
+          const fy = (dy / distance) * force;
+          
+          forces[i].x -= fx;
+          forces[i].y -= fy;
+          forces[j].x += fx;
+          forces[j].y += fy;
+        }
+      }
+      
+      // Attraction to center (weak)
+      const centerAttraction = 0.01;
+      forces[i].x += (center.x - nodes[i].position.x) * centerAttraction;
+      forces[i].y += (center.y - nodes[i].position.y) * centerAttraction;
+    }
+    
+    // Apply forces with damping
+    const damping = 0.8;
+    nodes.forEach((node, i) => {
+      node.position.x += forces[i].x * damping;
+      node.position.y += forces[i].y * damping;
+      
+      // Keep within viewport bounds
+      const nodeWidth = node.style?.width || 150;
+      const nodeHeight = node.style?.height || 100;
+      
+      node.position.x = Math.max(50, Math.min(viewportWidth - nodeWidth - 50, node.position.x));
+      node.position.y = Math.max(50, Math.min(viewportHeight - nodeHeight - 50, node.position.y));
+    });
+  }
+  
+  return nodes;
+};
+
+/**
+ * Smart Circular Layout (enhanced)
+ */
+const smartCircularLayout = (nodes, viewportWidth = 1400, viewportHeight = 800) => {
+  const center = { x: viewportWidth / 2, y: viewportHeight / 2 };
+  
+  if (nodes.length === 1) {
+    nodes[0].position = { x: center.x - (nodes[0].style?.width || 150) / 2, y: center.y - (nodes[0].style?.height || 100) / 2 };
+    return nodes;
+  }
+  
+  // Calculate optimal radius based on node sizes and spacing
+  const avgNodeSize = nodes.reduce((sum, n) => {
+    const width = n.style?.width || 150;
+    const height = n.style?.height || 100;
+    return sum + Math.max(width, height);
+  }, 0) / nodes.length;
+  
+  const totalPerimeter = nodes.reduce((sum, n) => {
+    const width = n.style?.width || 150;
+    const height = n.style?.height || 100;
+    const nodeSpacing = calculateDynamicSpacing(width, height, 40);
+    return sum + Math.max(width, height) + nodeSpacing;
+  }, 0);
+  
+  const radius = Math.max(200, totalPerimeter / (2 * Math.PI));
+  const angleStep = (2 * Math.PI) / nodes.length;
+  
+  nodes.forEach((node, idx) => {
+    const angle = idx * angleStep;
+    const nodeWidth = node.style?.width || 150;
+    const nodeHeight = node.style?.height || 100;
+    
+    node.position = {
+      x: center.x + radius * Math.cos(angle) - nodeWidth / 2,
+      y: center.y + radius * Math.sin(angle) - nodeHeight / 2
+    };
+  });
+  
+  return nodes;
+};
+
+/**
+ * Post-layout collision detection and adjustment
+ */
+const resolveCollisions = (nodes, maxIterations = 10) => {
+  const cellSpacing = 20;
+  
+  for (let iter = 0; iter < maxIterations; iter++) {
+    let hasCollisions = false;
+    
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const node1 = nodes[i];
+        const node2 = nodes[j];
+        
+        const rect1 = {
+          x: node1.position.x,
+          y: node1.position.y,
+          width: node1.style?.width || 150,
+          height: node1.style?.height || 100
+        };
+        
+        const rect2 = {
+          x: node2.position.x,
+          y: node2.position.y,
+          width: node2.style?.width || 150,
+          height: node2.style?.height || 100
+        };
+        
+        if (rectanglesOverlap(rect1, rect2, cellSpacing)) {
+          hasCollisions = true;
+          
+          // Calculate separation vector
+          const centerX1 = rect1.x + rect1.width / 2;
+          const centerY1 = rect1.y + rect1.height / 2;
+          const centerX2 = rect2.x + rect2.width / 2;
+          const centerY2 = rect2.y + rect2.height / 2;
+          
+          const dx = centerX2 - centerX1;
+          const dy = centerY2 - centerY1;
+          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+          
+          const minDistance = (Math.max(rect1.width, rect1.height) + Math.max(rect2.width, rect2.height)) / 2 + cellSpacing;
+          const separation = (minDistance - distance) / 2;
+          
+          const moveX = (dx / distance) * separation;
+          const moveY = (dy / distance) * separation;
+          
+          node1.position.x -= moveX;
+          node1.position.y -= moveY;
+          node2.position.x += moveX;
+          node2.position.y += moveY;
+        }
+      }
+    }
+    
+    if (!hasCollisions) break;
+  }
+  
+  return nodes;
+};
+
+/**
+ * Organization Chart Layouts (from draw.io)
+ */
+const orgChartLayouts = {
+  linear: (nodes, viewportWidth = 1400, viewportHeight = 800) => {
+    const margin = 60;
+    const spacing = 100;
+    let currentY = margin;
+    
+    nodes.forEach(node => {
+      const nodeWidth = node.style?.width || 200;
+      const nodeHeight = node.style?.height || 100;
+      
+      node.position = {
+        x: (viewportWidth - nodeWidth) / 2, // Center horizontally
+        y: currentY
+      };
+      
+      currentY += nodeHeight + spacing;
+    });
+    
+    return nodes;
+  },
+  
+  hanger2: (nodes, viewportWidth = 1400, viewportHeight = 800) => {
+    const margin = 60;
+    const spacing = 80;
+    const cols = 2;
+    
+    nodes.forEach((node, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const nodeWidth = node.style?.width || 200;
+      const nodeHeight = node.style?.height || 100;
+      
+      node.position = {
+        x: margin + col * (nodeWidth + spacing),
+        y: margin + row * (nodeHeight + spacing)
+      };
+    });
+    
+    return nodes;
+  },
+  
+  hanger4: (nodes, viewportWidth = 1400, viewportHeight = 800) => {
+    const margin = 60;
+    const spacing = 80;
+    const cols = 4;
+    
+    nodes.forEach((node, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const nodeWidth = node.style?.width || 200;
+      const nodeHeight = node.style?.height || 100;
+      
+      node.position = {
+        x: margin + col * (nodeWidth + spacing),
+        y: margin + row * (nodeHeight + spacing)
+      };
+    });
+    
+    return nodes;
+  },
+  
+  fishbone1: (nodes, viewportWidth = 1400, viewportHeight = 800) => {
+    const centerX = viewportWidth / 2;
+    const centerY = viewportHeight / 2;
+    const spacing = 120;
+    
+    nodes.forEach((node, idx) => {
+      const nodeWidth = node.style?.width || 200;
+      const nodeHeight = node.style?.height || 100;
+      
+      // Alternate sides (left/right of center)
+      const side = idx % 2 === 0 ? -1 : 1;
+      const level = Math.floor(idx / 2);
+      
+      node.position = {
+        x: centerX + side * (nodeWidth + spacing) - nodeWidth / 2,
+        y: centerY + level * (nodeHeight + spacing) - nodeHeight / 2
+      };
+    });
+    
+    return nodes;
+  },
+  
+  fishbone2: (nodes, viewportWidth = 1400, viewportHeight = 800) => {
+    const centerX = viewportWidth / 2;
+    const centerY = viewportHeight / 2;
+    const spacing = 100;
+    
+    nodes.forEach((node, idx) => {
+      const nodeWidth = node.style?.width || 200;
+      const nodeHeight = node.style?.height || 100;
+      
+      // Four quadrant layout
+      const quadrant = idx % 4;
+      const level = Math.floor(idx / 4);
+      
+      let x, y;
+      switch (quadrant) {
+        case 0: // Top-left
+          x = centerX - nodeWidth - spacing * (level + 1);
+          y = centerY - nodeHeight - spacing * (level + 1);
+          break;
+        case 1: // Top-right
+          x = centerX + spacing * (level + 1);
+          y = centerY - nodeHeight - spacing * (level + 1);
+          break;
+        case 2: // Bottom-right
+          x = centerX + spacing * (level + 1);
+          y = centerY + spacing * (level + 1);
+          break;
+        case 3: // Bottom-left
+          x = centerX - nodeWidth - spacing * (level + 1);
+          y = centerY + spacing * (level + 1);
+          break;
+      }
+      
+      node.position = { x, y };
+    });
+    
+    return nodes;
+  }
+};
+
+/**
+ * All available layout algorithms (draw.io complete set)
+ */
+export const layoutAlgorithms = {
+  // Basic layouts
+  'hierarchical': { name: 'Hierarchical', category: 'Basic', func: hierarchicalLayout },
+  'grid': { name: 'Grid', category: 'Basic', func: gridLayout },
+  'circular': { name: 'Circular', category: 'Basic', func: smartCircularLayout },
+  'force-directed': { name: 'Force Directed', category: 'Basic', func: forceDirectedLayout },
+  
+  // Organization charts
+  'org-linear': { name: 'Linear', category: 'Organization', func: orgChartLayouts.linear },
+  'org-hanger2': { name: 'Hanger (2 columns)', category: 'Organization', func: orgChartLayouts.hanger2 },
+  'org-hanger4': { name: 'Hanger (4 columns)', category: 'Organization', func: orgChartLayouts.hanger4 },
+  'org-fishbone1': { name: 'Fishbone 1', category: 'Organization', func: orgChartLayouts.fishbone1 },
+  'org-fishbone2': { name: 'Fishbone 2', category: 'Organization', func: orgChartLayouts.fishbone2 },
+  
+  // Tree layouts
+  'tree-vertical': { name: 'Vertical Tree', category: 'Tree', func: hierarchicalLayout },
+  'tree-horizontal': { name: 'Horizontal Tree', category: 'Tree', func: (nodes, w, h) => {
+    // Transpose hierarchical layout
+    const result = hierarchicalLayout(nodes, h, w);
+    return result.map(node => ({
+      ...node,
+      position: { x: node.position.y, y: node.position.x }
+    }));
+  }},
+  
+  // Special layouts
+  'radial': { name: 'Radial', category: 'Special', func: smartCircularLayout },
+  'compact': { name: 'Compact Tree', category: 'Special', func: gridLayout },
+  'organic': { name: 'Organic', category: 'Special', func: forceDirectedLayout }
+};
+
+/**
+ * Apply layout with specific algorithm
+ */
+export const applyLayoutAlgorithm = (nodes, algorithm = 'hierarchical', viewportWidth = 1400, viewportHeight = 800) => {
+  const updated = [...nodes];
+  
+  // Apply text-based sizing to all nodes
   const estimateTextSize = (
     text,
     minW = 80,
     minH = 50,
-    maxW = 220,
-    maxH = 220
+    maxW = 300,
+    maxH = 180
   ) => {
     if (!text) return { width: minW, height: minH };
     
-    // Split text into header and description parts
-    const parts = text.split(/\s+/);
-    const headerWords = [];
-    const descriptionWords = [];
-    let isHeader = true;
-    let inParentheses = false;
+    const words = text.split(/\s+/);
+    const avgCharWidth = 8;
+    const lineHeight = 20;
+    const padding = 24;
     
-    parts.forEach(word => { 
-      // Check if we're entering parentheses (technical details)
-      if (word.includes('(')) {
-        isHeader = false;
-        inParentheses = true;
-        return; // Skip adding this word to either array
-      }
-      
-      // Check if we're exiting parentheses
-      if (word.includes(')')) {
-        inParentheses = false;
-        return; // Skip adding this word to either array
-      }
-      
-      // If we're inside parentheses, add to description
-      if (inParentheses) {
-        descriptionWords.push(word);
-        return;
-      }
-      
-      // Check if this word indicates we're moving to description (outside parentheses)
-      if (word.includes('AWS') || word.includes('HTTP') || 
-          word.includes('OAuth') || word.includes('RBAC') || word.includes('JWT') ||
-          word.includes('Kubernetes') || word.includes('Prometheus') || word.includes('Jaeger') ||
-          word.includes('Lambda') || word.includes('Kinesis') || word.includes('SQS')) {
-        isHeader = false;
-      }
-      
-      if (isHeader) {
-        headerWords.push(word);
-      } else {
-        descriptionWords.push(word);
-      }
-    });
+    const totalChars = text.length;
+    const charsPerLine = Math.floor((maxW - padding) / avgCharWidth);
+    const lines = Math.max(1, Math.ceil(totalChars / charsPerLine));
     
-    const headerText = headerWords.join(' ');
-    const descriptionText = descriptionWords.join(' ');
+    const width = Math.min(maxW, Math.max(minW, totalChars * avgCharWidth / lines + padding));
+    const height = Math.min(maxH, Math.max(minW, lines * lineHeight + padding));
     
-    // Calculate header size (including badges)
-    const headerCharWidth = 9; // Slightly larger for bold header text
-    const headerLineHeight = 28; // Increased from 24 to 28 for better spacing
-    const headerPadding = 32;
-    
-    // Count badges/technical terms in header
-    const badgeTerms = ['HTTP', 'OAuth', 'RBAC', 'JWT', 'AWS', 'Lambda', 'Kinesis', 'SQS', 'Kubernetes', 'Prometheus', 'Jaeger'];
-    const headerBadges = badgeTerms.filter(term => headerText.includes(term)).length;
-    const badgeWidth = 50; // Width per badge
-    const badgeHeight = 20; // Height for badge row
-    
-    // Force title to get 70% of width, badges get 30%
-    const titleAreaWidth = Math.floor(maxW * 0.7); // Title gets 70% of total width
-    const badgeAreaWidth = headerBadges > 0 ? Math.floor(maxW * 0.25) : 0; // Badges get 25% max
-    
-    // Calculate title layout with generous space
-    const titleMaxCharsPerLine = Math.max(30, Math.floor(titleAreaWidth / headerCharWidth));
-    const titleLines = Math.ceil(headerText.length / titleMaxCharsPerLine) || 1;
-    const titleAreaHeight = titleLines * headerLineHeight;
-    
-    // Calculate badge layout - force into smaller area
-    const badgesPerRow = headerBadges > 0 ? Math.max(2, Math.floor(badgeAreaWidth / 40)) : 0; // Force 2+ badges per row
-    const badgeRows = headerBadges > 0 ? Math.ceil(headerBadges / badgesPerRow) : 0;
-    const badgeAreaHeight = badgeRows * (badgeHeight + 3); // Compact vertical spacing
-    
-    // Header width calculation - use full available width with fixed ratio
-    let headerWidth = Math.max(
-      titleAreaWidth + badgeAreaWidth + headerPadding, // Total space for both areas
-      minW
+    return { width, height };
+  };
+
+  updated.forEach(node => {
+    const text = `${node.data?.label || ''} ${node.data?.description || ''}`.trim();
+    const textSize = estimateTextSize(
+      text,
+      node.type === 'container' ? 200 : 120,
+      node.type === 'container' ? 120 : 80,
+      node.type === 'container' ? 350 : 300,
+      node.type === 'container' ? 200 : 180
     );
-    headerWidth = Math.min(headerWidth, maxW);
     
-    // Header height is the maximum of title height and badge height
-    const headerMultilineHeight = Math.max(titleAreaHeight, badgeAreaHeight) + 8; // Extra padding
-    
-    // Calculate description size with word wrapping
-    const descWords = descriptionText.split(/\s+/);
-    const descLines = [];
-    let currentLine = '';
-    const maxDescCharsPerLine = Math.floor((maxW - 40) / 8); // Account for padding
-    
-    descWords.forEach(word => {
-      if ((currentLine + word).length <= maxDescCharsPerLine) {
-        currentLine += (currentLine ? ' ' : '') + word;
-      } else {
-        if (currentLine) {
-          descLines.push(currentLine);
-          currentLine = word;
-        } else {
-          // Single word is too long, break it
-          descLines.push(word.substring(0, maxDescCharsPerLine));
-          currentLine = word.substring(maxDescCharsPerLine);
-        }
-      }
-    });
-    if (currentLine) descLines.push(currentLine);
-    
-    // Calculate description dimensions
-    const descCharWidth = 8;
-    const descLineHeight = 18;
-    const descPadding = 24;
-    
-    const maxDescLineLength = Math.max(...descLines.map(line => line.length));
-    let descWidth = Math.max(maxDescLineLength * descCharWidth + descPadding, minW);
-    let descHeight = Math.max(descLines.length * descLineHeight + descPadding, minH);
-    
-    // Combine header and description dimensions
-    let totalWidth = Math.max(headerWidth, descWidth);
-    let totalHeight = headerMultilineHeight + descHeight + 16; // Added extra spacing between header and description
-    
-    // Add extra space for technical details
-    const hasTechnicalDetails = text.includes('HTTP') || text.includes('OAuth') || text.includes('RBAC') || 
-                              text.includes('JWT') || text.includes('Kubernetes') || text.includes('Prometheus');
-    if (hasTechnicalDetails) {
-      totalWidth += 40; // Extra space for technical badges
-      totalHeight += 16; // Extra height for technical details
-    }
-    
-    // Apply constraints
-    totalWidth = Math.max(minW, Math.min(maxW, totalWidth));
-    totalHeight = Math.max(minH, Math.min(maxH, totalHeight));
-    
-    // Apply flexible aspect ratio - prefer wider boxes to prevent text wrapping  
-    const targetRatio = headerBadges > 2 ? 2.5/1 : 3/2; // Wider ratio for many badges
-    const currentRatio = totalWidth / totalHeight;
-    const minWidthForFlexLayout = Math.max(titleAreaWidth + badgeAreaWidth + headerPadding + 20, 150); // Minimum for flex layout
-    
-    // Prioritize preventing text wrapping over strict aspect ratio
-    if (totalWidth < minWidthForFlexLayout) {
-      totalWidth = minWidthForFlexLayout;
-    }
-    
-    // Only enforce ratio if it doesn't cause excessive text wrapping
-    if (totalWidth <= maxW && totalHeight <= maxH && totalWidth >= minWidthForFlexLayout) {
-      if (currentRatio < targetRatio) {
-        // Too tall, make wider to fit content better
-        totalWidth = Math.max(totalHeight * targetRatio, minWidthForFlexLayout);
-      }
-    }
-    
-    // Ensure minimum and maximum constraints
-    totalWidth = Math.max(minW, Math.min(maxW, totalWidth));
-    totalHeight = Math.max(minH, Math.min(maxH, totalHeight));
-    
-    // If height exceeds max, recalculate width based on max height
-    if (totalHeight > maxH) {
-      totalHeight = maxH;
-      totalWidth = totalHeight * targetRatio;
-      totalWidth = Math.max(minW, Math.min(maxW, totalWidth));
-    }
-    
-    // If width exceeds max, recalculate height based on max width
-    if (totalWidth > maxW) {
-      totalWidth = maxW;
-      totalHeight = totalWidth / targetRatio;
-      totalHeight = Math.max(minH, Math.min(maxH, totalHeight));
-    }
-    
-    return { width: totalWidth, height: totalHeight };
-  };
-
-  const layoutContainer = (container, baseZ = 1) => {
-    const padding = 30;
-    const children = updated.filter(n => n.parentNode === container.id);
-    const text = `${container.data?.label || ''} ${container.data?.description || ''}`.trim();
-    const textSize = estimateTextSize(text, 130, 100, 350, 220); // Use same maxW as children
-    const headerHeight = textSize.height;
-    let neededWidth = textSize.width;
-    let neededHeight = headerHeight;
-
-    if (children.length > 0) {
-      children.forEach(child => {
-        if (child.type === 'container') {
-          layoutContainer(child, baseZ + 1);
-        }
-        const childText = `${child.data?.label || ''} ${child.data?.description || ''}`.trim();
-        const cSize = estimateTextSize(childText, 80, 50, 350, 220); // Increased maxW from 220 to 350
-        child.style.width = Math.max(120, cSize.width); // Increased minimum from 80 to 120
-        child.style.height = Math.max(50, cSize.height);
-        const childZ = baseZ + 1;
-        child.zIndex = childZ;
-        child.style = { ...child.style, zIndex: childZ };
-      });
-
-      const maxChildW = Math.max(...children.map(c => c.style?.width || 100));
-      const maxChildH = Math.max(...children.map(c => c.style?.height || 60));
-      const cols = Math.ceil(Math.sqrt(children.length));
-      const rows = Math.ceil(children.length / cols);
-
-      children.forEach((child, i) => {
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        child.position = {
-          x: padding / 2 + col * (maxChildW + padding),
-          y: headerHeight + padding / 2 + row * (maxChildH + padding),
-        };
-        // position already set above
-      });
-
-      neededWidth = Math.max(neededWidth, padding + cols * (maxChildW + padding) - padding);
-      neededHeight = Math.max(neededHeight, headerHeight + padding + rows * (maxChildH + padding) - padding);
-    }
-
-    container.zIndex = baseZ;
-    container.style = {
-      ...container.style,
-      width: Math.max(180, neededWidth), // Increased minimum container width
-      height: Math.max(100, neededHeight),
-      zIndex: baseZ,
-    };
-  };
-
-  const topContainers = updated.filter(n => n.type === 'container' && !n.parentNode);
-  topContainers.forEach(c => layoutContainer(c, 1));
-
-  const center = { x: 400, y: 300 };
-  const maxSize = Math.max(...topContainers.map(c => Math.max(c.style?.width || 150, c.style?.height || 120)), 150);
-  const radius = Math.max(
-    120,
-    (maxSize * topContainers.length) / (Math.PI * 1.5)
-  );
-  const angleStep = (2 * Math.PI) / Math.max(1, topContainers.length);
-
-  topContainers.forEach((container, idx) => {
-    const angle = idx * angleStep;
-    container.position = {
-      x: center.x + radius * Math.cos(angle),
-      y: center.y + radius * Math.sin(angle),
-    };
+    if (!node.style) node.style = {};
+    node.style.width = textSize.width;
+    node.style.height = textSize.height;
   });
 
+  // Handle container layouts (nested nodes)
+  const containers = updated.filter(n => n.type === 'container');
+  containers.forEach(container => {
+    const children = updated.filter(n => n.parentNode === container.id);
+    if (children.length > 0) {
+      const gridNodes = gridLayout(children, container.style.width - 40, container.style.height - 60);
+      
+      if (gridNodes.length > 0) {
+        const bounds = gridNodes.reduce((acc, node) => ({
+          minX: Math.min(acc.minX, node.position.x),
+          minY: Math.min(acc.minY, node.position.y),
+          maxX: Math.max(acc.maxX, node.position.x + (node.style?.width || 150)),
+          maxY: Math.max(acc.maxY, node.position.y + (node.style?.height || 100))
+        }), { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+        
+        container.style.width = Math.max(container.style.width, bounds.maxX - bounds.minX + 80);
+        container.style.height = Math.max(container.style.height, bounds.maxY - bounds.minY + 100);
+      }
+    }
+  });
+
+  // Apply selected layout algorithm
+  const topLevelNodes = updated.filter(n => !n.parentNode);
+  const layoutConfig = layoutAlgorithms[algorithm];
+  
+  let layoutResult;
+  if (layoutConfig && layoutConfig.func) {
+    layoutResult = layoutConfig.func(topLevelNodes, viewportWidth, viewportHeight);
+  } else {
+    console.warn(`Unknown layout algorithm: ${algorithm}, falling back to hierarchical`);
+    layoutResult = hierarchicalLayout(topLevelNodes, viewportWidth, viewportHeight);
+  }
+  
+  // Final collision resolution pass
+  const finalNodes = resolveCollisions(layoutResult);
+  
+  console.log(`Applied ${algorithm} layout algorithm with collision detection`);
+  
   return updated;
+};
+
+// Legacy function for backward compatibility
+export const autoLayoutNodes = (nodes, algorithm = null) => {
+  const selectedAlgorithm = algorithm || selectLayoutAlgorithm(nodes.filter(n => !n.parentNode));
+  return applyLayoutAlgorithm(nodes, selectedAlgorithm);
 };

@@ -1,5 +1,11 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { 
+    ListToolsRequestSchema, 
+    ListToolsResultSchema,
+    CallToolRequestSchema,
+    CallToolResultSchema
+} from '@modelcontextprotocol/sdk/types.js';
 import { CreateDiagramTool } from './tools/CreateDiagramTool.js';
 import { ExportDiagramTool } from './tools/ExportDiagramTool.js';
 import { AutoLayoutTool } from './tools/AutoLayoutTool.js';
@@ -45,8 +51,8 @@ export class GraphingMCPServer {
      */
     setupToolHandlers() {
         // Handle tool calls
-        this.server.setRequestHandler('tools/call', async (params) => {
-            const { name, arguments: args } = params;
+        this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+            const { name, arguments: args } = request.params;
             
             if (!this.tools.has(name)) {
                 throw new Error(`Unknown tool: ${name}`);
@@ -64,6 +70,7 @@ export class GraphingMCPServer {
                             text: JSON.stringify(result, null, 2),
                         },
                     ],
+                    isError: false,
                 };
             } catch (error) {
                 return {
@@ -79,7 +86,7 @@ export class GraphingMCPServer {
         });
 
         // List available tools
-        this.server.setRequestHandler('tools/list', async () => {
+        this.server.setRequestHandler(ListToolsRequestSchema, async () => {
             const tools = [];
             for (const [name, tool] of this.tools) {
                 tools.push({
@@ -100,6 +107,7 @@ export class GraphingMCPServer {
             const transport = new StdioServerTransport();
             await this.server.connect(transport);
             console.log('Graphing MCP Server started successfully');
+            console.log(`Available tools: ${Array.from(this.tools.keys()).join(', ')}`);
         } catch (error) {
             console.error('Failed to start MCP server:', error);
             throw error;

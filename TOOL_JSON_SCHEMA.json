@@ -1,0 +1,264 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Architecture Diagram Tool JSON Schema",
+  "description": "Complete JSON format specification for the Architecture Diagram Tool",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Optional metadata about the diagram",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "version": { "type": "string" },
+        "author": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "containers": {
+      "type": "array",
+      "description": "Large container nodes that can hold other nodes",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "position"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the container"
+          },
+          "label": {
+            "type": "string",
+            "description": "Display name of the container"
+          },
+          "position": {
+            "type": "object",
+            "required": ["x", "y"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          },
+          "size": {
+            "type": "object",
+            "properties": {
+              "width": { "type": "number", "minimum": 100 },
+              "height": { "type": "number", "minimum": 60 }
+            }
+          },
+          "color": {
+            "type": "string",
+            "description": "Background color (hex, rgb, or color name)"
+          },
+          "bgColor": {
+            "type": "string",
+            "description": "Background color (alternative field name)"
+          },
+          "borderColor": {
+            "type": "string", 
+            "description": "Border color"
+          },
+          "textColor": {
+            "type": "string",
+            "description": "Text color"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Emoji or icon character to display"
+          },
+          "description": {
+            "type": "string",
+            "description": "Additional description text"
+          },
+          "zIndex": {
+            "type": "number",
+            "description": "Layering order (higher numbers appear on top)"
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array", 
+      "description": "Component nodes (can be inside containers or standalone)",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "type", "position"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the node"
+          },
+          "label": {
+            "type": "string",
+            "description": "Display name of the node"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["component", "diamond", "circle", "hexagon", "triangle"],
+            "description": "Type of node shape"
+          },
+          "position": {
+            "type": "object",
+            "required": ["x", "y"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          },
+          "size": {
+            "type": "object",
+            "properties": {
+              "width": { "type": "number", "minimum": 50 },
+              "height": { "type": "number", "minimum": 30 }
+            }
+          },
+          "parentContainer": {
+            "type": "string",
+            "description": "ID of container this node belongs to (optional)"
+          },
+          "color": {
+            "type": "string",
+            "description": "Background color"
+          },
+          "bgColor": {
+            "type": "string",
+            "description": "Background color (alternative field name)"
+          },
+          "borderColor": {
+            "type": "string",
+            "description": "Border color"
+          },
+          "textColor": {
+            "type": "string",
+            "description": "Text color"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Emoji or icon character"
+          },
+          "description": {
+            "type": "string",
+            "description": "Additional description text"
+          },
+          "technicalDetails": {
+            "type": "string",
+            "description": "Technical details for badge display (e.g., 'HTTP, OAuth, 50ms latency')"
+          },
+          "zIndex": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Connections between nodes (use 'edges' field name)",
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "target"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the edge"
+          },
+          "source": {
+            "type": "string",
+            "description": "ID of the source node"
+          },
+          "target": {
+            "type": "string", 
+            "description": "ID of the target node"
+          },
+          "sourceHandle": {
+            "type": "string",
+            "enum": [
+              "top-source", "top-left-source", "top-center-source", "top-right-source",
+              "right-source", "right-top-source", "right-center-source", "right-bottom-source", 
+              "bottom-source", "bottom-left-source", "bottom-center-source", "bottom-right-source",
+              "left-source", "left-top-source", "left-center-source", "left-bottom-source"
+            ],
+            "description": "Source connection point (defaults to 'right-source')"
+          },
+          "targetHandle": {
+            "type": "string",
+            "enum": [
+              "top-target", "top-left-target", "top-center-target", "top-right-target",
+              "right-target", "right-top-target", "right-center-target", "right-bottom-target",
+              "bottom-target", "bottom-left-target", "bottom-center-target", "bottom-right-target", 
+              "left-target", "left-top-target", "left-center-target", "left-bottom-target"
+            ],
+            "description": "Target connection point (defaults to 'left-target')"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["default", "adjustable", "intelligent"],
+            "description": "Edge rendering type (defaults to 'intelligent')"
+          },
+          "label": {
+            "type": "string",
+            "description": "Text label displayed on the edge"
+          },
+          "animated": {
+            "type": "boolean",
+            "description": "Whether the edge should be animated"
+          },
+          "style": {
+            "type": "object",
+            "description": "Visual styling for the edge",
+            "properties": {
+              "stroke": {
+                "type": "string",
+                "description": "Line color"
+              },
+              "strokeWidth": {
+                "type": "number",
+                "minimum": 1,
+                "description": "Line thickness"
+              },
+              "strokeDasharray": {
+                "type": "string",
+                "description": "Dash pattern (e.g., '5,5' for dashed, 'none' for solid)"
+              }
+            }
+          },
+          "markerStart": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["arrow", "dot", "none"]
+              }
+            }
+          },
+          "markerEnd": {
+            "type": "object", 
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["arrow", "dot", "none"]
+              }
+            }
+          },
+          "data": {
+            "type": "object",
+            "description": "Additional data for the edge",
+            "properties": {
+              "label": { "type": "string" },
+              "description": { "type": "string" },
+              "autoRouted": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "viewport": {
+      "type": "object",
+      "description": "Initial viewport settings",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "zoom": { "type": "number", "minimum": 0.1, "maximum": 3 }
+      }
+    }
+  }
+}

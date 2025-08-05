@@ -185,6 +185,7 @@ export class DescriptionParser {
     extractConnections(description) {
         const connections = [];
         
+        // Extract connections using patterns
         this.connectionPatterns.forEach(pattern => {
             const regex = new RegExp(pattern.pattern.source, 'gi');
             let match;
@@ -213,6 +214,72 @@ export class DescriptionParser {
                     });
                 }
             }
+        });
+
+        // Generate logical connections based on component types
+        const nodes = this.extractNodes(description);
+        const containers = this.extractContainers(description);
+        
+        // Connect services to database
+        const services = nodes.filter(node => node.type === 'service');
+        const databases = nodes.filter(node => node.type === 'database');
+        
+        services.forEach(service => {
+            databases.forEach(db => {
+                connections.push({
+                    id: `conn_${connections.length + 1}`,
+                    source: service.id,
+                    target: db.id,
+                    label: 'Database connection',
+                    type: 'database',
+                    protocol: 'SQL',
+                    description: `${service.label} connects to ${db.label}`,
+                    technicalDetails: {
+                        protocol: 'SQL',
+                        type: 'database'
+                    }
+                });
+            });
+        });
+
+        // Connect API gateway to services
+        const gateways = nodes.filter(node => node.type === 'gateway' || node.type === 'api');
+        gateways.forEach(gateway => {
+            services.forEach(service => {
+                connections.push({
+                    id: `conn_${connections.length + 1}`,
+                    source: gateway.id,
+                    target: service.id,
+                    label: 'API call',
+                    type: 'http',
+                    protocol: 'HTTP',
+                    description: `${gateway.label} calls ${service.label}`,
+                    technicalDetails: {
+                        protocol: 'HTTP',
+                        type: 'http'
+                    }
+                });
+            });
+        });
+
+        // Connect load balancer to services
+        const loadBalancers = nodes.filter(node => node.type === 'load_balancer');
+        loadBalancers.forEach(lb => {
+            services.forEach(service => {
+                connections.push({
+                    id: `conn_${connections.length + 1}`,
+                    source: lb.id,
+                    target: service.id,
+                    label: 'Load balanced',
+                    type: 'http',
+                    protocol: 'HTTP',
+                    description: `${lb.label} distributes traffic to ${service.label}`,
+                    technicalDetails: {
+                        protocol: 'HTTP',
+                        type: 'http'
+                    }
+                });
+            });
         });
 
         return connections;
