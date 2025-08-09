@@ -298,18 +298,28 @@ export class ExportService {
             const exportWidth = width || diagramWidth;
             const exportHeight = height || diagramHeight;
 
-            // Create export options based on format
+            // Create export options based on format with enhanced text quality
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            const highQualityPixelRatio = Math.max(devicePixelRatio * 2, 3); // Minimum 3x for crisp text
+            
             const exportOptions = {
                 width: exportWidth * scale,
                 height: exportHeight * scale,
                 quality: quality || 1.0,
-                pixelRatio: scale,
+                pixelRatio: highQualityPixelRatio, // Enhanced pixel ratio for sharp text
                 backgroundColor: includeBackground ? backgroundColor : undefined,
                 style: {
                     transform: `translate(${-bounds.x + margin}px, ${-bounds.y + margin}px) scale(${scale})`,
                     transformOrigin: 'top left',
                     width: `${diagramWidth}px`,
-                    height: `${diagramHeight}px`
+                    height: `${diagramHeight}px`,
+                    // Enhanced text rendering for crisp quality
+                    WebkitFontSmoothing: 'antialiased',
+                    MozOsxFontSmoothing: 'grayscale',
+                    textRendering: 'optimizeLegibility',
+                    fontVariantLigatures: 'none',
+                    // Force high-quality rendering
+                    imageRendering: 'crisp-edges'
                 },
                 filter: (node) => {
                     // Filter out unwanted elements during export
