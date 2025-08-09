@@ -98,21 +98,21 @@ export const SHAPE_DEFINITIONS = {
     tags: ['process', 'action', 'step', 'operation'],
     defaultSize: { width: 140, height: 80 },
     connectionPoints: ['top', 'right', 'bottom', 'left'],
-    renderType: 'svg',
-    svgPath: 'M10,10 L130,10 Q140,10 140,20 L140,60 Q140,70 130,70 L10,70 Q0,70 0,60 L0,20 Q0,10 10,10 Z',
+    renderType: 'default',
     style: {
       fill: '#e3f2fd',
       stroke: '#1976d2',
-      strokeWidth: 2
+      strokeWidth: 2,
+      borderRadius: '4px'
     },
-    icon: '📦'
+    icon: '⚙️'
   },
 
   'flowchart-decision': {
     id: 'flowchart-decision',
     name: 'Decision',
     category: 'flowchart',
-    tags: ['decision', 'condition', 'if', 'choice'],
+    tags: ['decision', 'choice', 'condition', 'if'],
     defaultSize: { width: 120, height: 80 },
     connectionPoints: ['top', 'right', 'bottom', 'left'],
     renderType: 'svg',
@@ -122,7 +122,7 @@ export const SHAPE_DEFINITIONS = {
       stroke: '#f57c00',
       strokeWidth: 2
     },
-    icon: '🔶'
+    icon: '❓'
   },
 
   'flowchart-terminator': {
@@ -174,6 +174,436 @@ export const SHAPE_DEFINITIONS = {
       strokeWidth: 2
     },
     icon: '📊'
+  },
+
+  // =================== NETWORKING SHAPES ===================
+  'networking-router': {
+    id: 'networking-router',
+    name: 'Router',
+    category: 'networking',
+    tags: ['router', 'gateway', 'internet', 'wan', 'network'],
+    defaultSize: { width: 80, height: 60 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#fff3e0',
+      stroke: '#f57c00',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '📡'
+  },
+
+  'networking-switch': {
+    id: 'networking-switch',
+    name: 'Network Switch',
+    category: 'networking',
+    tags: ['switch', 'network', 'ethernet', 'lan'],
+    defaultSize: { width: 80, height: 60 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#e8f5e8',
+      stroke: '#2e7d32',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '🔌'
+  },
+
+  'networking-firewall': {
+    id: 'networking-firewall',
+    name: 'Firewall',
+    category: 'networking',
+    tags: ['firewall', 'security', 'protection', 'shield'],
+    defaultSize: { width: 80, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#ffebee',
+      stroke: '#d32f2f',
+      strokeWidth: 2,
+      borderRadius: '8px'
+    },
+    icon: '🛡️'
+  },
+
+  'networking-load-balancer': {
+    id: 'networking-load-balancer',
+    name: 'Load Balancer',
+    category: 'networking',
+    tags: ['load balancer', 'lb', 'traffic', 'distribution'],
+    defaultSize: { width: 100, height: 60 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#e1f5fe',
+      stroke: '#0277bd',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '⚖️'
+  },
+
+  'networking-proxy': {
+    id: 'networking-proxy',
+    name: 'Proxy Server',
+    category: 'networking',
+    tags: ['proxy', 'server', 'intermediary', 'cache'],
+    defaultSize: { width: 80, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#f3e5f5',
+      stroke: '#7b1fa2',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '🔄'
+  },
+
+  // =================== COMPUTERS SHAPES ===================
+  'computers-server': {
+    id: 'computers-server',
+    name: 'Server',
+    category: 'computers',
+    tags: ['server', 'computer', 'host', 'machine'],
+    defaultSize: { width: 80, height: 100 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#f3e5f5',
+      stroke: '#7b1fa2',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '🖥️'
+  },
+
+  'computers-workstation': {
+    id: 'computers-workstation',
+    name: 'Workstation',
+    category: 'computers',
+    tags: ['workstation', 'desktop', 'computer', 'pc'],
+    defaultSize: { width: 60, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#e1f5fe',
+      stroke: '#0277bd',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '💻'
+  },
+
+  'computers-laptop': {
+    id: 'computers-laptop',
+    name: 'Laptop',
+    category: 'computers',
+    tags: ['laptop', 'notebook', 'portable', 'computer'],
+    defaultSize: { width: 70, height: 50 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#e8f5e8',
+      stroke: '#2e7d32',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '💻'
+  },
+
+  'computers-tablet': {
+    id: 'computers-tablet',
+    name: 'Tablet',
+    category: 'computers',
+    tags: ['tablet', 'mobile', 'device', 'touch'],
+    defaultSize: { width: 60, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#fff3e0',
+      stroke: '#f57c00',
+      strokeWidth: 2,
+      borderRadius: '8px'
+    },
+    icon: '📱'
+  },
+
+  'computers-mobile': {
+    id: 'computers-mobile',
+    name: 'Mobile Phone',
+    category: 'computers',
+    tags: ['mobile', 'phone', 'smartphone', 'device'],
+    defaultSize: { width: 40, height: 70 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#fce4ec',
+      stroke: '#c2185b',
+      strokeWidth: 2,
+      borderRadius: '8px'
+    },
+    icon: '📱'
+  },
+
+  // =================== PEOPLE SHAPES ===================
+  'people-user': {
+    id: 'people-user',
+    name: 'User',
+    category: 'people',
+    tags: ['user', 'person', 'human', 'actor'],
+    defaultSize: { width: 60, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'svg',
+    svgPath: 'M30,10 Q35,5 35,15 Q35,25 30,20 Q25,25 25,15 Q25,5 30,10 M30,20 L30,50 M20,30 L40,30 M30,50 L20,70 M30,50 L40,70',
+    style: {
+      fill: 'none',
+      stroke: '#424242',
+      strokeWidth: 2
+    },
+    icon: '👤'
+  },
+
+  'people-admin': {
+    id: 'people-admin',
+    name: 'Administrator',
+    category: 'people',
+    tags: ['admin', 'administrator', 'manager', 'supervisor'],
+    defaultSize: { width: 60, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#e3f2fd',
+      stroke: '#1976d2',
+      strokeWidth: 2,
+      borderRadius: '50%'
+    },
+    icon: '👨‍💼'
+  },
+
+  'people-developer': {
+    id: 'people-developer',
+    name: 'Developer',
+    category: 'people',
+    tags: ['developer', 'programmer', 'coder', 'engineer'],
+    defaultSize: { width: 60, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#e8f5e8',
+      stroke: '#2e7d32',
+      strokeWidth: 2,
+      borderRadius: '50%'
+    },
+    icon: '👨‍💻'
+  },
+
+  'people-analyst': {
+    id: 'people-analyst',
+    name: 'Analyst',
+    category: 'people',
+    tags: ['analyst', 'business analyst', 'data analyst'],
+    defaultSize: { width: 60, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#fff3e0',
+      stroke: '#f57c00',
+      strokeWidth: 2,
+      borderRadius: '50%'
+    },
+    icon: '👩‍💼'
+  },
+
+  'people-customer': {
+    id: 'people-customer',
+    name: 'Customer',
+    category: 'people',
+    tags: ['customer', 'client', 'end user', 'consumer'],
+    defaultSize: { width: 60, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#fce4ec',
+      stroke: '#c2185b',
+      strokeWidth: 2,
+      borderRadius: '50%'
+    },
+    icon: '👤'
+  },
+
+  // =================== DATABASE SHAPES ===================
+  'database-sql': {
+    id: 'database-sql',
+    name: 'SQL Database',
+    category: 'database',
+    tags: ['sql', 'database', 'rdbms', 'mysql', 'postgresql'],
+    defaultSize: { width: 80, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'svg',
+    svgPath: 'M10,20 Q10,10 40,10 Q70,10 70,20 L70,60 Q70,70 40,70 Q10,70 10,60 Z M10,20 Q10,30 40,30 Q70,30 70,20',
+    style: {
+      fill: '#bbdefb',
+      stroke: '#1976d2',
+      strokeWidth: 2
+    },
+    icon: '🗄️'
+  },
+
+  'database-nosql': {
+    id: 'database-nosql',
+    name: 'NoSQL Database',
+    category: 'database',
+    tags: ['nosql', 'mongodb', 'cassandra', 'document'],
+    defaultSize: { width: 80, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#e8f5e8',
+      stroke: '#2e7d32',
+      strokeWidth: 2,
+      borderRadius: '8px'
+    },
+    icon: '📊'
+  },
+
+  'database-cache': {
+    id: 'database-cache',
+    name: 'Cache',
+    category: 'database',
+    tags: ['cache', 'redis', 'memcached', 'memory'],
+    defaultSize: { width: 80, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#fff3e0',
+      stroke: '#f57c00',
+      strokeWidth: 2,
+      borderRadius: '8px'
+    },
+    icon: '⚡'
+  },
+
+  'database-warehouse': {
+    id: 'database-warehouse',
+    name: 'Data Warehouse',
+    category: 'database',
+    tags: ['warehouse', 'big data', 'analytics', 'bi'],
+    defaultSize: { width: 100, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#f3e5f5',
+      stroke: '#7b1fa2',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '🏢'
+  },
+
+  'database-backup': {
+    id: 'database-backup',
+    name: 'Backup Storage',
+    category: 'database',
+    tags: ['backup', 'storage', 'archive', 'recovery'],
+    defaultSize: { width: 80, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#ffebee',
+      stroke: '#d32f2f',
+      strokeWidth: 2,
+      borderRadius: '8px'
+    },
+    icon: '💾'
+  },
+
+  // =================== SECURITY SHAPES ===================
+  'security-shield': {
+    id: 'security-shield',
+    name: 'Security Shield',
+    category: 'security',
+    tags: ['security', 'shield', 'protection', 'defense'],
+    defaultSize: { width: 80, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'svg',
+    svgPath: 'M40,10 L60,20 L60,40 Q60,60 40,70 Q20,60 20,40 L20,20 Z',
+    style: {
+      fill: '#e8f5e8',
+      stroke: '#2e7d32',
+      strokeWidth: 2
+    },
+    icon: '🛡️'
+  },
+
+  'security-lock': {
+    id: 'security-lock',
+    name: 'Lock',
+    category: 'security',
+    tags: ['lock', 'authentication', 'authorization', 'access control'],
+    defaultSize: { width: 60, height: 80 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#fff3e0',
+      stroke: '#f57c00',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '🔒'
+  },
+
+  'security-key': {
+    id: 'security-key',
+    name: 'Key',
+    category: 'security',
+    tags: ['key', 'encryption', 'cryptography', 'ssl'],
+    defaultSize: { width: 60, height: 40 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#e1f5fe',
+      stroke: '#0277bd',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '🔑'
+  },
+
+  'security-certificate': {
+    id: 'security-certificate',
+    name: 'Certificate',
+    category: 'security',
+    tags: ['certificate', 'ssl', 'tls', 'digital signature'],
+    defaultSize: { width: 80, height: 60 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#f3e5f5',
+      stroke: '#7b1fa2',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '📜'
+  },
+
+  'security-vpn': {
+    id: 'security-vpn',
+    name: 'VPN',
+    category: 'security',
+    tags: ['vpn', 'virtual private network', 'tunnel', 'secure'],
+    defaultSize: { width: 80, height: 60 },
+    connectionPoints: ['top', 'right', 'bottom', 'left'],
+    renderType: 'icon',
+    style: {
+      fill: '#e8f5e8',
+      stroke: '#2e7d32',
+      strokeWidth: 2,
+      borderRadius: '4px'
+    },
+    icon: '🔐'
   },
 
   // =================== AWS SHAPES ===================
@@ -413,6 +843,36 @@ export const SHAPE_CATEGORIES = {
     icon: '📊',
     description: 'Process flow and decision shapes',
     shapes: ['flowchart-process', 'flowchart-decision', 'flowchart-terminator', 'flowchart-document', 'flowchart-data']
+  },
+  networking: {
+    name: 'Networking',
+    icon: '🌐',
+    description: 'Network infrastructure components',
+    shapes: ['networking-router', 'networking-switch', 'networking-firewall', 'networking-load-balancer', 'networking-proxy']
+  },
+  computers: {
+    name: 'Computers',
+    icon: '🖥️',
+    description: 'Computer and server components',
+    shapes: ['computers-server', 'computers-workstation', 'computers-laptop', 'computers-tablet', 'computers-mobile']
+  },
+  people: {
+    name: 'People',
+    icon: '👥',
+    description: 'User and actor representations',
+    shapes: ['people-user', 'people-admin', 'people-developer', 'people-analyst', 'people-customer']
+  },
+  database: {
+    name: 'Database',
+    icon: '🗄️',
+    description: 'Database and storage components',
+    shapes: ['database-sql', 'database-nosql', 'database-cache', 'database-warehouse', 'database-backup']
+  },
+  security: {
+    name: 'Security',
+    icon: '🔒',
+    description: 'Security and authentication components',
+    shapes: ['security-shield', 'security-lock', 'security-key', 'security-certificate', 'security-vpn']
   },
   aws: {
     name: 'AWS',

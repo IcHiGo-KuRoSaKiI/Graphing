@@ -73,6 +73,53 @@ This document outlines the requirements for implementing two major features:
 - **REQ-EX-017**: System SHALL recover gracefully from export failures
 - **REQ-EX-018**: Large diagram exports SHALL not cause browser crashes
 
+## Feature 3: Smart Layout Algorithms & Enhanced Sizing
+
+### Functional Requirements
+
+#### FR3.1 Smart Layout Algorithms
+- **REQ-LA-001**: System SHALL support hierarchical layout algorithm for tree-like structures
+- **REQ-LA-002**: System SHALL support circular layout algorithm for balanced diagrams
+- **REQ-LA-003**: System SHALL support grid layout algorithm for organized arrangements
+- **REQ-LA-004**: System SHALL support force-directed layout algorithm for complex networks
+- **REQ-LA-005**: Users SHALL be able to switch between layout algorithms dynamically
+- **REQ-LA-006**: Layout algorithms SHALL preserve existing node relationships and connections
+- **REQ-LA-007**: System SHALL provide layout algorithm preview before application
+
+#### FR3.2 Enhanced Sizing System
+- **REQ-ES-001**: System SHALL automatically calculate optimal node sizes based on content
+- **REQ-ES-002**: Text-based sizing SHALL account for multi-line content and badges
+- **REQ-ES-003**: Sizing calculations SHALL be cached for performance optimization
+- **REQ-ES-004**: System SHALL maintain aspect ratios while optimizing for content
+- **REQ-ES-005**: Sizing SHALL respect minimum and maximum constraints
+- **REQ-ES-006**: Container sizing SHALL adapt to child node requirements
+
+#### FR3.3 Performance Optimization
+- **REQ-PO-001**: Layout algorithms SHALL complete within 2 seconds for diagrams with <100 nodes
+- **REQ-PO-002**: Large diagrams (>100 nodes) SHALL use Web Workers for layout computation
+- **REQ-PO-003**: Layout calculations SHALL be incremental for changed nodes only
+- **REQ-PO-004**: Sizing calculations SHALL be cached and reused for similar content
+- **REQ-PO-005**: Force-directed layout SHALL limit iterations to prevent performance issues
+
+### Non-Functional Requirements
+
+#### NFR3.1 Performance
+- **REQ-LA-008**: Layout algorithm switching SHALL complete within 500ms
+- **REQ-LA-009**: Layout algorithms SHALL not block UI interactions during computation
+- **REQ-LA-010**: Memory usage during layout computation SHALL not exceed 100MB
+- **REQ-LA-011**: Sizing calculations SHALL complete within 100ms for typical nodes
+
+#### NFR3.2 Quality
+- **REQ-LA-012**: Layout algorithms SHALL produce visually appealing arrangements
+- **REQ-LA-013**: Node overlap SHALL be minimized in all layout algorithms
+- **REQ-LA-014**: Edge crossings SHALL be minimized in hierarchical and force-directed layouts
+- **REQ-LA-015**: Sizing SHALL maintain readability and visual hierarchy
+
+#### NFR3.3 Compatibility
+- **REQ-LA-016**: New layout algorithms SHALL work with existing diagram structures
+- **REQ-LA-017**: Enhanced sizing SHALL be backward compatible with existing nodes
+- **REQ-LA-018**: Layout algorithms SHALL preserve existing node styling and properties
+
 ## Technical Constraints
 
 ### TC1: Performance Constraints
@@ -103,6 +150,12 @@ This document outlines the requirements for implementing two major features:
 - Export time for typical diagrams under 5 seconds
 - Zero data loss during export process
 
+### Layout Algorithm Success Metrics
+- All layout algorithms complete within 2 seconds for <100 nodes
+- Layout quality scores >8/10 in user testing
+- Zero performance regression in existing diagram editing
+- Sizing calculations complete within 100ms per node
+
 ## Out of Scope
 
 ### V1.0 Exclusions
@@ -113,3 +166,6 @@ This document outlines the requirements for implementing two major features:
 - Vector format exports (SVG, PDF)
 - Batch export functionality
 - Shape marketplace or sharing features
+- Real-time layout updates during editing
+- Complex pathfinding algorithms
+- 3D layout algorithms

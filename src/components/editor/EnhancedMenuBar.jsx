@@ -14,6 +14,7 @@ const EnhancedMenuBar = ({
   onExportPNG,
   onExportJPG,
   onExportSVG,
+  onExportModal,
   onUndo,
   onRedo,
   onCut,
@@ -145,6 +146,10 @@ const EnhancedMenuBar = ({
         </MenuItem>
         <MenuItem onClick={onImportDrawio}>
           Import Draw.io XML...
+        </MenuItem>
+        <MenuItem separator />
+        <MenuItem onClick={onExportModal}>
+          Export Diagram...
         </MenuItem>
         <MenuItem separator />
         <MenuItem onClick={onExportJSON}>

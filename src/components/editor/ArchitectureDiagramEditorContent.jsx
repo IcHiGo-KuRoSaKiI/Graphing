@@ -31,6 +31,7 @@ import ContainerSelectorModal from '../modals/ContainerSelectorModal';
 import ShapeSelectorModal from '../modals/ShapeSelectorModal';
 import JsonPasteModal from '../modals/JsonPasteModal';
 import JsonValidatorModal from '../modals/JsonValidatorModal';
+import ExportModal from '../modals/ExportModal';
 
 // Import editor components
 import TailwindPropertyEditor from './TailwindPropertyEditor';
@@ -113,6 +114,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [shapeSelectorModal, setShapeSelectorModal] = useState({ isOpen: false });
     const [jsonPasteModal, setJsonPasteModal] = useState({ isOpen: false, onConfirm: null });
     const [jsonValidatorModal, setJsonValidatorModal] = useState({ isOpen: false });
+    const [exportModal, setExportModal] = useState({ isOpen: false });
 
     // Refs
     const reactFlowWrapper = useRef(null);
@@ -1781,6 +1783,32 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         }
     }, [technicalDetailsPanelOpen, selectedElementForTechnicalDetails, nodes]);
 
+    // New export modal handlers
+    const openExportModal = useCallback(() => {
+        setExportModal({ isOpen: true });
+    }, []);
+
+    const closeExportModal = useCallback(() => {
+        setExportModal({ isOpen: false });
+    }, []);
+
+    // Get diagram data for export
+    const getDiagramDataForExport = useCallback(() => {
+        return {
+            nodes,
+            edges,
+            containers: nodes.filter(node => node.type === 'container'),
+            connections: edges,
+            metadata: {
+                name: 'Architecture Diagram',
+                description: 'Exported architecture diagram',
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                nodeCount: nodes.length,
+                edgeCount: edges.length
+            }
+        };
+    }, [nodes, edges]);
 
     return (
         <div className="architecture-diagram-editor h-full flex flex-col">
@@ -1846,6 +1874,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     onExportPNG={exportAsPNG}
                     onExportJPG={exportAsJPG}
                     onExportSVG={exportAsSVG}
+                    onExportModal={openExportModal}
 
                     // Edit operations
                     onUndo={undo}
@@ -2136,6 +2165,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 isOpen={jsonValidatorModal.isOpen}
                 onValidate={validateJson}
                 onClose={() => setJsonValidatorModal({ isOpen: false })}
+            />
+            
+            {/* Export Modal */}
+            <ExportModal
+                isOpen={exportModal.isOpen}
+                onClose={closeExportModal}
+                diagramData={getDiagramDataForExport()}
             />
             
             {/* Shape Library Panel */}

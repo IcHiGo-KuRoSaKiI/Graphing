@@ -102,37 +102,47 @@ export class ExportService {
     }
 
     /**
-     * Export diagram to PNG format
+     * Export diagram to PNG format with transparency support
      * @param {Object} diagramData - Diagram data
      * @param {Object} options - Export options
      * @returns {Promise<Object>} PNG export result
      */
     async exportToPNG(diagramData, options = {}) {
         const { 
-            width = 1920, 
-            height = 1080, 
-            backgroundColor = '#ffffff',
+            width, 
+            height, 
+            backgroundColor = 'transparent',
             quality = 1.0,
-            filename = 'architecture-diagram.png'
+            filename = 'architecture-diagram.png',
+            scale = 1,
+            includeBackground = false
         } = options;
 
         try {
-            // This would need to be implemented with actual DOM manipulation
-            // For now, we'll return a placeholder structure
             const pngData = await this.generateImageFromDiagram(diagramData, {
                 format: 'png',
-                width,
-                height,
-                backgroundColor,
-                quality
+                width: width,
+                height: height,
+                backgroundColor: includeBackground ? backgroundColor : 'transparent',
+                quality,
+                scale,
+                includeBackground
             });
+
+            // Calculate actual dimensions from bounds
+            const bounds = this.calculateDiagramBounds(diagramData);
+            const margin = 50;
+            const actualWidth = width || (bounds.width + margin * 2);
+            const actualHeight = height || (bounds.height + margin * 2);
 
             return {
                 type: 'png',
                 data: pngData,
                 filename,
                 mimeType: 'image/png',
-                dimensions: { width, height }
+                dimensions: { width: actualWidth * scale, height: actualHeight * scale },
+                quality,
+                scale
             };
         } catch (error) {
             throw new Error(`PNG export failed: ${error.message}`);
@@ -140,35 +150,48 @@ export class ExportService {
     }
 
     /**
-     * Export diagram to JPG format
+     * Export diagram to JPG format with quality settings
      * @param {Object} diagramData - Diagram data
      * @param {Object} options - Export options
      * @returns {Promise<Object>} JPG export result
      */
     async exportToJPG(diagramData, options = {}) {
         const { 
-            width = 1920, 
-            height = 1080, 
+            width, 
+            height, 
             backgroundColor = '#ffffff',
             quality = 0.9,
-            filename = 'architecture-diagram.jpg'
+            filename = 'architecture-diagram.jpg',
+            scale = 1
         } = options;
+
+        // Validate quality (0.6 to 1.0)
+        const validatedQuality = Math.max(0.6, Math.min(1.0, quality));
 
         try {
             const jpgData = await this.generateImageFromDiagram(diagramData, {
                 format: 'jpg',
-                width,
-                height,
+                width: width,
+                height: height,
                 backgroundColor,
-                quality
+                quality: validatedQuality,
+                scale
             });
+
+            // Calculate actual dimensions from bounds
+            const bounds = this.calculateDiagramBounds(diagramData);
+            const margin = 50;
+            const actualWidth = width || (bounds.width + margin * 2);
+            const actualHeight = height || (bounds.height + margin * 2);
 
             return {
                 type: 'jpg',
                 data: jpgData,
                 filename,
                 mimeType: 'image/jpeg',
-                dimensions: { width, height }
+                dimensions: { width: actualWidth * scale, height: actualHeight * scale },
+                quality: validatedQuality,
+                scale
             };
         } catch (error) {
             throw new Error(`JPG export failed: ${error.message}`);
@@ -183,8 +206,8 @@ export class ExportService {
      */
     async exportToSVG(diagramData, options = {}) {
         const { 
-            width = 1920, 
-            height = 1080, 
+            width, 
+            height, 
             backgroundColor = '#ffffff',
             filename = 'architecture-diagram.svg'
         } = options;
@@ -192,17 +215,23 @@ export class ExportService {
         try {
             const svgData = await this.generateImageFromDiagram(diagramData, {
                 format: 'svg',
-                width,
-                height,
+                width: width,
+                height: height,
                 backgroundColor
             });
+
+            // Calculate actual dimensions from bounds
+            const bounds = this.calculateDiagramBounds(diagramData);
+            const margin = 50;
+            const actualWidth = width || (bounds.width + margin * 2);
+            const actualHeight = height || (bounds.height + margin * 2);
 
             return {
                 type: 'svg',
                 data: svgData,
                 filename,
                 mimeType: 'image/svg+xml',
-                dimensions: { width, height }
+                dimensions: { width: actualWidth, height: actualHeight }
             };
         } catch (error) {
             throw new Error(`SVG export failed: ${error.message}`);
@@ -210,16 +239,13 @@ export class ExportService {
     }
 
     /**
-     * Export diagram to draw.io XML format
+     * Export diagram to Draw.io XML format
      * @param {Object} diagramData - Diagram data
      * @param {Object} options - Export options
      * @returns {Promise<Object>} Draw.io XML export result
      */
     async exportToDrawioXML(diagramData, options = {}) {
-        const { 
-            filename = 'architecture-diagram.drawio',
-            includeMetadata = true
-        } = options;
+        const { includeMetadata = true, filename = 'architecture-diagram.drawio' } = options;
 
         try {
             const xmlData = this.generateDrawioXML(diagramData, includeMetadata);
@@ -236,25 +262,151 @@ export class ExportService {
     }
 
     /**
-     * Generate image from diagram data
+     * Generate image from diagram data using html-to-image
      * @param {Object} diagramData - Diagram data
-     * @param {Object} options - Image generation options
-     * @returns {Promise<string>} Base64 encoded image data
+     * @param {Object} options - Export options
+     * @returns {Promise<string>} Base64 image data
      */
     async generateImageFromDiagram(diagramData, options = {}) {
-        const { format, width, height, backgroundColor, quality } = options;
+        const { format, width, height, backgroundColor, quality, scale = 1, includeBackground = false } = options;
         
-        // This is a placeholder implementation
-        // In a real implementation, you would:
-        // 1. Create a temporary DOM element
-        // 2. Render the diagram using React Flow
-        // 3. Use html-to-image to capture the rendered diagram
-        // 4. Return the base64 data
+        try {
+            // Find the React Flow container element - try multiple selectors
+            let reactFlowContainer = document.querySelector('.react-flow__viewport') || 
+                                   document.querySelector('[data-testid="rf__viewport"]') ||
+                                   document.querySelector('.react-flow') ||
+                                   document.querySelector('.react-flow__renderer');
+            
+            if (!reactFlowContainer) {
+                // Try to find any element with react-flow classes
+                reactFlowContainer = document.querySelector('[class*="react-flow"]');
+            }
+            
+            if (!reactFlowContainer) {
+                throw new Error('React Flow container not found. Please ensure the diagram is rendered.');
+            }
+
+            // Calculate diagram bounds from nodes and containers
+            const bounds = this.calculateDiagramBounds(diagramData);
+            
+            // Add margin around the diagram
+            const margin = 50;
+            const diagramWidth = Math.max(bounds.width + margin * 2, 800);
+            const diagramHeight = Math.max(bounds.height + margin * 2, 600);
+            
+            // Use provided dimensions or calculate from bounds
+            const exportWidth = width || diagramWidth;
+            const exportHeight = height || diagramHeight;
+
+            // Create export options based on format
+            const exportOptions = {
+                width: exportWidth * scale,
+                height: exportHeight * scale,
+                quality: quality || 1.0,
+                pixelRatio: scale,
+                backgroundColor: includeBackground ? backgroundColor : undefined,
+                style: {
+                    transform: `translate(${-bounds.x + margin}px, ${-bounds.y + margin}px) scale(${scale})`,
+                    transformOrigin: 'top left',
+                    width: `${diagramWidth}px`,
+                    height: `${diagramHeight}px`
+                },
+                filter: (node) => {
+                    // Filter out unwanted elements during export
+                    let classNameString = '';
+                    
+                    if (node.className) {
+                        if (typeof node.className === 'string') {
+                            classNameString = node.className;
+                        } else if (node.className.toString) {
+                            // Handle DOMTokenList or other objects
+                            classNameString = node.className.toString();
+                        } else {
+                            classNameString = '';
+                        }
+                    }
+                    
+                    return !classNameString.includes('react-flow__controls') && 
+                           !classNameString.includes('react-flow__minimap') &&
+                           !classNameString.includes('react-flow__panel') &&
+                           !classNameString.includes('export-exclude');
+                }
+            };
+
+            let imageData;
+            switch (format.toLowerCase()) {
+                case 'png':
+                    imageData = await toPng(reactFlowContainer, exportOptions);
+                    break;
+                case 'jpg':
+                    imageData = await toJpeg(reactFlowContainer, exportOptions);
+                    break;
+                case 'svg':
+                    imageData = await toSvg(reactFlowContainer, exportOptions);
+                    break;
+                default:
+                    throw new Error(`Unsupported format: ${format}`);
+            }
+
+            return imageData;
+        } catch (error) {
+            console.error('Image generation failed:', error);
+            throw new Error(`Failed to generate ${format.toUpperCase()} image: ${error.message}`);
+        }
+    }
+
+    /**
+     * Calculate diagram bounds from nodes and containers
+     * @param {Object} diagramData - Diagram data
+     * @returns {Object} Bounds object with x, y, width, height
+     */
+    calculateDiagramBounds(diagramData) {
+        const { nodes = [], containers = [] } = diagramData;
         
-        // For now, we'll return a placeholder
-        const placeholderData = `data:image/${format};base64,PLACEHOLDER_${format.toUpperCase()}_DATA`;
+        if (nodes.length === 0 && containers.length === 0) {
+            return { x: 0, y: 0, width: 800, height: 600 };
+        }
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         
-        return placeholderData;
+        // Calculate bounds from nodes
+        nodes.forEach(node => {
+            if (node.position) {
+                const nodeWidth = node.size?.width || node.__rf?.width || 150;
+                const nodeHeight = node.size?.height || node.__rf?.height || 80;
+                
+                minX = Math.min(minX, node.position.x);
+                minY = Math.min(minY, node.position.y);
+                maxX = Math.max(maxX, node.position.x + nodeWidth);
+                maxY = Math.max(maxY, node.position.y + nodeHeight);
+            }
+        });
+
+        // Calculate bounds from containers
+        containers.forEach(container => {
+            if (container.position) {
+                const containerWidth = container.size?.width || 400;
+                const containerHeight = container.size?.height || 300;
+                
+                minX = Math.min(minX, container.position.x);
+                minY = Math.min(minY, container.position.y);
+                maxX = Math.max(maxX, container.position.x + containerWidth);
+                maxY = Math.max(maxY, container.position.y + containerHeight);
+            }
+        });
+
+        // Ensure we have valid bounds
+        if (minX === Infinity) minX = 0;
+        if (minY === Infinity) minY = 0;
+        if (maxX === -Infinity) maxX = 800;
+        if (maxY === -Infinity) maxY = 600;
+
+        return {
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY
+        };
     }
 
     /**
@@ -328,7 +480,8 @@ export class ExportService {
             'diamond': 'rhombus;whiteSpace=wrap;html=1;',
             'circle': 'ellipse;whiteSpace=wrap;html=1;',
             'hexagon': 'shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;',
-            'triangle': 'triangle;whiteSpace=wrap;html=1;'
+            'triangle': 'triangle;whiteSpace=wrap;html=1;',
+            'universalShape': 'rounded=1;whiteSpace=wrap;html=1;'
         };
 
         return shapeMap[nodeType] || shapeMap['component'];
@@ -342,85 +495,118 @@ export class ExportService {
     createDownloadLink(exportResult) {
         const { data, filename, mimeType } = exportResult;
         
-        let dataUri;
-        if (mimeType.startsWith('image/')) {
-            dataUri = data; // Already base64 encoded
-        } else {
-            dataUri = `data:${mimeType};charset=utf-8,${encodeURIComponent(data)}`;
+        if (!data) {
+            throw new Error('No data to download');
         }
 
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', filename);
-        linkElement.click();
+        // Create blob from data
+        let blob;
+        if (typeof data === 'string' && data.startsWith('data:')) {
+            // Handle base64 data URLs
+            const byteString = atob(data.split(',')[1]);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            blob = new Blob([ab], { type: mimeType });
+        } else {
+            // Handle string data
+            blob = new Blob([data], { type: mimeType });
+        }
+
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 
     /**
-     * Validate export options
+     * Validate export options for a specific format
      * @param {string} format - Export format
      * @param {Object} options - Export options
-     * @returns {boolean} True if valid
+     * @returns {Object} Validated options
      */
-    validateExportOptions(format, options) {
-        const validFormats = this.getAvailableFormats();
-        
-        if (!validFormats.includes(format)) {
-            throw new Error(`Invalid export format: ${format}`);
+    validateExportOptions(format, options = {}) {
+        const validatedOptions = { ...options };
+
+        switch (format.toLowerCase()) {
+            case 'png':
+                validatedOptions.quality = Math.max(0.1, Math.min(1.0, options.quality || 1.0));
+                validatedOptions.scale = Math.max(0.5, Math.min(4.0, options.scale || 1.0));
+                break;
+            case 'jpg':
+                validatedOptions.quality = Math.max(0.6, Math.min(1.0, options.quality || 0.9));
+                validatedOptions.scale = Math.max(0.5, Math.min(4.0, options.scale || 1.0));
+                break;
+            case 'svg':
+                validatedOptions.scale = Math.max(0.5, Math.min(4.0, options.scale || 1.0));
+                break;
         }
 
-        // Validate image-specific options
-        if (['png', 'jpg', 'svg'].includes(format)) {
-            const { width, height } = options;
-            if (width && (width < 100 || width > 10000)) {
-                throw new Error('Width must be between 100 and 10000');
-            }
-            if (height && (height < 100 || height > 10000)) {
-                throw new Error('Height must be between 100 and 10000');
-            }
-        }
-
-        return true;
+        return validatedOptions;
     }
 
     /**
-     * Get export format information
+     * Get format information
      * @param {string} format - Export format
      * @returns {Object} Format information
      */
     getFormatInfo(format) {
         const formatInfo = {
-            json: {
-                name: 'JSON',
-                description: 'JavaScript Object Notation format',
-                mimeType: 'application/json',
-                extension: '.json'
-            },
             png: {
                 name: 'PNG',
-                description: 'Portable Network Graphics image format',
+                description: 'Portable Network Graphics with transparency support',
                 mimeType: 'image/png',
-                extension: '.png'
+                extensions: ['.png'],
+                supportsTransparency: true,
+                qualityRange: { min: 0.1, max: 1.0, default: 1.0 },
+                scaleRange: { min: 0.5, max: 4.0, default: 1.0 }
             },
             jpg: {
                 name: 'JPEG',
-                description: 'Joint Photographic Experts Group image format',
+                description: 'Joint Photographic Experts Group format',
                 mimeType: 'image/jpeg',
-                extension: '.jpg'
+                extensions: ['.jpg', '.jpeg'],
+                supportsTransparency: false,
+                qualityRange: { min: 0.6, max: 1.0, default: 0.9 },
+                scaleRange: { min: 0.5, max: 4.0, default: 1.0 }
             },
             svg: {
                 name: 'SVG',
-                description: 'Scalable Vector Graphics format',
+                description: 'Scalable Vector Graphics',
                 mimeType: 'image/svg+xml',
-                extension: '.svg'
+                extensions: ['.svg'],
+                supportsTransparency: true,
+                qualityRange: { min: 0.1, max: 1.0, default: 1.0 },
+                scaleRange: { min: 0.5, max: 4.0, default: 1.0 }
+            },
+            json: {
+                name: 'JSON',
+                description: 'JavaScript Object Notation',
+                mimeType: 'application/json',
+                extensions: ['.json'],
+                supportsTransparency: false
             },
             drawio: {
                 name: 'Draw.io XML',
                 description: 'Draw.io compatible XML format',
                 mimeType: 'application/xml',
-                extension: '.drawio'
+                extensions: ['.drawio', '.xml'],
+                supportsTransparency: false
             }
         };
 
-        return formatInfo[format] || null;
+        return formatInfo[format.toLowerCase()] || null;
     }
 } 

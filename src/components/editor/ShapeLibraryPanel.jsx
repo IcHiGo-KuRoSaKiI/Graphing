@@ -1,11 +1,51 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Search, ChevronDown, ChevronRight, Star, X } from 'lucide-react';
+import React, { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
+import { Search, ChevronDown, ChevronRight, Star, X, Loader2 } from 'lucide-react';
 import { SHAPE_DEFINITIONS, SHAPE_CATEGORIES, searchShapes, getShapesByCategory } from '../../config/ShapeDefinitions';
+
+// Lazy loading hook for shape categories
+const useLazyShapeLoading = (categoryId) => {
+  const [shapes, setShapes] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (categoryId && !isLoaded) {
+      setIsLoading(true);
+      // Simulate async loading for better UX
+      const timer = setTimeout(() => {
+        const categoryShapes = getShapesByCategory(categoryId);
+        setShapes(categoryShapes);
+        setIsLoaded(true);
+        setIsLoading(false);
+      }, 100); // Small delay to show loading state
+
+      return () => clearTimeout(timer);
+    }
+  }, [categoryId, isLoaded]);
+
+  return { shapes, isLoading, isLoaded };
+};
+
+// Loading skeleton component
+const CategoryLoadingSkeleton = () => (
+  <div className="p-4 space-y-3">
+    <div className="flex items-center space-x-2">
+      <div className="w-4 h-4 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+      <div className="w-24 h-4 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+    </div>
+    <div className="grid grid-cols-4 gap-2">
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="h-16 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+      ))}
+    </div>
+  </div>
+);
 
 const ShapeLibraryPanel = ({ isOpen, onClose, onShapeSelect, className = '' }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [collapsedCategories, setCollapsedCategories] = useState(new Set());
+  const [loadedCategories, setLoadedCategories] = useState(new Set(['basic'])); // Start with basic category loaded
   const [favorites, setFavorites] = useState(() => {
     // Load favorites from localStorage
     try {
@@ -25,6 +65,13 @@ const ShapeLibraryPanel = ({ isOpen, onClose, onShapeSelect, className = '' }) =
     }
   }, [favorites]);
 
+  // Lazy load categories when they become visible
+  const handleCategoryVisibility = useCallback((categoryId) => {
+    if (!loadedCategories.has(categoryId)) {
+      setLoadedCategories(prev => new Set([...prev, categoryId]));
+    }
+  }, [loadedCategories]);
+
   // Filter shapes based on search and category
   const filteredShapes = useMemo(() => {
     let shapes;
@@ -32,13 +79,21 @@ const ShapeLibraryPanel = ({ isOpen, onClose, onShapeSelect, className = '' }) =
     if (searchTerm) {
       shapes = searchShapes(searchTerm);
     } else if (selectedCategory !== 'all') {
-      shapes = getShapesByCategory(selectedCategory);
+      // Only load shapes for selected category if it's loaded
+      if (loadedCategories.has(selectedCategory)) {
+        shapes = getShapesByCategory(selectedCategory);
+      } else {
+        shapes = [];
+      }
     } else {
-      shapes = Object.values(SHAPE_DEFINITIONS);
+      // For 'all' category, only show shapes from loaded categories
+      shapes = Object.values(SHAPE_DEFINITIONS).filter(shape => 
+        loadedCategories.has(shape.category)
+      );
     }
     
     return shapes;
-  }, [searchTerm, selectedCategory]);
+  }, [searchTerm, selectedCategory, loadedCategories]);
 
   // Group shapes by category
   const groupedShapes = useMemo(() => {
@@ -78,12 +133,14 @@ const ShapeLibraryPanel = ({ isOpen, onClose, onShapeSelect, className = '' }) =
       const newSet = new Set(prev);
       if (newSet.has(categoryId)) {
         newSet.delete(categoryId);
+        // Load category when expanded
+        handleCategoryVisibility(categoryId);
       } else {
         newSet.add(categoryId);
       }
       return newSet;
     });
-  }, []);
+  }, [handleCategoryVisibility]);
 
   const toggleFavorite = useCallback((shapeId) => {
     setFavorites(prev => {
@@ -104,32 +161,28 @@ const ShapeLibraryPanel = ({ isOpen, onClose, onShapeSelect, className = '' }) =
   if (!isOpen) return null;
 
   return (
-    <div className={`fixed left-0 top-0 h-full w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg z-50 flex flex-col ${className}`}>
+    <div className={`fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-xl z-50 flex flex-col ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">📚</span>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Shape Library</h2>
-        </div>
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Shape Library</h2>
         <button
           onClick={onClose}
-          className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-          title="Close Shape Library"
+          className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
         >
-          <X size={20} className="text-gray-600 dark:text-gray-400" />
+          <X size={20} className="text-gray-500 dark:text-gray-400" />
         </button>
       </div>
 
-      {/* Search */}
+      {/* Search Bar */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+          <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Search shapes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           {searchTerm && (
             <button
@@ -146,7 +199,13 @@ const ShapeLibraryPanel = ({ isOpen, onClose, onShapeSelect, className = '' }) =
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <select
           value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
+          onChange={(e) => {
+            const category = e.target.value;
+            setSelectedCategory(category);
+            if (category !== 'all') {
+              handleCategoryVisibility(category);
+            }
+          }}
           className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="all">All Categories</option>
@@ -189,16 +248,24 @@ const ShapeLibraryPanel = ({ isOpen, onClose, onShapeSelect, className = '' }) =
       <div className="flex-1 overflow-y-auto">
         {Object.keys(groupedShapes).length === 0 ? (
           <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-            <Search size={48} className="mx-auto mb-4 opacity-50" />
-            <p>No shapes found</p>
-            {searchTerm && (
-              <p className="text-sm mt-2">Try a different search term</p>
+            {searchTerm ? (
+              <>
+                <Search size={48} className="mx-auto mb-4 opacity-50" />
+                <p>No shapes found</p>
+                <p className="text-sm mt-2">Try a different search term</p>
+              </>
+            ) : (
+              <>
+                <Loader2 size={48} className="mx-auto mb-4 opacity-50 animate-spin" />
+                <p>Loading shapes...</p>
+              </>
             )}
           </div>
         ) : (
           Object.entries(groupedShapes).map(([categoryId, shapes]) => {
             const category = SHAPE_CATEGORIES[categoryId];
             const isCollapsed = collapsedCategories.has(categoryId);
+            const isLoaded = loadedCategories.has(categoryId);
             
             return (
               <div key={categoryId} className="border-b border-gray-200 dark:border-gray-700 last:border-b-0">
@@ -213,6 +280,9 @@ const ShapeLibraryPanel = ({ isOpen, onClose, onShapeSelect, className = '' }) =
                     <span className="text-xs text-gray-500 bg-gray-200 dark:bg-gray-600 px-2 py-0.5 rounded-full">
                       {shapes.length}
                     </span>
+                    {!isLoaded && (
+                      <Loader2 size={12} className="animate-spin text-blue-500" />
+                    )}
                   </div>
                   {isCollapsed ? 
                     <ChevronRight size={16} className="text-gray-500" /> : 
@@ -222,18 +292,24 @@ const ShapeLibraryPanel = ({ isOpen, onClose, onShapeSelect, className = '' }) =
                 
                 {/* Shapes Grid */}
                 {!isCollapsed && (
-                  <div className="p-2 grid grid-cols-4 gap-2 bg-gray-25 dark:bg-gray-800/50">
-                    {shapes.map(shape => (
-                      <ShapePreview
-                        key={shape.id}
-                        shape={shape}
-                        onClick={() => handleShapeClick(shape)}
-                        onDragStart={(e) => handleDragStart(e, shape)}
-                        isFavorite={favorites.has(shape.id)}
-                        onToggleFavorite={() => toggleFavorite(shape.id)}
-                      />
-                    ))}
-                  </div>
+                  <Suspense fallback={<CategoryLoadingSkeleton />}>
+                    <div className="p-2 grid grid-cols-4 gap-2 bg-gray-25 dark:bg-gray-800/50">
+                      {isLoaded ? (
+                        shapes.map(shape => (
+                          <ShapePreview
+                            key={shape.id}
+                            shape={shape}
+                            onClick={() => handleShapeClick(shape)}
+                            onDragStart={(e) => handleDragStart(e, shape)}
+                            isFavorite={favorites.has(shape.id)}
+                            onToggleFavorite={() => toggleFavorite(shape.id)}
+                          />
+                        ))
+                      ) : (
+                        <CategoryLoadingSkeleton />
+                      )}
+                    </div>
+                  </Suspense>
                 )}
               </div>
             );
@@ -259,43 +335,52 @@ const ShapePreview = ({ shape, onClick, onDragStart, isFavorite, onToggleFavorit
   }, [onToggleFavorite]);
 
   const renderShapePreview = () => {
-    switch (shape.renderType) {
-      case 'svg':
-        return (
-          <svg
-            viewBox={`0 0 ${shape.defaultSize.width} ${shape.defaultSize.height}`}
-            className="w-full h-full"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <path
-              d={shape.svgPath}
-              fill={shape.style.fill}
-              stroke={shape.style.stroke}
-              strokeWidth={shape.style.strokeWidth}
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
-        );
-      
-      case 'icon':
-      default:
-        return (
-          <div
-            className="w-full h-full flex items-center justify-center rounded"
-            style={{
-              backgroundColor: shape.style.fill,
-              border: `1px solid ${shape.style.stroke}`,
-              borderRadius: shape.style.borderRadius || '4px'
-            }}
-          >
-            {shape.icon && (
-              <span style={{ fontSize: '16px', lineHeight: '1' }}>
-                {shape.icon}
-              </span>
-            )}
-          </div>
-        );
+    if (shape.renderType === 'svg' && shape.svgPath) {
+      return (
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 100 100"
+          className="w-full h-full"
+        >
+          <path
+            d={shape.svgPath}
+            fill={shape.style?.fill || '#ffffff'}
+            stroke={shape.style?.stroke || '#000000'}
+            strokeWidth={shape.style?.strokeWidth || 2}
+          />
+        </svg>
+      );
     }
+
+    if (shape.renderType === 'icon') {
+      return (
+        <div
+          className="w-full h-full flex items-center justify-center text-2xl"
+          style={{
+            backgroundColor: shape.style?.fill || '#ffffff',
+            border: `${shape.style?.strokeWidth || 2}px solid ${shape.style?.stroke || '#000000'}`,
+            borderRadius: shape.style?.borderRadius || '4px'
+          }}
+        >
+          {shape.icon}
+        </div>
+      );
+    }
+
+    // Default rendering
+    return (
+      <div
+        className="w-full h-full flex items-center justify-center text-2xl"
+        style={{
+          backgroundColor: shape.style?.fill || '#ffffff',
+          border: `${shape.style?.strokeWidth || 2}px solid ${shape.style?.stroke || '#000000'}`,
+          borderRadius: shape.style?.borderRadius || '4px'
+        }}
+      >
+        {shape.icon}
+      </div>
+    );
   };
 
   return (
