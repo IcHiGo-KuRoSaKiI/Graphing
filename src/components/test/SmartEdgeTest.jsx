@@ -26,7 +26,7 @@ const initialNodes = [
   {
     id: '2',
     data: { label: 'Target Node' },
-    position: { x: 400, y: 300 },
+    position: { x: 450, y: 250 },
     width: 150,
     height: 60,
   },
@@ -37,6 +37,20 @@ const initialNodes = [
     width: 150,
     height: 60,
   },
+  {
+    id: '4',
+    data: { label: 'Obstacle Node' },
+    position: { x: 275, y: 175 },
+    width: 100,
+    height: 50,
+  },
+  {
+    id: '5',
+    data: { label: 'Another Node' },
+    position: { x: 50, y: 250 },
+    width: 120,
+    height: 50,
+  },
 ];
 
 const initialEdges = [
@@ -45,21 +59,35 @@ const initialEdges = [
     source: '1',
     target: '2',
     type: 'smart',
-    data: { label: 'Smart Edge 1' }
+    data: { label: 'Main Edge' }
   },
   {
     id: 'e1-3',
     source: '1',
     target: '3',
     type: 'smart',
-    data: { label: 'Smart Edge 2' }
+    data: { label: 'Top Edge' }
   },
   {
     id: 'e3-2',
     source: '3',
     target: '2',
     type: 'smart',
-    data: { label: 'Smart Edge 3' }
+    data: { label: 'Cross Edge' }
+  },
+  {
+    id: 'e5-4',
+    source: '5',
+    target: '4',
+    type: 'smart',
+    data: { label: 'Side Edge' }
+  },
+  {
+    id: 'e4-2',
+    source: '4',
+    target: '2',
+    type: 'smart',
+    data: { label: 'Direct Edge' }
   },
 ];
 
@@ -107,13 +135,25 @@ const SmartEdgeTest = () => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
           zIndex: 10
         }}>
-          <h3>SmartOrthogonalEdge Test</h3>
-          <p>✅ Orthogonal routing</p>
-          <p>✅ Collision avoidance</p>
-          <p>✅ Waypoint management</p>
-          <p>✅ Click + on edges to add waypoints</p>
-          <p>✅ Drag segments to move them</p>
-          <p>✅ Double-click waypoints to remove</p>
+          <h3>🎯 SmartOrthogonalEdge Test</h3>
+          <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+            <p><strong>✅ Enhanced Features:</strong></p>
+            <p>• <strong>Draw.io-style segment dragging</strong></p>
+            <p>• <strong>Node collision avoidance</strong></p>
+            <p>• <strong>Edge overlap prevention</strong></p>
+            <p>• <strong>Enhanced hit detection</strong></p>
+            <p>• <strong>Smart waypoint management</strong></p>
+            
+            <hr style={{ margin: '8px 0', opacity: 0.3 }} />
+            
+            <p><strong>🎮 How to Test:</strong></p>
+            <p>• <strong>Hover edges</strong> - see visual feedback</p>
+            <p>• <strong>Drag segments</strong> - orthogonal movement</p>
+            <p>• <strong>Click "+" circles</strong> - add waypoints</p>
+            <p>• <strong>Drag waypoints</strong> - move freely</p>
+            <p>• <strong>Double-click waypoints</strong> - remove</p>
+            <p>• <strong>Move nodes</strong> - edges auto-adjust</p>
+          </div>
         </div>
       </ReactFlow>
     </div>

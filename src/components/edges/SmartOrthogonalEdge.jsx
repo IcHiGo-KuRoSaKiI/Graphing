@@ -127,7 +127,7 @@ const calculateOrthogonalPath = (sourcePoint, targetPoint, existingEdges = [], n
     }
     
     // Apply collision avoidance
-    return applyCollisionAvoidance(waypoints, existingEdges, nodes);
+    return applyCollisionAvoidance(waypoints, existingEdges, nodes, sourcePoint, targetPoint);
     
   } catch (error) {
     console.warn('Orthogonal routing failed, falling back to simple path:', error);
@@ -179,39 +179,176 @@ const calculateJettyPoint = (connectionPoint, targetPoint, jettySize) => {
 };
 
 /**
- * Apply collision avoidance by offsetting parallel segments
+ * Enhanced collision avoidance - avoids nodes, edges, and other objects
  */
-const applyCollisionAvoidance = (waypoints, existingEdges, nodes) => {
-  if (!existingEdges || existingEdges.length === 0) return waypoints;
+const applyCollisionAvoidance = (waypoints, existingEdges, nodes, sourcePoint, targetPoint) => {
+  if (waypoints.length === 0) return waypoints;
   
   const adjustedWaypoints = [...waypoints];
+  const allPoints = [sourcePoint, ...adjustedWaypoints, targetPoint];
+  
+  // Get all node bounds for obstacle avoidance
+  const nodeObstacles = nodes.map(node => ({
+    x: node.position.x - COLLISION_MARGIN,
+    y: node.position.y - COLLISION_MARGIN,
+    width: (node.width || 150) + (COLLISION_MARGIN * 2),
+    height: (node.height || 60) + (COLLISION_MARGIN * 2),
+    right: node.position.x + (node.width || 150) + COLLISION_MARGIN,
+    bottom: node.position.y + (node.height || 60) + COLLISION_MARGIN
+  }));
   
   // Get all existing edge segments for collision detection
   const existingSegments = [];
-  existingEdges.forEach(edge => {
-    const segments = getEdgeSegments(edge, nodes);
-    existingSegments.push(...segments);
-  });
-  
-  // Check each waypoint segment for collisions
-  for (let i = 0; i < adjustedWaypoints.length - 1; i++) {
-    const segment = {
-      start: i === 0 ? waypoints[0] : adjustedWaypoints[i],
-      end: adjustedWaypoints[i + 1],
-      isHorizontal: Math.abs(adjustedWaypoints[i + 1].y - (i === 0 ? waypoints[0].y : adjustedWaypoints[i].y)) < 5,
-      isVertical: Math.abs(adjustedWaypoints[i + 1].x - (i === 0 ? waypoints[0].x : adjustedWaypoints[i].x)) < 5
-    };
-    
-    // Check for parallel segment collisions
-    existingSegments.forEach(existingSegment => {
-      if (detectParallelCollision(segment, existingSegment)) {
-        // Offset the segment to avoid collision
-        offsetSegment(adjustedWaypoints, i, existingSegment);
-      }
+  if (existingEdges && existingEdges.length > 0) {
+    existingEdges.forEach(edge => {
+      const segments = getEdgeSegments(edge, nodes);
+      existingSegments.push(...segments.map(seg => ({...seg, edgeId: edge.id})));
     });
   }
   
+  // Check each segment for collisions
+  for (let i = 0; i < allPoints.length - 1; i++) {
+    const segmentStart = allPoints[i];
+    const segmentEnd = allPoints[i + 1];
+    
+    const segment = {
+      start: segmentStart,
+      end: segmentEnd,
+      isHorizontal: Math.abs(segmentStart.y - segmentEnd.y) < 5,
+      isVertical: Math.abs(segmentStart.x - segmentEnd.x) < 5
+    };
+    
+    // Check for node collisions
+    nodeObstacles.forEach(obstacle => {
+      if (segmentIntersectsNode(segment, obstacle)) {
+        offsetSegmentFromNode(adjustedWaypoints, allPoints, i, obstacle, sourcePoint, targetPoint);
+      }
+    });
+    
+    // Check for parallel segment collisions with existing edges
+    existingSegments.forEach(existingSegment => {
+      if (detectParallelCollision(segment, existingSegment)) {
+        offsetSegmentFromEdge(adjustedWaypoints, allPoints, i, existingSegment, sourcePoint, targetPoint);
+      }
+    });
+    
+    // Update allPoints array for next iteration
+    if (i === 0) {
+      allPoints[i + 1] = adjustedWaypoints[i];
+    } else if (i < adjustedWaypoints.length) {
+      allPoints[i + 1] = adjustedWaypoints[i];
+    }
+  }
+  
   return adjustedWaypoints;
+};
+
+/**
+ * Check if a segment intersects with a node
+ */
+const segmentIntersectsNode = (segment, node) => {
+  const { start, end } = segment;
+  
+  // Check if segment passes through node bounds
+  const segmentLeft = Math.min(start.x, end.x);
+  const segmentRight = Math.max(start.x, end.x);
+  const segmentTop = Math.min(start.y, end.y);
+  const segmentBottom = Math.max(start.y, end.y);
+  
+  // Check for overlap
+  const horizontalOverlap = !(segmentRight < node.x || segmentLeft > node.right);
+  const verticalOverlap = !(segmentBottom < node.y || segmentTop > node.bottom);
+  
+  return horizontalOverlap && verticalOverlap;
+};
+
+/**
+ * Offset segment to avoid node collision
+ */
+const offsetSegmentFromNode = (waypoints, allPoints, segmentIndex, node, sourcePoint, targetPoint) => {
+  const segment = {
+    start: allPoints[segmentIndex],
+    end: allPoints[segmentIndex + 1]
+  };
+  
+  const isHorizontal = Math.abs(segment.start.y - segment.end.y) < 5;
+  const offset = COLLISION_MARGIN + 10;
+  
+  if (isHorizontal) {
+    // Move horizontal segment above or below node
+    const segmentY = segment.start.y;
+    const nodeCenter = node.y + node.height / 2;
+    const newY = segmentY > nodeCenter ? node.bottom + offset : node.y - offset;
+    
+    // Update waypoints
+    if (segmentIndex === 0 && waypoints.length > 0) {
+      waypoints[0] = { ...waypoints[0], y: newY };
+    } else if (segmentIndex < waypoints.length) {
+      waypoints[segmentIndex] = { ...waypoints[segmentIndex], y: newY };
+    }
+    
+    if (segmentIndex + 1 < waypoints.length) {
+      waypoints[segmentIndex + 1] = { ...waypoints[segmentIndex + 1], y: newY };
+    }
+  } else {
+    // Move vertical segment left or right of node
+    const segmentX = segment.start.x;
+    const nodeCenter = node.x + node.width / 2;
+    const newX = segmentX > nodeCenter ? node.right + offset : node.x - offset;
+    
+    // Update waypoints
+    if (segmentIndex === 0 && waypoints.length > 0) {
+      waypoints[0] = { ...waypoints[0], x: newX };
+    } else if (segmentIndex < waypoints.length) {
+      waypoints[segmentIndex] = { ...waypoints[segmentIndex], x: newX };
+    }
+    
+    if (segmentIndex + 1 < waypoints.length) {
+      waypoints[segmentIndex + 1] = { ...waypoints[segmentIndex + 1], x: newX };
+    }
+  }
+};
+
+/**
+ * Offset segment to avoid edge collision
+ */
+const offsetSegmentFromEdge = (waypoints, allPoints, segmentIndex, existingSegment, sourcePoint, targetPoint) => {
+  const segment = {
+    start: allPoints[segmentIndex],
+    end: allPoints[segmentIndex + 1]
+  };
+  
+  const offset = COLLISION_MARGIN + 5;
+  
+  if (segment.isHorizontal && existingSegment.isHorizontal) {
+    // Both horizontal - offset vertically
+    const direction = segment.start.y > existingSegment.start.y ? 1 : -1;
+    const newY = segment.start.y + (offset * direction);
+    
+    if (segmentIndex === 0 && waypoints.length > 0) {
+      waypoints[0] = { ...waypoints[0], y: newY };
+    } else if (segmentIndex < waypoints.length) {
+      waypoints[segmentIndex] = { ...waypoints[segmentIndex], y: newY };
+    }
+    
+    if (segmentIndex + 1 < waypoints.length) {
+      waypoints[segmentIndex + 1] = { ...waypoints[segmentIndex + 1], y: newY };
+    }
+  } else if (segment.isVertical && existingSegment.isVertical) {
+    // Both vertical - offset horizontally
+    const direction = segment.start.x > existingSegment.start.x ? 1 : -1;
+    const newX = segment.start.x + (offset * direction);
+    
+    if (segmentIndex === 0 && waypoints.length > 0) {
+      waypoints[0] = { ...waypoints[0], x: newX };
+    } else if (segmentIndex < waypoints.length) {
+      waypoints[segmentIndex] = { ...waypoints[segmentIndex], x: newX };
+    }
+    
+    if (segmentIndex + 1 < waypoints.length) {
+      waypoints[segmentIndex + 1] = { ...waypoints[segmentIndex + 1], x: newX };
+    }
+  }
 };
 
 /**
@@ -457,7 +594,7 @@ const SmartOrthogonalEdge = ({
     );
   }, [waypoints, id, setEdges]);
   
-  // Handle segment dragging
+  // Enhanced draw.io-style segment dragging
   const handleSegmentMouseDown = useCallback((event, segmentIndex) => {
     event.stopPropagation();
     event.preventDefault();
@@ -468,8 +605,14 @@ const SmartOrthogonalEdge = ({
     const p2 = allPoints[segmentIndex + 1];
     const isHorizontal = Math.abs(p1.y - p2.y) < 5;
     
+    // Store initial mouse position for better dragging
+    const initialMousePos = screenToFlowPosition({ 
+      x: event.clientX, 
+      y: event.clientY 
+    });
+    
     const onMouseMove = (moveEvent) => {
-      const position = screenToFlowPosition({ 
+      const currentMousePos = screenToFlowPosition({ 
         x: moveEvent.clientX, 
         y: moveEvent.clientY 
       });
@@ -478,40 +621,93 @@ const SmartOrthogonalEdge = ({
         edges.map((edge) => {
           if (edge.id === id) {
             const currentWaypoints = [...(edge.data?.waypoints || [])];
+            const allCurrentPoints = [sourcePoint, ...currentWaypoints, targetPoint];
+            
+            // Create waypoints if they don't exist for this segment
+            if (currentWaypoints.length === 0 && allCurrentPoints.length === 2) {
+              // Need to create initial waypoints for dragging
+              const midWaypoint = {
+                x: (allCurrentPoints[0].x + allCurrentPoints[1].x) / 2,
+                y: (allCurrentPoints[0].y + allCurrentPoints[1].y) / 2
+              };
+              currentWaypoints.push(midWaypoint);
+            }
+            
+            // Ensure we have enough waypoints for the segment being dragged
+            while (segmentIndex >= currentWaypoints.length) {
+              const lastPoint = currentWaypoints[currentWaypoints.length - 1] || sourcePoint;
+              const targetPt = targetPoint;
+              currentWaypoints.push({
+                x: (lastPoint.x + targetPt.x) / 2,
+                y: (lastPoint.y + targetPt.y) / 2
+              });
+            }
             
             if (isHorizontal) {
               // Move horizontal segment vertically
-              const newY = position.y;
+              const newY = currentMousePos.y;
               
-              // Update relevant waypoints
-              if (segmentIndex > 0 && currentWaypoints[segmentIndex - 1]) {
-                currentWaypoints[segmentIndex - 1] = { 
-                  ...currentWaypoints[segmentIndex - 1], 
-                  y: newY 
-                };
-              }
-              if (segmentIndex < currentWaypoints.length && currentWaypoints[segmentIndex]) {
-                currentWaypoints[segmentIndex] = { 
-                  ...currentWaypoints[segmentIndex], 
-                  y: newY 
-                };
+              // Update both endpoints of the horizontal segment
+              if (segmentIndex === 0) {
+                // First segment - only update the waypoint
+                if (currentWaypoints[0]) {
+                  currentWaypoints[0] = { ...currentWaypoints[0], y: newY };
+                }
+              } else if (segmentIndex >= currentWaypoints.length) {
+                // Last segment - only update the last waypoint
+                if (currentWaypoints[currentWaypoints.length - 1]) {
+                  currentWaypoints[currentWaypoints.length - 1] = { 
+                    ...currentWaypoints[currentWaypoints.length - 1], 
+                    y: newY 
+                  };
+                }
+              } else {
+                // Middle segment - update both waypoints
+                if (currentWaypoints[segmentIndex - 1]) {
+                  currentWaypoints[segmentIndex - 1] = { 
+                    ...currentWaypoints[segmentIndex - 1], 
+                    y: newY 
+                  };
+                }
+                if (currentWaypoints[segmentIndex]) {
+                  currentWaypoints[segmentIndex] = { 
+                    ...currentWaypoints[segmentIndex], 
+                    y: newY 
+                  };
+                }
               }
             } else {
               // Move vertical segment horizontally
-              const newX = position.x;
+              const newX = currentMousePos.x;
               
-              // Update relevant waypoints
-              if (segmentIndex > 0 && currentWaypoints[segmentIndex - 1]) {
-                currentWaypoints[segmentIndex - 1] = { 
-                  ...currentWaypoints[segmentIndex - 1], 
-                  x: newX 
-                };
-              }
-              if (segmentIndex < currentWaypoints.length && currentWaypoints[segmentIndex]) {
-                currentWaypoints[segmentIndex] = { 
-                  ...currentWaypoints[segmentIndex], 
-                  x: newX 
-                };
+              // Update both endpoints of the vertical segment
+              if (segmentIndex === 0) {
+                // First segment - only update the waypoint
+                if (currentWaypoints[0]) {
+                  currentWaypoints[0] = { ...currentWaypoints[0], x: newX };
+                }
+              } else if (segmentIndex >= currentWaypoints.length) {
+                // Last segment - only update the last waypoint
+                if (currentWaypoints[currentWaypoints.length - 1]) {
+                  currentWaypoints[currentWaypoints.length - 1] = { 
+                    ...currentWaypoints[currentWaypoints.length - 1], 
+                    x: newX 
+                  };
+                }
+              } else {
+                // Middle segment - update both waypoints
+                if (currentWaypoints[segmentIndex - 1]) {
+                  currentWaypoints[segmentIndex - 1] = { 
+                    ...currentWaypoints[segmentIndex - 1], 
+                    x: newX 
+                  };
+                }
+                if (currentWaypoints[segmentIndex]) {
+                  currentWaypoints[segmentIndex] = { 
+                    ...currentWaypoints[segmentIndex], 
+                    x: newX 
+                  };
+                }
               }
             }
             
@@ -532,11 +728,39 @@ const SmartOrthogonalEdge = ({
       setDraggedSegment(null);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      
+      // Cleanup and optimize waypoints after dragging
+      setEdges((edges) =>
+        edges.map((edge) => {
+          if (edge.id === id) {
+            const currentWaypoints = edge.data?.waypoints || [];
+            // Remove any waypoints that are too close to connection points
+            const cleanedWaypoints = currentWaypoints.filter((wp, index) => {
+              const prevPoint = index === 0 ? sourcePoint : currentWaypoints[index - 1];
+              const nextPoint = index === currentWaypoints.length - 1 ? targetPoint : currentWaypoints[index + 1];
+              
+              const distToPrev = Math.sqrt(Math.pow(wp.x - prevPoint.x, 2) + Math.pow(wp.y - prevPoint.y, 2));
+              const distToNext = Math.sqrt(Math.pow(wp.x - nextPoint.x, 2) + Math.pow(wp.y - nextPoint.y, 2));
+              
+              return distToPrev > 20 && distToNext > 20;
+            });
+            
+            return {
+              ...edge,
+              data: {
+                ...edge.data,
+                waypoints: cleanedWaypoints
+              }
+            };
+          }
+          return edge;
+        })
+      );
     };
     
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-  }, [allPoints, id, setEdges, screenToFlowPosition]);
+  }, [allPoints, id, setEdges, screenToFlowPosition, sourcePoint, targetPoint]);
   
   // Handle waypoint dragging
   const handleWaypointMouseDown = useCallback((event, waypointIndex) => {
@@ -671,78 +895,180 @@ const SmartOrthogonalEdge = ({
         </EdgeLabelRenderer>
       )}
       
-      {/* Draggable segments */}
+      {/* Enhanced draggable segments with better hit detection */}
       {allPoints.slice(0, -1).map((p1, i) => {
         const p2 = allPoints[i + 1];
         const isHorizontal = Math.abs(p1.y - p2.y) < 5;
+        const isVertical = Math.abs(p1.x - p2.x) < 5;
         const isDragging = draggedSegment === i;
         const isHovered = hoveredSegment === i;
         
+        // Calculate segment length for better hit detection
+        const segmentLength = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        const showSegment = segmentLength > 10; // Only show segments longer than 10px
+        
+        if (!showSegment) return null;
+        
         return (
           <g key={`segment-${i}`}>
-            {/* Visible segment */}
+            {/* Visual feedback segment */}
             <line
               x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-              stroke={isDragging ? "rgba(59, 130, 246, 0.8)" : isHovered ? "rgba(59, 130, 246, 0.6)" : "transparent"}
-              strokeWidth={isDragging ? 4 : isHovered ? 3 : 2}
-              strokeDasharray={isDragging || isHovered ? "5,5" : "none"}
-              style={{ cursor: isHorizontal ? 'ns-resize' : 'ew-resize' }}
+              stroke={isDragging ? "rgba(59, 130, 246, 0.9)" : isHovered ? "rgba(59, 130, 246, 0.7)" : "rgba(59, 130, 246, 0.2)"}
+              strokeWidth={isDragging ? 5 : isHovered ? 4 : 2}
+              strokeDasharray={isDragging || isHovered ? "8,4" : "none"}
+              style={{ 
+                cursor: isHorizontal ? 'ns-resize' : isVertical ? 'ew-resize' : 'move',
+                pointerEvents: 'none'
+              }}
+            />
+            
+            {/* Enhanced hit area with better detection */}
+            <line
+              x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+              stroke="transparent"
+              strokeWidth={Math.max(16, segmentLength * 0.1)} // Adaptive hit area
+              style={{ 
+                cursor: isHorizontal ? 'ns-resize' : isVertical ? 'ew-resize' : 'move'
+              }}
               onMouseDown={(event) => handleSegmentMouseDown(event, i)}
               onMouseEnter={() => setHoveredSegment(i)}
               onMouseLeave={() => setHoveredSegment(null)}
             />
             
-            {/* Invisible wider hit area */}
-            <line
-              x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-              stroke="transparent"
-              strokeWidth={12}
-              style={{ cursor: isHorizontal ? 'ns-resize' : 'ew-resize' }}
-              onMouseDown={(event) => handleSegmentMouseDown(event, i)}
-              onMouseEnter={() => setHoveredSegment(i)}
-              onMouseLeave={() => setHoveredSegment(null)}
-            />
-          </g>
-        );
-      })}
-      
-      {/* Virtual bend points (for adding waypoints) */}
-      {virtualBends.map((bend, index) => {
-        const isHovered = hoveredVirtualBend === index;
-        
-        return (
-          <g key={`virtual-bend-${index}`}>
-            <circle
-              cx={bend.x} cy={bend.y} r={isHovered ? 6 : 4}
-              fill="rgba(59, 130, 246, 0.4)"
-              stroke="rgb(59, 130, 246)"
-              strokeWidth={isHovered ? 2 : 1}
-              strokeDasharray="3,3"
-              style={{ cursor: 'pointer' }}
-              onClick={(event) => handleVirtualBendClick(event, bend)}
-              onMouseEnter={() => setHoveredVirtualBend(index)}
-              onMouseLeave={() => setHoveredVirtualBend(null)}
-            />
-            {isHovered && (
-              <text
-                x={bend.x} y={bend.y}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="rgb(59, 130, 246)"
-                fontSize="12"
-                fontWeight="bold"
-                style={{ pointerEvents: 'none' }}
-              >
-                +
-              </text>
+            {/* Hover indicator */}
+            {isHovered && !isDragging && (
+              <g>
+                {/* Direction indicators */}
+                {isHorizontal && (
+                  <>
+                    <polygon
+                      points={`${(p1.x + p2.x) / 2 - 6},${(p1.y + p2.y) / 2 - 8} ${(p1.x + p2.x) / 2},${(p1.y + p2.y) / 2 - 2} ${(p1.x + p2.x) / 2 + 6},${(p1.y + p2.y) / 2 - 8}`}
+                      fill="rgba(59, 130, 246, 0.8)"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                    <polygon
+                      points={`${(p1.x + p2.x) / 2 - 6},${(p1.y + p2.y) / 2 + 8} ${(p1.x + p2.x) / 2},${(p1.y + p2.y) / 2 + 2} ${(p1.x + p2.x) / 2 + 6},${(p1.y + p2.y) / 2 + 8}`}
+                      fill="rgba(59, 130, 246, 0.8)"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  </>
+                )}
+                {isVertical && (
+                  <>
+                    <polygon
+                      points={`${(p1.x + p2.x) / 2 - 8},${(p1.y + p2.y) / 2 - 6} ${(p1.x + p2.x) / 2 - 2},${(p1.y + p2.y) / 2} ${(p1.x + p2.x) / 2 - 8},${(p1.y + p2.y) / 2 + 6}`}
+                      fill="rgba(59, 130, 246, 0.8)"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                    <polygon
+                      points={`${(p1.x + p2.x) / 2 + 8},${(p1.y + p2.y) / 2 - 6} ${(p1.x + p2.x) / 2 + 2},${(p1.y + p2.y) / 2} ${(p1.x + p2.x) / 2 + 8},${(p1.y + p2.y) / 2 + 6}`}
+                      fill="rgba(59, 130, 246, 0.8)"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  </>
+                )}
+              </g>
             )}
           </g>
         );
       })}
       
-      {/* Waypoint handles */}
+      {/* Enhanced virtual bend points (for adding waypoints) */}
+      {virtualBends.map((bend, index) => {
+        const isHovered = hoveredVirtualBend === index;
+        const segmentLength = allPoints.length > index + 1 ? 
+          Math.sqrt(Math.pow(allPoints[index + 1].x - allPoints[index].x, 2) + Math.pow(allPoints[index + 1].y - allPoints[index].y, 2)) : 0;
+        
+        // Only show virtual bends on segments longer than 40px
+        if (segmentLength < 40) return null;
+        
+        return (
+          <g key={`virtual-bend-${index}`}>
+            {/* Virtual bend background */}
+            <circle
+              cx={bend.x} cy={bend.y} r={isHovered ? 10 : 8}
+              fill="rgba(255, 255, 255, 0.9)"
+              stroke="rgba(59, 130, 246, 0.3)"
+              strokeWidth={1}
+              style={{ pointerEvents: 'none' }}
+            />
+            
+            {/* Virtual bend circle */}
+            <circle
+              cx={bend.x} cy={bend.y} r={isHovered ? 7 : 5}
+              fill={isHovered ? "rgba(59, 130, 246, 0.7)" : "rgba(59, 130, 246, 0.4)"}
+              stroke="rgb(59, 130, 246)"
+              strokeWidth={isHovered ? 2 : 1}
+              strokeDasharray={isHovered ? "none" : "3,2"}
+              style={{ cursor: 'pointer' }}
+              onClick={(event) => handleVirtualBendClick(event, bend)}
+              onMouseEnter={() => setHoveredVirtualBend(index)}
+              onMouseLeave={() => setHoveredVirtualBend(null)}
+            />
+            
+            {/* Plus symbol */}
+            <g style={{ pointerEvents: 'none' }}>
+              <line
+                x1={bend.x - 3} y1={bend.y}
+                x2={bend.x + 3} y2={bend.y}
+                stroke={isHovered ? "white" : "rgb(59, 130, 246)"}
+                strokeWidth={isHovered ? 2 : 1.5}
+              />
+              <line
+                x1={bend.x} y1={bend.y - 3}
+                x2={bend.x} y2={bend.y + 3}
+                stroke={isHovered ? "white" : "rgb(59, 130, 246)"}
+                strokeWidth={isHovered ? 2 : 1.5}
+              />
+            </g>
+            
+            {/* Hover tooltip */}
+            {isHovered && (
+              <g>
+                <rect
+                  x={bend.x + 12} y={bend.y - 12}
+                  width={70} height={20}
+                  rx={3}
+                  fill="rgba(0, 0, 0, 0.8)"
+                  style={{ pointerEvents: 'none' }}
+                />
+                <text
+                  x={bend.x + 47} y={bend.y - 2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="white"
+                  fontSize="11"
+                  style={{ pointerEvents: 'none' }}
+                >
+                  Click to add
+                </text>
+              </g>
+            )}
+          </g>
+        );
+      })}
+      
+      {/* Enhanced waypoint handles */}
       {waypoints.map((waypoint, index) => (
         <g key={`waypoint-${index}`}>
+          {/* Waypoint shadow */}
+          <circle
+            cx={waypoint.x + 1} cy={waypoint.y + 1} r={6}
+            fill="rgba(0, 0, 0, 0.2)"
+            style={{ pointerEvents: 'none' }}
+          />
+          
+          {/* Waypoint background */}
+          <circle
+            cx={waypoint.x} cy={waypoint.y} r={7}
+            fill="white"
+            stroke="rgba(59, 130, 246, 0.3)"
+            strokeWidth={1}
+            style={{ pointerEvents: 'none' }}
+          />
+          
+          {/* Main waypoint */}
           <circle
             cx={waypoint.x} cy={waypoint.y} r={5}
             fill="rgb(59, 130, 246)"
@@ -751,6 +1077,13 @@ const SmartOrthogonalEdge = ({
             style={{ cursor: 'move' }}
             onMouseDown={(event) => handleWaypointMouseDown(event, index)}
             onDoubleClick={(event) => handleWaypointDoubleClick(event, index)}
+          />
+          
+          {/* Waypoint center dot */}
+          <circle
+            cx={waypoint.x} cy={waypoint.y} r={2}
+            fill="white"
+            style={{ pointerEvents: 'none' }}
           />
         </g>
       ))}
