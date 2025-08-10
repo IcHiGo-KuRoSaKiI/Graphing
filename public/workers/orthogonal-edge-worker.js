@@ -42,6 +42,40 @@ const getConnectionPoint = (node, position) => {
   }
 };
 
+// Draw.io-style connection point calculation
+const calculateOptimalConnectionPoint = (node, targetPoint, sourcePoint) => {
+  if (!node) return null;
+  
+  const bounds = getNodeBounds(node);
+  const center = { 
+    x: bounds.x + bounds.width / 2, 
+    y: bounds.y + bounds.height / 2 
+  };
+  
+  // Calculate which side is closest to the target
+  const dx = targetPoint.x - center.x;
+  const dy = targetPoint.y - center.y;
+  
+  // Add margin for better visual appearance (draw.io style)
+  const margin = 5;
+  
+  if (Math.abs(dx) > Math.abs(dy)) {
+    // Horizontal connection
+    if (dx > 0) {
+      return { x: bounds.right + margin, y: center.y };
+    } else {
+      return { x: bounds.x - margin, y: center.y };
+    }
+  } else {
+    // Vertical connection
+    if (dy > 0) {
+      return { x: center.x, y: bounds.bottom + margin };
+    } else {
+      return { x: center.x, y: bounds.y - margin };
+    }
+  }
+};
+
 // Core algorithms
 
 /**
@@ -82,7 +116,7 @@ const isRedundantPoint = (p1, p2, p3) => {
 };
 
 /**
- * Segment Intersection Detection & Merging
+ * Draw.io-style Segment Intersection Detection & Merging
  * Detects overlapping segments and creates shared waypoints
  */
 const detectSegmentIntersections = (edges, nodes) => {
@@ -97,7 +131,7 @@ const detectSegmentIntersections = (edges, nodes) => {
       segment.segmentIndex = segmentIndex;
       segment.mark = 1 << segmentIndex;
       
-      // Check intersections with other segments
+      // Check intersections with other segments (draw.io style)
       edges.forEach((otherEdge, otherEdgeIndex) => {
         if (edgeIndex >= otherEdgeIndex) return;
         
@@ -129,6 +163,98 @@ const detectSegmentIntersections = (edges, nodes) => {
   });
   
   return intersections;
+};
+
+/**
+ * Enhanced intersection detection with draw.io-style overlap detection
+ */
+const detectAdvancedIntersections = (edges, nodes) => {
+  const intersections = new Map();
+  
+  edges.forEach((edge, edgeIndex) => {
+    const segments = getEdgeSegments(edge, nodes);
+    
+    segments.forEach((segment, segmentIndex) => {
+      // Check for overlapping segments (draw.io style)
+      edges.forEach((otherEdge, otherEdgeIndex) => {
+        if (edgeIndex >= otherEdgeIndex) return;
+        
+        const otherSegments = getEdgeSegments(otherEdge, nodes);
+        otherSegments.forEach((otherSegment, otherSegmentIndex) => {
+          const intersection = findSegmentOverlap(segment, otherSegment);
+          if (intersection) {
+            // Merge overlapping segments for cleaner routing
+            mergeOverlappingSegments(segment, otherSegment, intersection);
+          }
+        });
+      });
+    });
+  });
+  
+  return intersections;
+};
+
+const findSegmentOverlap = (seg1, seg2) => {
+  // Check if segments overlap significantly
+  const tolerance = 10;
+  
+  if (seg1.isHorizontal && seg2.isHorizontal) {
+    // Both horizontal - check for vertical overlap
+    if (Math.abs(seg1.start.y - seg2.start.y) < tolerance) {
+      const overlap = getHorizontalOverlap(seg1, seg2);
+      if (overlap) {
+        return { x: overlap.x, y: seg1.start.y, type: 'horizontal' };
+      }
+    }
+  } else if (seg1.isVertical && seg2.isVertical) {
+    // Both vertical - check for horizontal overlap
+    if (Math.abs(seg1.start.x - seg2.start.x) < tolerance) {
+      const overlap = getVerticalOverlap(seg1, seg2);
+      if (overlap) {
+        return { x: seg1.start.x, y: overlap.y, type: 'vertical' };
+      }
+    }
+  }
+  
+  return null;
+};
+
+const getHorizontalOverlap = (seg1, seg2) => {
+  const start1 = Math.min(seg1.start.x, seg1.end.x);
+  const end1 = Math.max(seg1.start.x, seg1.end.x);
+  const start2 = Math.min(seg2.start.x, seg2.end.x);
+  const end2 = Math.max(seg2.start.x, seg2.end.x);
+  
+  const overlapStart = Math.max(start1, start2);
+  const overlapEnd = Math.min(end1, end2);
+  
+  if (overlapStart < overlapEnd) {
+    return { x: (overlapStart + overlapEnd) / 2 };
+  }
+  
+  return null;
+};
+
+const getVerticalOverlap = (seg1, seg2) => {
+  const start1 = Math.min(seg1.start.y, seg1.end.y);
+  const end1 = Math.max(seg1.start.y, seg1.end.y);
+  const start2 = Math.min(seg2.start.y, seg2.end.y);
+  const end2 = Math.max(seg2.start.y, seg2.end.y);
+  
+  const overlapStart = Math.max(start1, start2);
+  const overlapEnd = Math.min(end1, end2);
+  
+  if (overlapStart < overlapEnd) {
+    return { y: (overlapStart + overlapEnd) / 2 };
+  }
+  
+  return null;
+};
+
+const mergeOverlappingSegments = (seg1, seg2, intersection) => {
+  // Mark segments for merging
+  seg1.mergePoint = intersection;
+  seg2.mergePoint = intersection;
 };
 
 const getEdgeSegments = (edge, nodes) => {
@@ -210,7 +336,7 @@ const calculateSmartPath = (sourcePoint, targetPoint, nodes, edge) => {
 };
 
 const aStarPathfinding = (start, end, obstacles) => {
-  // Simplified A* implementation for orthogonal pathfinding
+  // Enhanced A* implementation for orthogonal pathfinding
   const GRID_SIZE = 20;
   const startGrid = { x: Math.floor(start.x / GRID_SIZE), y: Math.floor(start.y / GRID_SIZE) };
   const endGrid = { x: Math.floor(end.x / GRID_SIZE), y: Math.floor(end.y / GRID_SIZE) };
@@ -371,6 +497,12 @@ const processEdge = (edgeData) => {
         break;
       }
       
+      case 'detectAdvancedIntersections': {
+        const intersections = detectAdvancedIntersections([edge], nodes);
+        result.intersections = Array.from(intersections.values());
+        break;
+      }
+      
       default:
         throw new Error(`Unknown operation: ${operation}`);
     }
@@ -400,7 +532,8 @@ const processBatchEdges = (batchData) => {
   const { edges, nodes } = batchData;
   const results = [];
   
-  const intersections = detectSegmentIntersections(edges, nodes);
+  // Use advanced intersection detection for batch processing
+  const intersections = detectAdvancedIntersections(edges, nodes);
   
   for (const edge of edges) {
     const result = processEdge({ edge, nodes, operation: 'optimizeWaypoints' });

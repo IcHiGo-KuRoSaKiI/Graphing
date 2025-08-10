@@ -46,7 +46,12 @@ class EnhancedEdgeManager {
 
     try {
       // Initialize services
-      await EdgeWorkerService.initWorker();
+      try {
+        await EdgeWorkerService.initWorker();
+        console.log('✅ EnhancedEdgeManager: Web Worker initialized successfully');
+      } catch (error) {
+        console.warn('⚠️ EnhancedEdgeManager: Web Worker failed to initialize, using fallback processing:', error.message);
+      }
 
       // Start performance monitoring if enabled
       if (this.config.enablePerformanceMonitoring) {
@@ -401,9 +406,24 @@ class EnhancedEdgeManager {
             console.log('📦 EnhancedEdgeManager: Enabled batch processing');
             break;
           
+          case 'reduce_batch_size':
+            // Reduce batch size to lower memory usage
+            if (EdgeWorkerService.batchSize) {
+              EdgeWorkerService.batchSize = Math.max(EdgeWorkerService.batchSize / 2, 5);
+              console.log(`📦 EnhancedEdgeManager: Reduced batch size to ${EdgeWorkerService.batchSize}`);
+            }
+            break;
+          
           case 'debounce_increase':
             this.config.debounceTime = Math.min(this.config.debounceTime * 1.5, 500);
             console.log(`⏰ EnhancedEdgeManager: Increased debounce to ${this.config.debounceTime}ms`);
+            break;
+          
+          case 'optimize_rendering':
+            // Reduce visual effects for better performance
+            this.config.virtualBendsEnabled = false;
+            this.config.intersectionDetectionEnabled = false;
+            console.log('🎨 EnhancedEdgeManager: Optimized rendering by disabling visual effects');
             break;
           
           default:

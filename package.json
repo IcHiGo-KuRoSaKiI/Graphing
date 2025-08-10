@@ -58,7 +58,7 @@
   "scripts": {
     "start": "cross-env PUBLIC_URL=/ HOST=0.0.0.0 PORT=3002 react-scripts start",
     "build": "react-scripts build",
-    "build:lib": "babel index.js --out-dir dist --copy-files && babel src/components --out-dir dist/components --copy-files --ignore '**/__tests__/**,**/*.test.js,**/*.test.jsx,**/test/**,**/demo/**' && babel src/services --out-dir dist/services --copy-files --ignore '**/__tests__/**,**/*.test.js,**/*.test.jsx' && babel src/config --out-dir dist/config --copy-files && babel src/plugins --out-dir dist/plugins --copy-files && babel src/examples --out-dir dist/examples --copy-files && cp -r public/workers dist/workers",
+    "build:lib": "babel index.js --out-dir dist --copy-files && babel src/components --out-dir dist/components --copy-files --ignore \"src/**/__tests__/**\",\"src/**/*.test.js\",\"src/**/*.test.jsx\",\"src/**/test/**\" && babel src/services --out-dir dist/services --copy-files --ignore \"src/**/__tests__/**\",\"src/**/*.test.js\",\"src/**/*.test.jsx\" && babel src/config --out-dir dist/config --copy-files && babel src/plugins --out-dir dist/plugins --copy-files && babel src/examples --out-dir dist/examples --copy-files && node scripts/copy-workers.js",
     "lib:build": "npm run build:lib",
     "build:css": "tailwindcss -i ./src/index.css -o ./dist/graphing.css --minify --postcss",
     "prepare": "npm run build:lib && npm run build:css",

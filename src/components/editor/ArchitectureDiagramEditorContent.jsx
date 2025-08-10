@@ -22,7 +22,7 @@ import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
 import UniversalShapeNode from '../nodes/UniversalShapeNode';
-import { EnhancedOrthogonalEdge } from '../edges';
+import { SmartOrthogonalEdge } from '../edges';
 
 // Import modal components
 import PromptModal from '../modals/PromptModal';
@@ -119,7 +119,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }, [nodes]);
 
     const updateNodeInternals = useUpdateNodeInternals();
-    const { project } = useReactFlow();
+    const { screenToFlowPosition } = useReactFlow();
 
     // State for modals
     const [promptModal, setPromptModal] = useState({ isOpen: false, title: '', message: '', defaultValue: '', onConfirm: null });
@@ -175,8 +175,9 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }), []);
 
     const edgeTypes = useMemo(() => ({
-        adjustable: EnhancedOrthogonalEdge,
-        enhanced: EnhancedOrthogonalEdge
+        adjustable: SmartOrthogonalEdge,
+        enhanced: SmartOrthogonalEdge,
+        smart: SmartOrthogonalEdge
     }), []);
 
     // Stable node label change handler
@@ -522,10 +523,9 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         event.preventDefault(); // Prevent default browser behavior (e.g., text selection)
         event.stopPropagation(); // Stop event propagation
 
-        const flowBounds = reactFlowWrapper.current.getBoundingClientRect();
-        const position = project({
-            x: event.clientX - flowBounds.left,
-            y: event.clientY - flowBounds.top,
+        const position = screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
         });
 
         setEdges((eds) =>
@@ -538,7 +538,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             })
         );
         saveToHistory();
-    }, [project, setEdges, saveToHistory]);
+    }, [screenToFlowPosition, setEdges, saveToHistory]);
 
     const defaultEdgeOptions = useMemo(() => ({
         type: 'enhanced',
@@ -730,19 +730,20 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 options: { spacing: 50 }
             });
             
-            if (result.success) {
+            if (result && result.success) {
                 const { nodes: laidOutNodes } = jsonToReactFlow(result.diagramData);
                 setNodes(laidOutNodes);
                 laidOutNodes.forEach(n => updateNodeInternals(n.id));
             } else {
-                console.error('Auto-layout failed:', result.error);
+                const errorMessage = result?.error || 'Unknown layout error';
+                console.error('Auto-layout failed:', errorMessage);
                 // Fallback to old method
                 const laidOut = autoLayoutNodes(currentNodes);
                 setNodes(laidOut);
                 laidOut.forEach(n => updateNodeInternals(n.id));
             }
         } catch (error) {
-            console.error('Error applying auto-layout:', error);
+            console.error('Error applying auto-layout:', error.message || error);
             // Fallback to old method
             const laidOut = autoLayoutNodes(currentNodes);
             setNodes(laidOut);
@@ -757,7 +758,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             if (reactFlowWrapper.current) {
                 const { left, top, width, height } = reactFlowWrapper.current.getBoundingClientRect();
                 const center = { x: left + width / 2, y: top + height / 2 };
-                position = project({ x: center.x - left, y: center.y - top });
+                position = screenToFlowPosition({ x: center.x, y: center.y });
             }
 
             const newNode = {
@@ -785,7 +786,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             setNodes((nds) => [...nds, newNode]);
             saveToHistory();
         });
-    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal, project]);
+    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal, screenToFlowPosition]);
 
     // Add new component node
     const addComponentNode = useCallback(() => {
@@ -910,7 +911,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         if (reactFlowWrapper.current) {
             const { left, top, width, height } = reactFlowWrapper.current.getBoundingClientRect();
             const center = { x: left + width / 2, y: top + height / 2 };
-            position = project({ x: center.x - left, y: center.y - top });
+            position = screenToFlowPosition({ x: center.x, y: center.y });
         }
 
         const newNode = {
@@ -934,7 +935,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         setNodes((nds) => [...nds, newNode]);
         setShapeLibraryOpen(false);
         saveToHistory();
-    }, [handleNodeLabelChange, saveToHistory, project]);
+    }, [handleNodeLabelChange, saveToHistory, screenToFlowPosition]);
 
     // Copy selected elements
     const copySelected = useCallback(() => {

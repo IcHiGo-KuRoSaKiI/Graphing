@@ -8,11 +8,55 @@
  * - Smart pathfinding with obstacle avoidance
  * - Layout-aware routing
  * - Performance monitoring and optimization
+ * - Draw.io-style connection point calculation
+ * - Smart debouncing for optimal performance
  */
 
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { BaseEdge, EdgeLabelRenderer, useReactFlow, Position } from 'reactflow';
 import edgeWorkerService from '../../services/EdgeWorkerService';
+
+// Draw.io-style connection point calculation
+const calculateOptimalConnectionPoint = (node, targetPoint, sourcePoint) => {
+  if (!node) return null;
+  
+  const bounds = {
+    x: node.position.x,
+    y: node.position.y,
+    width: node.width || 150,
+    height: node.height || 60,
+    right: node.position.x + (node.width || 150),
+    bottom: node.position.y + (node.height || 60)
+  };
+  
+  const center = { 
+    x: bounds.x + bounds.width / 2, 
+    y: bounds.y + bounds.height / 2 
+  };
+  
+  // Calculate which side is closest to the target
+  const dx = targetPoint.x - center.x;
+  const dy = targetPoint.y - center.y;
+  
+  // Add margin for better visual appearance (draw.io style)
+  const margin = 5;
+  
+  if (Math.abs(dx) > Math.abs(dy)) {
+    // Horizontal connection
+    if (dx > 0) {
+      return { x: bounds.right + margin, y: center.y };
+    } else {
+      return { x: bounds.x - margin, y: center.y };
+    }
+  } else {
+    // Vertical connection
+    if (dy > 0) {
+      return { x: center.x, y: bounds.bottom + margin };
+    } else {
+      return { x: center.x, y: bounds.y - margin };
+    }
+  }
+};
 
 const getConnectionPoint = (x, y, width, height, position) => {
   switch (position) {
@@ -27,6 +71,41 @@ const getConnectionPoint = (x, y, width, height, position) => {
     default:
       return { x: x + width / 2, y: y + height / 2 };
   }
+};
+
+// Smart debouncing hook
+const useSmartDebouncing = (id, processEdgeWithWorker) => {
+  const debounceTimers = useRef(new Map());
+  
+  const debouncedProcess = useCallback((operation, delay) => {
+    const key = `${id}-${operation}`;
+    
+    if (debounceTimers.current.has(key)) {
+      clearTimeout(debounceTimers.current.get(key));
+    }
+    
+    const timer = setTimeout(() => {
+      processEdgeWithWorker(true);
+      debounceTimers.current.delete(key);
+    }, delay);
+    
+    debounceTimers.current.set(key, timer);
+  }, [id, processEdgeWithWorker]);
+  
+  // Different delays for different operations (optimized for performance)
+  const processOptimization = useCallback(() => debouncedProcess('optimize', 150), [debouncedProcess]);
+  const processVirtualBends = useCallback(() => debouncedProcess('virtual_bends', 100), [debouncedProcess]);
+  const processIntersections = useCallback(() => debouncedProcess('intersections', 200), [debouncedProcess]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      debounceTimers.current.forEach(timer => clearTimeout(timer));
+      debounceTimers.current.clear();
+    };
+  }, []);
+  
+  return { processOptimization, processVirtualBends, processIntersections };
 };
 
 const EnhancedOrthogonalEdge = ({
@@ -58,24 +137,39 @@ const EnhancedOrthogonalEdge = ({
   // Refs
   const processingTimeoutRef = useRef(null);
   const lastUpdateTimeRef = useRef(0);
+  const isVisibleRef = useRef(true);
   
   // Get node information
   const nodes = getNodes();
   const sourceNode = nodes.find(n => n.id === data?.source || n.id === data?.sourceNode || n.id === data?.sourceId);
   const targetNode = nodes.find(n => n.id === data?.target || n.id === data?.targetNode || n.id === data?.targetId);
   
-  // Calculate connection points
+  // Calculate connection points with draw.io-style logic
   const sourcePoint = useMemo(() => {
-    return sourceNode && sourcePosition
-      ? getConnectionPoint(sourceNode.position.x, sourceNode.position.y, sourceNode.width || 150, sourceNode.height || 60, sourcePosition)
-      : { x: sourceX, y: sourceY };
-  }, [sourceNode, sourcePosition, sourceX, sourceY]);
+    if (sourceNode && sourcePosition) {
+      // Use draw.io-style connection point calculation
+      const targetPoint = targetNode ? 
+        { x: targetNode.position.x + (targetNode.width || 150) / 2, y: targetNode.position.y + (targetNode.height || 60) / 2 } :
+        { x: targetX, y: targetY };
+      
+      return calculateOptimalConnectionPoint(sourceNode, targetPoint, { x: sourceX, y: sourceY }) ||
+             getConnectionPoint(sourceNode.position.x, sourceNode.position.y, sourceNode.width || 150, sourceNode.height || 60, sourcePosition);
+    }
+    return { x: sourceX, y: sourceY };
+  }, [sourceNode, sourcePosition, sourceX, sourceY, targetNode, targetX, targetY]);
   
   const targetPoint = useMemo(() => {
-    return targetNode && targetPosition
-      ? getConnectionPoint(targetNode.position.x, targetNode.position.y, targetNode.width || 150, targetNode.height || 60, targetPosition)
-      : { x: targetX, y: targetY };
-  }, [targetNode, targetPosition, targetX, targetY]);
+    if (targetNode && targetPosition) {
+      // Use draw.io-style connection point calculation
+      const sourcePoint = sourceNode ? 
+        { x: sourceNode.position.x + (sourceNode.width || 150) / 2, y: sourceNode.position.y + (sourceNode.height || 60) / 2 } :
+        { x: sourceX, y: sourceY };
+      
+      return calculateOptimalConnectionPoint(targetNode, sourcePoint, { x: targetX, y: targetY }) ||
+             getConnectionPoint(targetNode.position.x, targetNode.position.y, targetNode.width || 150, targetNode.height || 60, targetPosition);
+    }
+    return { x: targetX, y: targetY };
+  }, [targetNode, targetPosition, targetX, targetY, sourceNode, sourceX, sourceY]);
   
   // Create edge object for Web Worker processing
   const edgeForProcessing = useMemo(() => ({
@@ -90,7 +184,7 @@ const EnhancedOrthogonalEdge = ({
     }
   }), [id, sourceNode?.id, targetNode?.id, sourcePosition, targetPosition, data]);
   
-  // Debounced processing function
+  // Debounced processing function with smart optimization
   const processEdgeWithWorker = useCallback(async (forceUpdate = false) => {
     const now = performance.now();
     if (!forceUpdate && now - lastUpdateTimeRef.current < 100) {
@@ -106,7 +200,7 @@ const EnhancedOrthogonalEdge = ({
     setIsProcessing(true);
     
     try {
-      // Process multiple operations in parallel
+      // Process multiple operations in parallel for maximum performance
       const [optimizedWaypoints, virtualBends, intersections] = await Promise.all([
         edgeWorkerService.optimizeWaypoints(edgeForProcessing, nodes),
         edgeWorkerService.calculateVirtualBends(edgeForProcessing, nodes),
@@ -146,6 +240,9 @@ const EnhancedOrthogonalEdge = ({
     }
   }, [edgeForProcessing, nodes, data?.waypoints?.length, id, setEdges]);
   
+  // Smart debouncing
+  const { processOptimization, processVirtualBends, processIntersections } = useSmartDebouncing(id, processEdgeWithWorker);
+  
   // Effect to trigger processing when edge or nodes change
   useEffect(() => {
     processEdgeWithWorker();
@@ -156,13 +253,30 @@ const EnhancedOrthogonalEdge = ({
     return optimizedWaypoints.length > 0 ? optimizedWaypoints : (data?.waypoints || []);
   }, [optimizedWaypoints, data?.waypoints]);
   
-  // Generate SVG path
+  // Generate SVG path with draw.io-style optimization
   const path = useMemo(() => {
+    // Use the calculated optimal connection points instead of original coordinates
     const points = [sourcePoint, ...activeWaypoints, targetPoint];
     let pathString = `M ${points[0].x},${points[0].y}`;
+    
+    // Draw.io-style path generation with smooth transitions
     for (let i = 1; i < points.length; i++) {
-      pathString += ` L ${points[i].x},${points[i].y}`;
+      const prev = points[i - 1];
+      const current = points[i];
+      
+      // Check if we need a smooth curve or straight line
+      const isOrthogonal = Math.abs(prev.x - current.x) < 5 || Math.abs(prev.y - current.y) < 5;
+      
+      if (isOrthogonal) {
+        pathString += ` L ${current.x},${current.y}`;
+      } else {
+        // Smooth curve for non-orthogonal segments
+        const midX = (prev.x + current.x) / 2;
+        const midY = (prev.y + current.y) / 2;
+        pathString += ` Q ${midX},${midY} ${current.x},${current.y}`;
+      }
     }
+    
     return pathString;
   }, [sourcePoint, targetPoint, activeWaypoints]);
   
@@ -260,13 +374,13 @@ const EnhancedOrthogonalEdge = ({
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       
-      // Re-process after drag
-      await processEdgeWithWorker(true);
+      // Re-process after drag with optimization
+      processOptimization();
     };
     
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-  }, [id, sourcePoint, targetPoint, setEdges, screenToFlowPosition, processEdgeWithWorker]);
+  }, [id, sourcePoint, targetPoint, setEdges, screenToFlowPosition, processOptimization]);
   
   // Enhanced waypoint dragging
   const onWaypointMouseDown = useCallback((event, index) => {
@@ -300,13 +414,13 @@ const EnhancedOrthogonalEdge = ({
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       
-      // Re-process after waypoint drag
-      await processEdgeWithWorker(true);
+      // Re-process after waypoint drag with optimization
+      processOptimization();
     };
     
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-  }, [id, setEdges, screenToFlowPosition, processEdgeWithWorker]);
+  }, [id, setEdges, screenToFlowPosition, processOptimization]);
   
   // Waypoint double-click to remove
   const onWaypointDoubleClick = useCallback(async (event, index) => {
@@ -332,18 +446,32 @@ const EnhancedOrthogonalEdge = ({
       })
     );
     
-    // Re-process after waypoint removal
-    await processEdgeWithWorker(true);
-  }, [id, setEdges, processEdgeWithWorker]);
+    // Re-process after waypoint removal with optimization
+    processOptimization();
+  }, [id, setEdges, processOptimization]);
   
-  // Calculate label position
+  // Calculate label position with draw.io-style positioning
   const labelPosition = useMemo(() => {
     const points = [sourcePoint, ...activeWaypoints, targetPoint];
     if (points.length < 2) return { x: (sourcePoint.x + targetPoint.x) / 2, y: (sourcePoint.y + targetPoint.y) / 2 };
     
-    const midIndex = Math.floor(points.length / 2);
-    const p1 = points[midIndex - 1];
-    const p2 = points[midIndex];
+    // Find the longest segment for better label placement
+    let maxLength = 0;
+    let bestSegment = 0;
+    
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const length = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+      
+      if (length > maxLength) {
+        maxLength = length;
+        bestSegment = i;
+      }
+    }
+    
+    const p1 = points[bestSegment];
+    const p2 = points[bestSegment + 1];
     
     return {
       x: (p1.x + p2.x) / 2,
@@ -351,7 +479,7 @@ const EnhancedOrthogonalEdge = ({
     };
   }, [sourcePoint, targetPoint, activeWaypoints]);
   
-  // Render segments for dragging
+  // Render segments for dragging with enhanced visual feedback
   const renderDraggableSegments = () => {
     const points = [sourcePoint, ...activeWaypoints, targetPoint];
     
@@ -392,7 +520,7 @@ const EnhancedOrthogonalEdge = ({
     });
   };
   
-  // Render virtual bend points
+  // Render virtual bend points with enhanced styling
   const renderVirtualBends = () => {
     if (!virtualBends || virtualBends.length === 0) return null;
     
@@ -412,12 +540,27 @@ const EnhancedOrthogonalEdge = ({
             onMouseEnter={() => setHoveredVirtualBend(index)}
             onMouseLeave={() => setHoveredVirtualBend(null)}
           />
+          {/* Plus sign for better UX */}
+          {isHovered && (
+            <text
+              x={bend.x}
+              y={bend.y}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="rgb(59, 130, 246)"
+              fontSize="12"
+              fontWeight="bold"
+              style={{ pointerEvents: 'none' }}
+            >
+              +
+            </text>
+          )}
         </g>
       );
     });
   };
   
-  // Render intersection points
+  // Render intersection points with enhanced styling
   const renderIntersections = () => {
     if (!intersections || intersections.length === 0) return null;
     
@@ -474,10 +617,9 @@ const EnhancedOrthogonalEdge = ({
             <animateTransform
               attributeName="transform"
               type="rotate"
-              values="0;360"
+              values={`0 ${labelPosition.x} ${labelPosition.y};360 ${labelPosition.x} ${labelPosition.y}`}
               dur="1s"
               repeatCount="indefinite"
-              transformOrigin={`${labelPosition.x} ${labelPosition.y}`}
             />
           </circle>
         </g>

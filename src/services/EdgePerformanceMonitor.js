@@ -1,63 +1,74 @@
 /**
- * EdgePerformanceMonitor - Performance monitoring and optimization for edge processing
- * Tracks metrics, identifies bottlenecks, and provides optimization recommendations
+ * EdgePerformanceMonitor - Advanced performance monitoring for edge processing
+ * Tracks performance metrics and provides optimization recommendations
  */
 
 class EdgePerformanceMonitor {
   constructor() {
+    this.isMonitoring = false;
     this.metrics = {
-      edgeProcessing: new Map(),
-      workerTasks: new Map(),
-      renderingPerformance: new Map(),
-      memoryUsage: new Map(),
-      userInteractions: new Map()
+      processingTimes: [],
+      memoryUsage: [],
+      cacheHitRates: [],
+      workerLatency: [],
+      renderTimes: [],
+      totalOperations: 0,
+      averageProcessingTime: 0,
+      peakMemoryUsage: 0,
+      averageCacheHitRate: 0,
+      averageWorkerLatency: 0,
+      averageRenderTime: 0
     };
-
-    this.thresholds = {
-      processingTime: {
-        good: 16, // 60fps
-        warning: 33, // 30fps
-        critical: 100 // 10fps
-      },
-      memoryUsage: {
-        good: 50, // MB
-        warning: 100, // MB
-        critical: 200 // MB
-      },
-      workerQueue: {
-        good: 5,
-        warning: 15,
-        critical: 30
-      }
-    };
-
-    this.observers = {
-      performance: null,
-      memory: null,
-      interaction: null
-    };
-
-    this.optimizationRules = new Map();
+    
+    this.alerts = [];
+    this.optimizationRecommendations = [];
     this.alertCallbacks = new Set();
     
-    this.startTime = performance.now();
-    this.isMonitoring = false;
+    // Performance thresholds
+    this.thresholds = {
+      processingTime: 100, // ms
+      memoryUsage: 50 * 1024 * 1024, // 50MB
+      cacheHitRate: 0.3, // 30%
+      workerLatency: 50, // ms
+      renderTime: 16 // ms (60fps)
+    };
     
-    this.setupOptimizationRules();
+    // Monitoring interval
+    this.monitoringInterval = null;
+    this.monitoringFrequency = 1000; // 1 second
+    
+    // Performance history for trend analysis
+    this.history = {
+      processingTimes: [],
+      memoryUsage: [],
+      cacheHitRates: [],
+      workerLatency: [],
+      renderTimes: []
+    };
+    
+    // Maximum history size
+    this.maxHistorySize = 100;
   }
 
   /**
    * Start performance monitoring
    */
-  startMonitoring() {
+  startMonitoring(options = {}) {
     if (this.isMonitoring) return;
     
-    this.isMonitoring = true;
-    this.setupPerformanceObserver();
-    this.setupMemoryObserver();
-    this.setupInteractionObserver();
+    this.thresholds = { ...this.thresholds, ...options.thresholds };
+    this.monitoringFrequency = options.frequency || this.monitoringFrequency;
     
-    console.log('🔍 EdgePerformanceMonitor: Started monitoring');
+    this.isMonitoring = true;
+    
+    // Start periodic monitoring
+    this.monitoringInterval = setInterval(() => {
+      this.collectMetrics();
+      this.analyzePerformance();
+      this.checkAlerts();
+    }, this.monitoringFrequency);
+    
+    console.log('📊 EdgePerformanceMonitor: Started monitoring');
   }
 
   /**
@@ -68,549 +79,353 @@ class EdgePerformanceMonitor {
     
     this.isMonitoring = false;
     
-    if (this.observers.performance) {
-      this.observers.performance.disconnect();
-    }
-    if (this.observers.memory) {
-      clearInterval(this.observers.memory);
-    }
-    if (this.observers.interaction) {
-      this.observers.interaction.disconnect();
+    if (this.monitoringInterval) {
+      clearInterval(this.monitoringInterval);
+      this.monitoringInterval = null;
     }
     
-    console.log('🔍 EdgePerformanceMonitor: Stopped monitoring');
+    console.log('📊 EdgePerformanceMonitor: Stopped monitoring');
   }
 
   /**
-   * Setup Performance Observer for frame timing
+   * Record processing time for an operation
    */
-  setupPerformanceObserver() {
-    if (!window.PerformanceObserver) return;
-
-    try {
-      this.observers.performance = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        
-        entries.forEach(entry => {
-          if (entry.entryType === 'measure') {
-            this.recordProcessingTime(entry.name, entry.duration);
-          } else if (entry.entryType === 'navigation') {
-            this.recordPageLoadTime(entry.loadEventEnd - entry.loadEventStart);
-          }
-        });
-      });
-
-      this.observers.performance.observe({ 
-        entryTypes: ['measure', 'navigation'] 
-      });
-      
-    } catch (error) {
-      console.warn('🔍 EdgePerformanceMonitor: Performance Observer not available:', error);
-    }
-  }
-
-  /**
-   * Setup memory usage monitoring
-   */
-  setupMemoryObserver() {
-    if (!performance.memory) return;
-
-    this.observers.memory = setInterval(() => {
-      const memInfo = {
-        used: performance.memory.usedJSHeapSize / (1024 * 1024), // MB
-        total: performance.memory.totalJSHeapSize / (1024 * 1024), // MB
-        limit: performance.memory.jsHeapSizeLimit / (1024 * 1024), // MB
-        timestamp: performance.now()
-      };
-
-      this.recordMemoryUsage(memInfo);
-    }, 1000); // Check every second
-  }
-
-  /**
-   * Setup user interaction monitoring
-   */
-  setupInteractionObserver() {
-    if (!window.PerformanceObserver) return;
-
-    try {
-      this.observers.interaction = new PerformanceObserver((list) => {
-        const entries = list.getEntries();
-        
-        entries.forEach(entry => {
-          if (entry.entryType === 'event') {
-            this.recordInteractionTiming(entry.name, entry.duration, entry.startTime);
-          }
-        });
-      });
-
-      this.observers.interaction.observe({ 
-        entryTypes: ['event'],
-        buffered: true
-      });
-      
-    } catch (error) {
-      console.warn('🔍 EdgePerformanceMonitor: Interaction Observer not available:', error);
-    }
-  }
-
-  /**
-   * Record edge processing time
-   */
-  recordProcessingTime(edgeId, duration, operation = 'unknown') {
-    const timestamp = performance.now();
+  recordProcessingTime(edgeId, processingTime, operation = 'unknown') {
+    if (!this.isMonitoring) return;
     
-    if (!this.metrics.edgeProcessing.has(edgeId)) {
-      this.metrics.edgeProcessing.set(edgeId, []);
-    }
-
-    const record = {
+    const metric = {
+      edgeId,
+      processingTime,
       operation,
-      duration,
-      timestamp,
-      level: this.getPerformanceLevel(duration, 'processingTime')
+      timestamp: Date.now()
     };
-
-    this.metrics.edgeProcessing.get(edgeId).push(record);
     
-    // Keep only recent records (last 100)
-    const records = this.metrics.edgeProcessing.get(edgeId);
-    if (records.length > 100) {
-      records.splice(0, records.length - 100);
+    this.metrics.processingTimes.push(metric);
+    this.history.processingTimes.push(metric);
+    
+    // Keep history size manageable
+    if (this.history.processingTimes.length > this.maxHistorySize) {
+      this.history.processingTimes.shift();
     }
-
+    
+    // Update average
+    this.updateAverageProcessingTime();
+    
     // Check for performance issues
-    this.checkPerformanceThresholds(edgeId, record);
-  }
-
-  /**
-   * Record Web Worker task performance
-   */
-  recordWorkerTask(taskType, duration, queueSize = 0) {
-    const timestamp = performance.now();
-    
-    if (!this.metrics.workerTasks.has(taskType)) {
-      this.metrics.workerTasks.set(taskType, []);
-    }
-
-    const record = {
-      duration,
-      queueSize,
-      timestamp,
-      level: this.getPerformanceLevel(duration, 'processingTime')
-    };
-
-    this.metrics.workerTasks.get(taskType).push(record);
-    
-    // Keep only recent records (last 50)
-    const records = this.metrics.workerTasks.get(taskType);
-    if (records.length > 50) {
-      records.splice(0, records.length - 50);
-    }
-
-    // Check queue size thresholds
-    if (queueSize > this.thresholds.workerQueue.warning) {
-      this.triggerAlert('worker_queue_high', {
-        taskType,
-        queueSize,
-        threshold: this.thresholds.workerQueue.warning
+    if (processingTime > this.thresholds.processingTime) {
+      this.createAlert('high_processing_time', {
+        edgeId,
+        processingTime,
+        threshold: this.thresholds.processingTime,
+        operation
       });
-    }
-  }
-
-  /**
-   * Record rendering performance
-   */
-  recordRenderingPerformance(frameTime, edgeCount) {
-    const timestamp = performance.now();
-    const key = `edges-${edgeCount}`;
-    
-    if (!this.metrics.renderingPerformance.has(key)) {
-      this.metrics.renderingPerformance.set(key, []);
-    }
-
-    const record = {
-      frameTime,
-      edgeCount,
-      timestamp,
-      fps: 1000 / frameTime,
-      level: this.getPerformanceLevel(frameTime, 'processingTime')
-    };
-
-    this.metrics.renderingPerformance.get(key).push(record);
-    
-    // Keep only recent records (last 30)
-    const records = this.metrics.renderingPerformance.get(key);
-    if (records.length > 30) {
-      records.splice(0, records.length - 30);
     }
   }
 
   /**
    * Record memory usage
    */
-  recordMemoryUsage(memInfo) {
-    const timestamp = performance.now();
-    const key = 'global';
+  recordMemoryUsage(memoryUsage) {
+    if (!this.isMonitoring) return;
     
-    if (!this.metrics.memoryUsage.has(key)) {
-      this.metrics.memoryUsage.set(key, []);
-    }
-
-    const record = {
-      ...memInfo,
-      level: this.getPerformanceLevel(memInfo.used, 'memoryUsage')
-    };
-
-    this.metrics.memoryUsage.get(key).push(record);
+    this.metrics.memoryUsage.push({
+      memoryUsage,
+      timestamp: Date.now()
+    });
     
-    // Keep only recent records (last 60)
-    const records = this.metrics.memoryUsage.get(key);
-    if (records.length > 60) {
-      records.splice(0, records.length - 60);
+    this.history.memoryUsage.push({
+      memoryUsage,
+      timestamp: Date.now()
+    });
+    
+    if (this.history.memoryUsage.length > this.maxHistorySize) {
+      this.history.memoryUsage.shift();
     }
-
-    // Check memory thresholds
-    if (memInfo.used > this.thresholds.memoryUsage.warning) {
-      this.triggerAlert('memory_usage_high', {
-        used: memInfo.used,
-        threshold: this.thresholds.memoryUsage.warning
+    
+    // Update peak memory usage
+    this.metrics.peakMemoryUsage = Math.max(this.metrics.peakMemoryUsage, memoryUsage);
+    
+    // Check for memory issues
+    if (memoryUsage > this.thresholds.memoryUsage) {
+      this.createAlert('high_memory_usage', {
+        memoryUsage,
+        threshold: this.thresholds.memoryUsage
       });
     }
   }
 
   /**
-   * Record user interaction timing
+   * Record cache hit rate
    */
-  recordInteractionTiming(eventType, duration, startTime) {
-    const key = eventType;
+  recordCacheHitRate(cacheHitRate) {
+    if (!this.isMonitoring) return;
     
-    if (!this.metrics.userInteractions.has(key)) {
-      this.metrics.userInteractions.set(key, []);
-    }
-
-    const record = {
-      duration,
-      startTime,
-      timestamp: performance.now(),
-      level: this.getPerformanceLevel(duration, 'processingTime')
-    };
-
-    this.metrics.userInteractions.get(key).push(record);
+    this.metrics.cacheHitRates.push({
+      cacheHitRate,
+      timestamp: Date.now()
+    });
     
-    // Keep only recent records (last 20)
-    const records = this.metrics.userInteractions.get(key);
-    if (records.length > 20) {
-      records.splice(0, records.length - 20);
+    this.history.cacheHitRates.push({
+      cacheHitRate,
+      timestamp: Date.now()
+    });
+    
+    if (this.history.cacheHitRates.length > this.maxHistorySize) {
+      this.history.cacheHitRates.shift();
     }
-  }
-
-  /**
-   * Get performance level based on thresholds
-   */
-  getPerformanceLevel(value, category) {
-    const threshold = this.thresholds[category];
-    if (!threshold) return 'unknown';
-
-    if (value <= threshold.good) return 'good';
-    if (value <= threshold.warning) return 'warning';
-    return 'critical';
-  }
-
-  /**
-   * Check performance thresholds and trigger alerts
-   */
-  checkPerformanceThresholds(edgeId, record) {
-    if (record.level === 'critical') {
-      this.triggerAlert('edge_performance_critical', {
-        edgeId,
-        duration: record.duration,
-        operation: record.operation
+    
+    // Update average
+    this.updateAverageCacheHitRate();
+    
+    // Check for cache issues
+    if (cacheHitRate < this.thresholds.cacheHitRate) {
+      this.createAlert('low_cache_hit_rate', {
+        cacheHitRate,
+        threshold: this.thresholds.cacheHitRate
       });
     }
   }
 
   /**
-   * Setup optimization rules
+   * Record worker latency
    */
-  setupOptimizationRules() {
-    // Rule: High processing time -> suggest debouncing
-    this.optimizationRules.set('high_processing_time', {
-      condition: (metrics) => this.getAverageProcessingTime() > this.thresholds.processingTime.warning,
-      suggestion: 'Consider increasing debounce time for edge processing',
-      action: 'debounce_increase',
-      priority: 'high'
+  recordWorkerLatency(latency) {
+    if (!this.isMonitoring) return;
+    
+    this.metrics.workerLatency.push({
+      latency,
+      timestamp: Date.now()
     });
-
-    // Rule: High memory usage -> suggest cache clearing
-    this.optimizationRules.set('high_memory_usage', {
-      condition: (metrics) => this.getCurrentMemoryUsage() > this.thresholds.memoryUsage.warning,
-      suggestion: 'Clear edge processing cache to reduce memory usage',
-      action: 'clear_cache',
-      priority: 'medium'
+    
+    this.history.workerLatency.push({
+      latency,
+      timestamp: Date.now()
     });
-
-    // Rule: High worker queue -> suggest batch processing
-    this.optimizationRules.set('high_worker_queue', {
-      condition: (metrics) => this.getAverageWorkerQueueSize() > this.thresholds.workerQueue.warning,
-      suggestion: 'Enable batch processing for multiple edges',
-      action: 'enable_batching',
-      priority: 'high'
-    });
-
-    // Rule: Many edges -> suggest virtualization
-    this.optimizationRules.set('many_edges', {
-      condition: (metrics) => this.getEdgeCount() > 50,
-      suggestion: 'Consider edge virtualization for better performance',
-      action: 'enable_virtualization',
-      priority: 'medium'
-    });
+    
+    if (this.history.workerLatency.length > this.maxHistorySize) {
+      this.history.workerLatency.shift();
+    }
+    
+    // Update average
+    this.updateAverageWorkerLatency();
+    
+    // Check for latency issues
+    if (latency > this.thresholds.workerLatency) {
+      this.createAlert('high_worker_latency', {
+        latency,
+        threshold: this.thresholds.workerLatency
+      });
+    }
   }
 
   /**
-   * Get optimization recommendations
+   * Record render time
    */
-  getOptimizationRecommendations() {
-    const recommendations = [];
-    const currentMetrics = this.getAggregatedMetrics();
+  recordRenderTime(renderTime) {
+    if (!this.isMonitoring) return;
+    
+    this.metrics.renderTimes.push({
+      renderTime,
+      timestamp: Date.now()
+    });
+    
+    this.history.renderTimes.push({
+      renderTime,
+      timestamp: Date.now()
+    });
+    
+    if (this.history.renderTimes.length > this.maxHistorySize) {
+      this.history.renderTimes.shift();
+    }
+    
+    // Update average
+    this.updateAverageRenderTime();
+    
+    // Check for render issues
+    if (renderTime > this.thresholds.renderTime) {
+      this.createAlert('high_render_time', {
+        renderTime,
+        threshold: this.thresholds.renderTime
+      });
+    }
+  }
 
-    this.optimizationRules.forEach((rule, ruleName) => {
-      if (rule.condition(currentMetrics)) {
-        recommendations.push({
-          rule: ruleName,
-          suggestion: rule.suggestion,
-          action: rule.action,
-          priority: rule.priority,
-          timestamp: performance.now()
+  /**
+   * Collect current metrics
+   */
+  collectMetrics() {
+    // Collect memory usage if available
+    if (typeof performance !== 'undefined' && performance.memory) {
+      this.recordMemoryUsage(performance.memory.usedJSHeapSize);
+    }
+    
+    // Collect other system metrics
+    this.metrics.totalOperations++;
+  }
+
+  /**
+   * Analyze performance trends
+   */
+  analyzePerformance() {
+    this.analyzeTrends();
+    this.generateOptimizationRecommendations();
+  }
+
+  /**
+   * Analyze performance trends
+   */
+  analyzeTrends() {
+    const trends = {
+      processingTime: this.calculateTrend(this.history.processingTimes, 'processingTime'),
+      memoryUsage: this.calculateTrend(this.history.memoryUsage, 'memoryUsage'),
+      cacheHitRate: this.calculateTrend(this.history.cacheHitRates, 'cacheHitRate'),
+      workerLatency: this.calculateTrend(this.history.workerLatency, 'latency'),
+      renderTime: this.calculateTrend(this.history.renderTimes, 'renderTime')
+    };
+    
+    // Check for concerning trends
+    Object.entries(trends).forEach(([metric, trend]) => {
+      if (trend.direction === 'increasing' && trend.slope > 0.1) {
+        this.createAlert('trend_warning', {
+          metric,
+          trend: trend.slope,
+          direction: trend.direction
         });
       }
     });
-
-    return recommendations.sort((a, b) => {
-      const priorityOrder = { high: 3, medium: 2, low: 1 };
-      return priorityOrder[b.priority] - priorityOrder[a.priority];
-    });
   }
 
   /**
-   * Get aggregated metrics
+   * Calculate trend for a metric
    */
-  getAggregatedMetrics() {
-    return {
-      processingTime: {
-        average: this.getAverageProcessingTime(),
-        p95: this.getPercentileProcessingTime(95),
-        distribution: this.getProcessingTimeDistribution()
-      },
-      memoryUsage: {
-        current: this.getCurrentMemoryUsage(),
-        peak: this.getPeakMemoryUsage(),
-        average: this.getAverageMemoryUsage()
-      },
-      workerPerformance: {
-        averageQueueSize: this.getAverageWorkerQueueSize(),
-        taskThroughput: this.getWorkerTaskThroughput(),
-        errorRate: this.getWorkerErrorRate()
-      },
-      rendering: {
-        averageFPS: this.getAverageFPS(),
-        frameDrops: this.getFrameDrops(),
-        edgeCount: this.getEdgeCount()
-      },
-      interactions: {
-        averageResponseTime: this.getAverageInteractionTime(),
-        slowInteractions: this.getSlowInteractionCount()
-      }
-    };
-  }
-
-  // Metric calculation methods
-  getAverageProcessingTime() {
-    let totalTime = 0;
-    let count = 0;
-
-    this.metrics.edgeProcessing.forEach(records => {
-      records.forEach(record => {
-        totalTime += record.duration;
-        count++;
-      });
-    });
-
-    return count > 0 ? totalTime / count : 0;
-  }
-
-  getPercentileProcessingTime(percentile) {
-    const allTimes = [];
+  calculateTrend(data, valueKey) {
+    if (data.length < 2) return { direction: 'stable', slope: 0 };
     
-    this.metrics.edgeProcessing.forEach(records => {
-      records.forEach(record => allTimes.push(record.duration));
-    });
-
-    if (allTimes.length === 0) return 0;
-
-    allTimes.sort((a, b) => a - b);
-    const index = Math.floor((percentile / 100) * allTimes.length);
-    return allTimes[index] || 0;
-  }
-
-  getProcessingTimeDistribution() {
-    const distribution = { good: 0, warning: 0, critical: 0 };
+    const recent = data.slice(-10); // Last 10 data points
+    const values = recent.map(item => item[valueKey]);
     
-    this.metrics.edgeProcessing.forEach(records => {
-      records.forEach(record => {
-        distribution[record.level]++;
-      });
-    });
-
-    return distribution;
-  }
-
-  getCurrentMemoryUsage() {
-    const records = this.metrics.memoryUsage.get('global');
-    if (!records || records.length === 0) return 0;
+    // Simple linear regression
+    const n = values.length;
+    const sumX = (n * (n - 1)) / 2;
+    const sumY = values.reduce((sum, val) => sum + val, 0);
+    const sumXY = values.reduce((sum, val, i) => sum + (i * val), 0);
+    const sumXX = (n * (n - 1) * (2 * n - 1)) / 6;
     
-    return records[records.length - 1].used;
-  }
-
-  getPeakMemoryUsage() {
-    const records = this.metrics.memoryUsage.get('global');
-    if (!records || records.length === 0) return 0;
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const direction = slope > 0.01 ? 'increasing' : slope < -0.01 ? 'decreasing' : 'stable';
     
-    return Math.max(...records.map(r => r.used));
-  }
-
-  getAverageMemoryUsage() {
-    const records = this.metrics.memoryUsage.get('global');
-    if (!records || records.length === 0) return 0;
-    
-    const total = records.reduce((sum, r) => sum + r.used, 0);
-    return total / records.length;
-  }
-
-  getAverageWorkerQueueSize() {
-    let totalSize = 0;
-    let count = 0;
-
-    this.metrics.workerTasks.forEach(records => {
-      records.forEach(record => {
-        totalSize += record.queueSize;
-        count++;
-      });
-    });
-
-    return count > 0 ? totalSize / count : 0;
-  }
-
-  getWorkerTaskThroughput() {
-    const now = performance.now();
-    const oneMinuteAgo = now - 60000; // 1 minute in milliseconds
-    let count = 0;
-
-    this.metrics.workerTasks.forEach(records => {
-      records.forEach(record => {
-        if (record.timestamp >= oneMinuteAgo) {
-          count++;
-        }
-      });
-    });
-
-    return count; // Tasks per minute
-  }
-
-  getWorkerErrorRate() {
-    // This would need to be tracked separately when errors occur
-    return 0; // Placeholder
-  }
-
-  getAverageFPS() {
-    let totalFPS = 0;
-    let count = 0;
-
-    this.metrics.renderingPerformance.forEach(records => {
-      records.forEach(record => {
-        totalFPS += record.fps;
-        count++;
-      });
-    });
-
-    return count > 0 ? totalFPS / count : 60;
-  }
-
-  getFrameDrops() {
-    let drops = 0;
-
-    this.metrics.renderingPerformance.forEach(records => {
-      records.forEach(record => {
-        if (record.fps < 30) drops++; // Consider < 30fps as dropped frames
-      });
-    });
-
-    return drops;
-  }
-
-  getEdgeCount() {
-    return this.metrics.edgeProcessing.size;
-  }
-
-  getAverageInteractionTime() {
-    let totalTime = 0;
-    let count = 0;
-
-    this.metrics.userInteractions.forEach(records => {
-      records.forEach(record => {
-        totalTime += record.duration;
-        count++;
-      });
-    });
-
-    return count > 0 ? totalTime / count : 0;
-  }
-
-  getSlowInteractionCount() {
-    let slowCount = 0;
-
-    this.metrics.userInteractions.forEach(records => {
-      records.forEach(record => {
-        if (record.duration > this.thresholds.processingTime.warning) {
-          slowCount++;
-        }
-      });
-    });
-
-    return slowCount;
+    return { direction, slope: Math.abs(slope) };
   }
 
   /**
-   * Trigger performance alert
+   * Generate optimization recommendations
    */
-  triggerAlert(type, data) {
+  generateOptimizationRecommendations() {
+    this.optimizationRecommendations = [];
+    
+    // Check processing time
+    if (this.metrics.averageProcessingTime > this.thresholds.processingTime * 0.8) {
+      this.optimizationRecommendations.push({
+        action: 'enable_batching',
+        priority: 'high',
+        description: 'Enable batch processing to reduce individual operation overhead',
+        impact: 'high'
+      });
+    }
+    
+    // Check cache hit rate
+    if (this.metrics.averageCacheHitRate < this.thresholds.cacheHitRate) {
+      this.optimizationRecommendations.push({
+        action: 'clear_cache',
+        priority: 'medium',
+        description: 'Clear cache to improve hit rates',
+        impact: 'medium'
+      });
+    }
+    
+    // Check memory usage
+    if (this.metrics.peakMemoryUsage > this.thresholds.memoryUsage * 0.8) {
+      this.optimizationRecommendations.push({
+        action: 'reduce_batch_size',
+        priority: 'high',
+        description: 'Reduce batch size to lower memory usage',
+        impact: 'high'
+      });
+    }
+    
+    // Check worker latency
+    if (this.metrics.averageWorkerLatency > this.thresholds.workerLatency) {
+      this.optimizationRecommendations.push({
+        action: 'debounce_increase',
+        priority: 'medium',
+        description: 'Increase debounce time to reduce worker load',
+        impact: 'medium'
+      });
+    }
+    
+    // Check render performance
+    if (this.metrics.averageRenderTime > this.thresholds.renderTime) {
+      this.optimizationRecommendations.push({
+        action: 'optimize_rendering',
+        priority: 'high',
+        description: 'Optimize rendering by reducing visual effects',
+        impact: 'high'
+      });
+    }
+  }
+
+  /**
+   * Check for alerts
+   */
+  checkAlerts() {
+    // Process any pending alerts
+    while (this.alerts.length > 0) {
+      const alert = this.alerts.shift();
+      this.emitAlert(alert);
+    }
+  }
+
+  /**
+   * Create an alert
+   */
+  createAlert(type, data) {
     const alert = {
       type,
       data,
-      timestamp: performance.now(),
+      timestamp: Date.now(),
       severity: this.getAlertSeverity(type)
     };
+    
+    this.alerts.push(alert);
+  }
 
-    // Notify registered callbacks
+  /**
+   * Get alert severity
+   */
+  getAlertSeverity(type) {
+    const severityMap = {
+      high_processing_time: 'warning',
+      high_memory_usage: 'error',
+      low_cache_hit_rate: 'warning',
+      high_worker_latency: 'warning',
+      high_render_time: 'error',
+      trend_warning: 'info'
+    };
+    
+    return severityMap[type] || 'info';
+  }
+
+  /**
+   * Emit alert to callbacks
+   */
+  emitAlert(alert) {
     this.alertCallbacks.forEach(callback => {
       try {
         callback(alert);
       } catch (error) {
-        console.error('🔍 EdgePerformanceMonitor: Alert callback error:', error);
+        console.error('❌ EdgePerformanceMonitor: Alert callback error:', error);
       }
     });
-
-    console.warn(`🔍 EdgePerformanceMonitor: ${type}`, data);
-  }
-
-  getAlertSeverity(type) {
-    const severityMap = {
-      edge_performance_critical: 'high',
-      memory_usage_high: 'medium',
-      worker_queue_high: 'high'
-    };
-    
-    return severityMap[type] || 'low';
   }
 
   /**
@@ -619,59 +434,110 @@ class EdgePerformanceMonitor {
   onAlert(callback) {
     this.alertCallbacks.add(callback);
     
+    // Return unsubscribe function
     return () => {
       this.alertCallbacks.delete(callback);
     };
   }
 
   /**
-   * Generate performance report
+   * Get optimization recommendations
    */
-  generateReport() {
-    const metrics = this.getAggregatedMetrics();
-    const recommendations = this.getOptimizationRecommendations();
-    
-    return {
-      timestamp: performance.now(),
-      uptime: performance.now() - this.startTime,
-      metrics,
-      recommendations,
-      summary: {
-        overallHealth: this.getOverallHealthScore(metrics),
-        criticalIssues: recommendations.filter(r => r.priority === 'high').length,
-        totalEdges: this.getEdgeCount(),
-        memoryEfficiency: this.getMemoryEfficiency(metrics)
-      }
-    };
-  }
-
-  getOverallHealthScore(metrics) {
-    let score = 100;
-    
-    // Deduct points for performance issues
-    if (metrics.processingTime.average > this.thresholds.processingTime.warning) score -= 20;
-    if (metrics.memoryUsage.current > this.thresholds.memoryUsage.warning) score -= 15;
-    if (metrics.workerPerformance.averageQueueSize > this.thresholds.workerQueue.warning) score -= 15;
-    if (metrics.rendering.averageFPS < 30) score -= 25;
-    if (metrics.interactions.averageResponseTime > this.thresholds.processingTime.warning) score -= 15;
-    
-    return Math.max(0, score);
-  }
-
-  getMemoryEfficiency(metrics) {
-    const efficiency = 100 - (metrics.memoryUsage.current / this.thresholds.memoryUsage.critical * 100);
-    return Math.max(0, Math.min(100, efficiency));
+  getOptimizationRecommendations() {
+    return [...this.optimizationRecommendations];
   }
 
   /**
-   * Clear all metrics
+   * Generate comprehensive performance report
    */
-  clearMetrics() {
-    this.metrics.edgeProcessing.clear();
-    this.metrics.workerTasks.clear();
-    this.metrics.renderingPerformance.clear();
-    this.metrics.memoryUsage.clear();
-    this.metrics.userInteractions.clear();
+  generateReport() {
+    const report = {
+      summary: {
+        totalOperations: this.metrics.totalOperations,
+        averageProcessingTime: this.metrics.averageProcessingTime,
+        peakMemoryUsage: this.metrics.peakMemoryUsage,
+        averageCacheHitRate: this.metrics.averageCacheHitRate,
+        averageWorkerLatency: this.metrics.averageWorkerLatency,
+        averageRenderTime: this.metrics.averageRenderTime
+      },
+      trends: {
+        processingTime: this.calculateTrend(this.history.processingTimes, 'processingTime'),
+        memoryUsage: this.calculateTrend(this.history.memoryUsage, 'memoryUsage'),
+        cacheHitRate: this.calculateTrend(this.history.cacheHitRates, 'cacheHitRate'),
+        workerLatency: this.calculateTrend(this.history.workerLatency, 'latency'),
+        renderTime: this.calculateTrend(this.history.renderTimes, 'renderTime')
+      },
+      recommendations: this.optimizationRecommendations,
+      alerts: this.alerts.slice(-10), // Last 10 alerts
+      thresholds: this.thresholds,
+      isMonitoring: this.isMonitoring
+    };
+    
+    return report;
+  }
+
+  /**
+   * Update average processing time
+   */
+  updateAverageProcessingTime() {
+    const times = this.metrics.processingTimes.map(m => m.processingTime);
+    this.metrics.averageProcessingTime = times.reduce((sum, time) => sum + time, 0) / times.length;
+  }
+
+  /**
+   * Update average cache hit rate
+   */
+  updateAverageCacheHitRate() {
+    const rates = this.metrics.cacheHitRates.map(m => m.cacheHitRate);
+    this.metrics.averageCacheHitRate = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
+  }
+
+  /**
+   * Update average worker latency
+   */
+  updateAverageWorkerLatency() {
+    const latencies = this.metrics.workerLatency.map(m => m.latency);
+    this.metrics.averageWorkerLatency = latencies.reduce((sum, latency) => sum + latency, 0) / latencies.length;
+  }
+
+  /**
+   * Update average render time
+   */
+  updateAverageRenderTime() {
+    const times = this.metrics.renderTimes.map(m => m.renderTime);
+    this.metrics.averageRenderTime = times.reduce((sum, time) => sum + time, 0) / times.length;
+  }
+
+  /**
+   * Reset all metrics
+   */
+  reset() {
+    this.metrics = {
+      processingTimes: [],
+      memoryUsage: [],
+      cacheHitRates: [],
+      workerLatency: [],
+      renderTimes: [],
+      totalOperations: 0,
+      averageProcessingTime: 0,
+      peakMemoryUsage: 0,
+      averageCacheHitRate: 0,
+      averageWorkerLatency: 0,
+      averageRenderTime: 0
+    };
+    
+    this.history = {
+      processingTimes: [],
+      memoryUsage: [],
+      cacheHitRates: [],
+      workerLatency: [],
+      renderTimes: []
+    };
+    
+    this.alerts = [];
+    this.optimizationRecommendations = [];
+    
+    console.log('📊 EdgePerformanceMonitor: Metrics reset');
   }
 
   /**
@@ -679,8 +545,8 @@ class EdgePerformanceMonitor {
    */
   destroy() {
     this.stopMonitoring();
-    this.clearMetrics();
     this.alertCallbacks.clear();
+    this.reset();
   }
 }
 

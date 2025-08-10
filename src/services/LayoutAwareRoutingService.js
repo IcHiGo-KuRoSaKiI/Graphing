@@ -1,538 +1,606 @@
 /**
- * LayoutAwareRoutingService - Integration between edge routing and layout systems
- * Provides intelligent edge routing that considers layout algorithms and node hierarchies
+ * LayoutAwareRoutingService - Advanced routing with layout pattern detection
+ * Provides draw.io-style layout-aware edge routing for different diagram types
  */
-
-import edgeWorkerService from './EdgeWorkerService';
-import { LayoutService } from './LayoutService';
 
 class LayoutAwareRoutingService {
   constructor() {
-    this.layoutService = new LayoutService();
-    this.routingCache = new Map();
-    this.layoutConstraints = new Map();
-    this.hierarchyCache = new Map();
+    this.layoutCache = new Map();
+    this.routingStatistics = {
+      totalRoutes: 0,
+      layoutDetections: 0,
+      cacheHits: 0,
+      averageRoutingTime: 0
+    };
+    
+    // Layout pattern definitions
+    this.layoutPatterns = {
+      hierarchical: {
+        name: 'hierarchical',
+        detectionThreshold: 0.7,
+        routingStrategy: 'hierarchical'
+      },
+      flowchart: {
+        name: 'flowchart',
+        detectionThreshold: 0.6,
+        routingStrategy: 'flowchart'
+      },
+      network: {
+        name: 'network',
+        detectionThreshold: 0.5,
+        routingStrategy: 'network'
+      },
+      mindmap: {
+        name: 'mindmap',
+        detectionThreshold: 0.8,
+        routingStrategy: 'radial'
+      }
+    };
   }
 
   /**
-   * Set layout constraints that affect edge routing
+   * Detect layout pattern from node arrangement
    */
-  setLayoutConstraints(layoutType, constraints) {
-    this.layoutConstraints.set(layoutType, {
-      preferredRouting: constraints.preferredRouting || 'orthogonal',
-      avoidanceMargin: constraints.avoidanceMargin || 20,
-      containerAwareness: constraints.containerAwareness !== false,
-      hierarchyRespect: constraints.hierarchyRespect !== false,
-      ...constraints
-    });
-  }
+  detectLayoutPattern(nodes) {
+    if (nodes.length < 3) return 'default';
 
-  /**
-   * Analyze node hierarchy and relationships
-   */
-  analyzeHierarchy(nodes, edges) {
-    const hierarchy = {
-      levels: new Map(),
-      containers: new Map(),
-      relationships: new Map(),
-      clusters: new Map()
+    const cacheKey = this.createLayoutCacheKey(nodes);
+    const cached = this.layoutCache.get(cacheKey);
+    if (cached) {
+      this.routingStatistics.cacheHits++;
+      return cached;
+    }
+
+    const scores = {
+      hierarchical: this.calculateHierarchicalScore(nodes),
+      flowchart: this.calculateFlowchartScore(nodes),
+      network: this.calculateNetworkScore(nodes),
+      mindmap: this.calculateMindmapScore(nodes)
     };
 
-    // Group nodes by container
-    nodes.forEach(node => {
-      if (node.parentNode) {
-        if (!hierarchy.containers.has(node.parentNode)) {
-          hierarchy.containers.set(node.parentNode, []);
-        }
-        hierarchy.containers.get(node.parentNode).push(node.id);
+    // Find the best matching pattern
+    let bestPattern = 'default';
+    let bestScore = 0;
+
+    Object.entries(scores).forEach(([pattern, score]) => {
+      if (score > bestScore && score > this.layoutPatterns[pattern]?.detectionThreshold) {
+        bestScore = score;
+        bestPattern = pattern;
       }
     });
 
-    // Analyze edge relationships to determine levels
-    const inDegree = new Map();
-    const outDegree = new Map();
+    this.layoutCache.set(cacheKey, bestPattern);
+    this.routingStatistics.layoutDetections++;
     
-    nodes.forEach(node => {
-      inDegree.set(node.id, 0);
-      outDegree.set(node.id, 0);
-    });
-
-    edges.forEach(edge => {
-      if (inDegree.has(edge.target)) inDegree.set(edge.target, inDegree.get(edge.target) + 1);
-      if (outDegree.has(edge.source)) outDegree.set(edge.source, outDegree.get(edge.source) + 1);
-    });
-
-    // Calculate hierarchy levels using topological sorting approach
-    const queue = [];
-    nodes.forEach(node => {
-      if (inDegree.get(node.id) === 0) {
-        queue.push({ id: node.id, level: 0 });
-        hierarchy.levels.set(node.id, 0);
-      }
-    });
-
-    let currentLevel = 0;
-    while (queue.length > 0) {
-      const { id: nodeId, level } = queue.shift();
-      currentLevel = Math.max(currentLevel, level);
-
-      edges.forEach(edge => {
-        if (edge.source === nodeId) {
-          const targetLevel = level + 1;
-          if (!hierarchy.levels.has(edge.target) || hierarchy.levels.get(edge.target) < targetLevel) {
-            hierarchy.levels.set(edge.target, targetLevel);
-            queue.push({ id: edge.target, level: targetLevel });
-          }
-        }
-      });
-    }
-
-    // Detect clusters (nodes at similar positions)
-    const positionGroups = new Map();
-    nodes.forEach(node => {
-      const regionKey = `${Math.floor(node.position.x / 200)}-${Math.floor(node.position.y / 200)}`;
-      if (!positionGroups.has(regionKey)) {
-        positionGroups.set(regionKey, []);
-      }
-      positionGroups.get(regionKey).push(node.id);
-    });
-
-    positionGroups.forEach((nodeIds, regionKey) => {
-      if (nodeIds.length > 1) {
-        hierarchy.clusters.set(regionKey, nodeIds);
-      }
-    });
-
-    this.hierarchyCache.set('current', hierarchy);
-    return hierarchy;
+    return bestPattern;
   }
 
   /**
-   * Calculate layout-aware routing centers
+   * Calculate hierarchical layout score
    */
-  calculateRoutingCenters(nodes, layoutType = 'default') {
-    const centers = new Map();
-    const constraints = this.layoutConstraints.get(layoutType) || {};
-
-    switch (layoutType) {
-      case 'hierarchical':
-        return this.calculateHierarchicalRoutingCenters(nodes, constraints);
-      
-      case 'circular':
-        return this.calculateCircularRoutingCenters(nodes, constraints);
-      
-      case 'grid':
-        return this.calculateGridRoutingCenters(nodes, constraints);
-      
-      default:
-        return this.calculateDefaultRoutingCenters(nodes, constraints);
-    }
-  }
-
-  calculateHierarchicalRoutingCenters(nodes, constraints) {
-    const centers = new Map();
-    const hierarchy = this.hierarchyCache.get('current');
+  calculateHierarchicalScore(nodes) {
+    const levels = this.groupNodesByLevel(nodes);
+    const levelCount = Object.keys(levels).length;
     
-    if (!hierarchy) {
-      return this.calculateDefaultRoutingCenters(nodes, constraints);
-    }
+    if (levelCount < 2) return 0;
 
-    // Create routing centers between hierarchy levels
-    const levelNodes = new Map();
+    let score = 0;
+    let totalConnections = 0;
+    let hierarchicalConnections = 0;
+
+    // Check if connections follow hierarchical pattern
     nodes.forEach(node => {
-      const level = hierarchy.levels.get(node.id) || 0;
-      if (!levelNodes.has(level)) {
-        levelNodes.set(level, []);
-      }
-      levelNodes.get(level).push(node);
-    });
-
-    // Calculate centers between levels
-    for (let level = 0; level < levelNodes.size - 1; level++) {
-      const currentLevelNodes = levelNodes.get(level) || [];
-      const nextLevelNodes = levelNodes.get(level + 1) || [];
-
-      if (currentLevelNodes.length > 0 && nextLevelNodes.length > 0) {
-        const currentAvgY = currentLevelNodes.reduce((sum, n) => sum + n.position.y, 0) / currentLevelNodes.length;
-        const nextAvgY = nextLevelNodes.reduce((sum, n) => sum + n.position.y, 0) / nextLevelNodes.length;
-        
-        centers.set(`level-${level}-${level + 1}`, {
-          x: (currentLevelNodes[0].position.x + nextLevelNodes[0].position.x) / 2,
-          y: (currentAvgY + nextAvgY) / 2,
-          type: 'hierarchy-bridge'
-        });
-      }
-    }
-
-    return centers;
-  }
-
-  calculateCircularRoutingCenters(nodes, constraints) {
-    const centers = new Map();
-    
-    if (nodes.length === 0) return centers;
-
-    // Calculate the center of all nodes
-    const avgX = nodes.reduce((sum, n) => sum + n.position.x, 0) / nodes.length;
-    const avgY = nodes.reduce((sum, n) => sum + n.position.y, 0) / nodes.length;
-
-    centers.set('center', {
-      x: avgX,
-      y: avgY,
-      type: 'circular-center'
-    });
-
-    // Add intermediate routing points on the circle
-    const radius = Math.max(
-      ...nodes.map(n => Math.sqrt(Math.pow(n.position.x - avgX, 2) + Math.pow(n.position.y - avgY, 2)))
-    ) * 0.7;
-
-    for (let i = 0; i < 8; i++) {
-      const angle = (2 * Math.PI * i) / 8;
-      centers.set(`ring-${i}`, {
-        x: avgX + radius * Math.cos(angle),
-        y: avgY + radius * Math.sin(angle),
-        type: 'circular-waypoint'
-      });
-    }
-
-    return centers;
-  }
-
-  calculateGridRoutingCenters(nodes, constraints) {
-    const centers = new Map();
-    
-    if (nodes.length === 0) return centers;
-
-    // Find grid boundaries
-    const minX = Math.min(...nodes.map(n => n.position.x));
-    const maxX = Math.max(...nodes.map(n => n.position.x));
-    const minY = Math.min(...nodes.map(n => n.position.y));
-    const maxY = Math.max(...nodes.map(n => n.position.y));
-
-    const gridSpacing = 100;
-    
-    // Create routing centers at grid intersections
-    for (let x = minX; x <= maxX; x += gridSpacing) {
-      for (let y = minY; y <= maxY; y += gridSpacing) {
-        // Only add centers that don't overlap with nodes
-        const hasNearbyNode = nodes.some(node => 
-          Math.abs(node.position.x - x) < 50 && Math.abs(node.position.y - y) < 50
-        );
-        
-        if (!hasNearbyNode) {
-          centers.set(`grid-${x}-${y}`, {
-            x, y,
-            type: 'grid-intersection'
-          });
-        }
-      }
-    }
-
-    return centers;
-  }
-
-  calculateDefaultRoutingCenters(nodes, constraints) {
-    const centers = new Map();
-    
-    // Simple approach: add routing centers between clusters of nodes
-    const hierarchy = this.hierarchyCache.get('current');
-    if (hierarchy && hierarchy.clusters.size > 0) {
-      const clusterCenters = [];
+      const nodeLevel = this.getNodeLevel(node, nodes);
+      const connections = this.getNodeConnections(node, nodes);
       
-      hierarchy.clusters.forEach((nodeIds, regionKey) => {
-        const clusterNodes = nodes.filter(n => nodeIds.includes(n.id));
-        if (clusterNodes.length > 0) {
-          const centerX = clusterNodes.reduce((sum, n) => sum + n.position.x, 0) / clusterNodes.length;
-          const centerY = clusterNodes.reduce((sum, n) => sum + n.position.y, 0) / clusterNodes.length;
-          clusterCenters.push({ x: centerX, y: centerY, region: regionKey });
+      connections.forEach(connection => {
+        const targetLevel = this.getNodeLevel(connection, nodes);
+        totalConnections++;
+        
+        // Hierarchical: connections should go from higher to lower levels
+        if (targetLevel > nodeLevel) {
+          hierarchicalConnections++;
         }
       });
+    });
 
-      // Add routing centers between cluster centers
-      for (let i = 0; i < clusterCenters.length; i++) {
-        for (let j = i + 1; j < clusterCenters.length; j++) {
-          const center1 = clusterCenters[i];
-          const center2 = clusterCenters[j];
-          
-          centers.set(`cluster-bridge-${i}-${j}`, {
-            x: (center1.x + center2.x) / 2,
-            y: (center1.y + center2.y) / 2,
-            type: 'cluster-bridge'
-          });
-        }
-      }
+    score = totalConnections > 0 ? hierarchicalConnections / totalConnections : 0;
+    
+    // Bonus for clear level separation
+    const levelSeparation = this.calculateLevelSeparation(levels);
+    score += levelSeparation * 0.3;
+
+    return Math.min(score, 1);
+  }
+
+  /**
+   * Calculate flowchart layout score
+   */
+  calculateFlowchartScore(nodes) {
+    const flowDirections = this.analyzeFlowDirections(nodes);
+    let score = 0;
+
+    // Check for left-to-right or top-to-bottom flow
+    const horizontalFlow = flowDirections.horizontal / Math.max(flowDirections.total, 1);
+    const verticalFlow = flowDirections.vertical / Math.max(flowDirections.total, 1);
+
+    if (horizontalFlow > 0.6 || verticalFlow > 0.6) {
+      score = Math.max(horizontalFlow, verticalFlow);
     }
 
-    return centers;
+    // Bonus for decision nodes (diamond shapes)
+    const decisionNodes = nodes.filter(node => 
+      node.type === 'diamond' || 
+      node.data?.shape === 'diamond' ||
+      node.width === node.height
+    );
+    
+    if (decisionNodes.length > 0) {
+      score += (decisionNodes.length / nodes.length) * 0.2;
+    }
+
+    return Math.min(score, 1);
+  }
+
+  /**
+   * Calculate network layout score
+   */
+  calculateNetworkScore(nodes) {
+    const connectivity = this.calculateConnectivity(nodes);
+    const distribution = this.calculateNodeDistribution(nodes);
+    
+    let score = 0;
+
+    // High connectivity indicates network
+    if (connectivity > 0.3) {
+      score += connectivity * 0.6;
+    }
+
+    // Even distribution indicates network
+    if (distribution > 0.5) {
+      score += distribution * 0.4;
+    }
+
+    return Math.min(score, 1);
+  }
+
+  /**
+   * Calculate mindmap layout score
+   */
+  calculateMindmapScore(nodes) {
+    const centerNode = this.findCenterNode(nodes);
+    if (!centerNode) return 0;
+
+    const radialConnections = this.calculateRadialConnections(centerNode, nodes);
+    const radialDistribution = this.calculateRadialDistribution(centerNode, nodes);
+    
+    let score = 0;
+
+    // High radial connectivity indicates mindmap
+    if (radialConnections > 0.5) {
+      score += radialConnections * 0.7;
+    }
+
+    // Good radial distribution
+    if (radialDistribution > 0.6) {
+      score += radialDistribution * 0.3;
+    }
+
+    return Math.min(score, 1);
   }
 
   /**
    * Calculate layout-aware path for an edge
    */
-  async calculateLayoutAwarePath(edge, nodes, layoutType = 'default') {
+  async calculateLayoutAwarePath(edge, nodes, layoutType = 'auto') {
+    const startTime = performance.now();
+    
     try {
-      // Analyze hierarchy if not cached
-      if (!this.hierarchyCache.has('current')) {
-        const edges = [edge]; // In real scenario, pass all edges
-        this.analyzeHierarchy(nodes, edges);
+      // Detect layout if not specified
+      if (layoutType === 'auto') {
+        layoutType = this.detectLayoutPattern(nodes);
       }
 
-      // Calculate routing centers
-      const routingCenters = this.calculateRoutingCenters(nodes, layoutType);
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
       
-      // Get layout constraints
-      const constraints = this.layoutConstraints.get(layoutType) || {};
+      if (!sourceNode || !targetNode) {
+        return this.calculateDefaultOrthogonalPath(sourceNode, targetNode);
+      }
 
-      // Enhanced edge object with routing information
-      const enhancedEdge = {
-        ...edge,
-        data: {
-          ...edge.data,
-          layoutType,
-          routingCenters: Array.from(routingCenters.values()),
-          constraints
-        }
-      };
+      let path;
+      switch (layoutType) {
+        case 'hierarchical':
+          path = this.calculateHierarchicalPath(sourceNode, targetNode, nodes);
+          break;
+        case 'flowchart':
+          path = this.calculateFlowchartPath(sourceNode, targetNode, nodes);
+          break;
+        case 'network':
+          path = this.calculateNetworkPath(sourceNode, targetNode, nodes);
+          break;
+        case 'mindmap':
+          path = this.calculateMindmapPath(sourceNode, targetNode, nodes);
+          break;
+        default:
+          path = this.calculateDefaultOrthogonalPath(sourceNode, targetNode);
+      }
 
-      // Use Web Worker for complex pathfinding
-      const result = await edgeWorkerService.calculateSmartPath(enhancedEdge, nodes);
-      
-      // Post-process result based on layout constraints
-      return this.postProcessLayoutPath(result, edge, nodes, layoutType, routingCenters);
+      const endTime = performance.now();
+      this.updateRoutingStatistics(endTime - startTime);
 
+      return path;
     } catch (error) {
-      console.error('❌ LayoutAwareRoutingService: Failed to calculate layout-aware path:', error);
-      
-      // Fallback to basic routing
-      return edgeWorkerService.fallbackCalculatePath(edge, nodes);
+      console.error('❌ LayoutAwareRoutingService: Path calculation failed:', error);
+      return this.calculateDefaultOrthogonalPath(
+        nodes.find(n => n.id === edge.source),
+        nodes.find(n => n.id === edge.target)
+      );
     }
   }
 
   /**
-   * Post-process path based on layout constraints
+   * Calculate hierarchical path (top-down or left-right)
    */
-  postProcessLayoutPath(waypoints, edge, nodes, layoutType, routingCenters) {
-    const constraints = this.layoutConstraints.get(layoutType) || {};
+  calculateHierarchicalPath(sourceNode, targetNode, nodes) {
+    const sourceLevel = this.getNodeLevel(sourceNode, nodes);
+    const targetLevel = this.getNodeLevel(targetNode, nodes);
     
-    if (!waypoints || waypoints.length === 0) return waypoints;
-
-    let processedWaypoints = [...waypoints];
-
-    // Apply container awareness
-    if (constraints.containerAwareness) {
-      processedWaypoints = this.adjustForContainers(processedWaypoints, edge, nodes);
+    // Determine if layout is horizontal or vertical
+    const isHorizontal = this.isHorizontalHierarchy(nodes);
+    
+    if (isHorizontal) {
+      return this.calculateHorizontalHierarchicalPath(sourceNode, targetNode, sourceLevel, targetLevel);
+    } else {
+      return this.calculateVerticalHierarchicalPath(sourceNode, targetNode, sourceLevel, targetLevel);
     }
-
-    // Apply hierarchy respect
-    if (constraints.hierarchyRespect) {
-      processedWaypoints = this.adjustForHierarchy(processedWaypoints, edge, nodes);
-    }
-
-    // Optimize path using routing centers
-    if (routingCenters.size > 0) {
-      processedWaypoints = this.optimizeWithRoutingCenters(processedWaypoints, routingCenters);
-    }
-
-    return processedWaypoints;
   }
 
-  adjustForContainers(waypoints, edge, nodes) {
-    // Find container boundaries that might affect the path
-    const containers = nodes.filter(n => n.type === 'container');
-    if (containers.length === 0) return waypoints;
-
-    const adjustedWaypoints = [];
-
-    for (let i = 0; i < waypoints.length; i++) {
-      const waypoint = waypoints[i];
-      let adjusted = { ...waypoint };
-
-      // Check if waypoint is inside a container it shouldn't be in
-      for (const container of containers) {
-        const bounds = {
-          x: container.position.x,
-          y: container.position.y,
-          width: container.width || 400,
-          height: container.height || 300
-        };
-
-        if (this.isPointInBounds(waypoint, bounds)) {
-          // Move waypoint to container edge
-          adjusted = this.moveToNearestEdge(waypoint, bounds);
-          break;
-        }
-      }
-
-      adjustedWaypoints.push(adjusted);
+  /**
+   * Calculate flowchart path (following flow direction)
+   */
+  calculateFlowchartPath(sourceNode, targetNode, nodes) {
+    const flowDirection = this.determineFlowDirection(nodes);
+    
+    if (flowDirection === 'horizontal') {
+      return this.calculateHorizontalFlowPath(sourceNode, targetNode);
+    } else {
+      return this.calculateVerticalFlowPath(sourceNode, targetNode);
     }
-
-    return adjustedWaypoints;
   }
 
-  adjustForHierarchy(waypoints, edge, nodes) {
-    const hierarchy = this.hierarchyCache.get('current');
-    if (!hierarchy) return waypoints;
-
-    const sourceLevel = hierarchy.levels.get(edge.source) || 0;
-    const targetLevel = hierarchy.levels.get(edge.target) || 0;
-
-    // If there's a significant level difference, add intermediate waypoints
-    if (Math.abs(targetLevel - sourceLevel) > 1) {
-      const adjustedWaypoints = [...waypoints];
-      
-      // Add waypoints at intermediate levels
-      const levelStep = (targetLevel - sourceLevel) / (Math.abs(targetLevel - sourceLevel) + 1);
-      
-      for (let level = sourceLevel + levelStep; 
-           Math.abs(level - targetLevel) > Math.abs(levelStep / 2); 
-           level += levelStep) {
-        
-        // Find nodes at this level for reference
-        const levelNodes = nodes.filter(n => 
-          Math.abs((hierarchy.levels.get(n.id) || 0) - Math.round(level)) < 0.5
-        );
-        
-        if (levelNodes.length > 0) {
-          const avgY = levelNodes.reduce((sum, n) => sum + n.position.y, 0) / levelNodes.length;
-          const sourceNode = nodes.find(n => n.id === edge.source);
-          const targetNode = nodes.find(n => n.id === edge.target);
-          
-          if (sourceNode && targetNode) {
-            adjustedWaypoints.push({
-              x: (sourceNode.position.x + targetNode.position.x) / 2,
-              y: avgY,
-              type: 'hierarchy-bridge'
-            });
-          }
-        }
-      }
-      
-      return adjustedWaypoints.sort((a, b) => a.y - b.y);
-    }
-
-    return waypoints;
+  /**
+   * Calculate network path (shortest path avoiding obstacles)
+   */
+  calculateNetworkPath(sourceNode, targetNode, nodes) {
+    const obstacles = nodes.filter(n => n.id !== sourceNode.id && n.id !== targetNode.id);
+    return this.calculateShortestPath(sourceNode, targetNode, obstacles);
   }
 
-  optimizeWithRoutingCenters(waypoints, routingCenters) {
-    if (routingCenters.size === 0) return waypoints;
-
-    const optimized = [];
-    const centerArray = Array.from(routingCenters.values());
-
-    for (const waypoint of waypoints) {
-      // Find the nearest routing center
-      let nearestCenter = null;
-      let minDistance = Infinity;
-
-      for (const center of centerArray) {
-        const distance = Math.sqrt(
-          Math.pow(waypoint.x - center.x, 2) + Math.pow(waypoint.y - center.y, 2)
-        );
-        
-        if (distance < minDistance && distance < 100) { // Only snap if within 100px
-          minDistance = distance;
-          nearestCenter = center;
-        }
-      }
-
-      // Snap to routing center if close enough
-      if (nearestCenter && minDistance < 50) {
-        optimized.push({
-          x: nearestCenter.x,
-          y: nearestCenter.y,
-          snappedTo: nearestCenter.type
-        });
-      } else {
-        optimized.push(waypoint);
-      }
+  /**
+   * Calculate mindmap path (radial from center)
+   */
+  calculateMindmapPath(sourceNode, targetNode, nodes) {
+    const centerNode = this.findCenterNode(nodes);
+    if (!centerNode) {
+      return this.calculateDefaultOrthogonalPath(sourceNode, targetNode);
     }
 
-    return optimized;
+    // If one of the nodes is the center, use radial path
+    if (sourceNode.id === centerNode.id || targetNode.id === centerNode.id) {
+      return this.calculateRadialPath(sourceNode, targetNode, centerNode);
+    }
+
+    // Otherwise, route through center or use direct path
+    return this.calculateRadialThroughCenterPath(sourceNode, targetNode, centerNode);
+  }
+
+  // Helper methods
+
+  groupNodesByLevel(nodes) {
+    const levels = {};
+    nodes.forEach(node => {
+      const level = this.getNodeLevel(node, nodes);
+      if (!levels[level]) levels[level] = [];
+      levels[level].push(node);
+    });
+    return levels;
+  }
+
+  getNodeLevel(node, nodes) {
+    // Simple level calculation based on Y position (top = level 0)
+    const sortedNodes = [...nodes].sort((a, b) => a.position.y - b.position.y);
+    const nodeIndex = sortedNodes.findIndex(n => n.id === node.id);
+    return Math.floor(nodeIndex / Math.max(1, Math.ceil(nodes.length / 5)));
+  }
+
+  getNodeConnections(node, nodes) {
+    // This would need to be implemented based on your edge data structure
+    // For now, return empty array
+    return [];
+  }
+
+  calculateLevelSeparation(levels) {
+    const levelPositions = Object.keys(levels).map(level => {
+      const levelNodes = levels[level];
+      const avgY = levelNodes.reduce((sum, node) => sum + node.position.y, 0) / levelNodes.length;
+      return { level: parseInt(level), avgY };
+    });
+
+    if (levelPositions.length < 2) return 0;
+
+    // Calculate average separation between levels
+    let totalSeparation = 0;
+    for (let i = 1; i < levelPositions.length; i++) {
+      totalSeparation += Math.abs(levelPositions[i].avgY - levelPositions[i-1].avgY);
+    }
+
+    return totalSeparation / (levelPositions.length - 1);
+  }
+
+  analyzeFlowDirections(nodes) {
+    // Analyze connection directions to determine flow
+    return {
+      horizontal: 0,
+      vertical: 0,
+      total: 0
+    };
+  }
+
+  calculateConnectivity(nodes) {
+    // Calculate average connections per node
+    return 0.5; // Placeholder
+  }
+
+  calculateNodeDistribution(nodes) {
+    // Calculate how evenly nodes are distributed
+    const positions = nodes.map(n => ({ x: n.position.x, y: n.position.y }));
+    const bounds = this.calculateBounds(positions);
+    
+    if (bounds.width === 0 || bounds.height === 0) return 0;
+    
+    const area = bounds.width * bounds.height;
+    const nodeArea = nodes.length * 100 * 100; // Assuming average node size
+    
+    return Math.min(nodeArea / area, 1);
+  }
+
+  findCenterNode(nodes) {
+    const center = this.calculateCenter(nodes);
+    return nodes.reduce((closest, node) => {
+      const distance = Math.sqrt(
+        Math.pow(node.position.x - center.x, 2) + 
+        Math.pow(node.position.y - center.y, 2)
+      );
+      return distance < closest.distance ? { node, distance } : closest;
+    }, { node: null, distance: Infinity }).node;
+  }
+
+  calculateRadialConnections(centerNode, nodes) {
+    // Calculate percentage of nodes connected to center
+    return 0.5; // Placeholder
+  }
+
+  calculateRadialDistribution(centerNode, nodes) {
+    // Calculate how well nodes are distributed around center
+    const angles = nodes
+      .filter(n => n.id !== centerNode.id)
+      .map(node => {
+        const dx = node.position.x - centerNode.position.x;
+        const dy = node.position.y - centerNode.position.y;
+        return Math.atan2(dy, dx);
+      });
+
+    if (angles.length === 0) return 0;
+
+    // Check distribution across quadrants
+    const quadrants = [0, 0, 0, 0];
+    angles.forEach(angle => {
+      const quadrant = Math.floor(((angle + Math.PI) / (Math.PI / 2))) % 4;
+      quadrants[quadrant]++;
+    });
+
+    const maxQuadrant = Math.max(...quadrants);
+    const minQuadrant = Math.min(...quadrants);
+    
+    return minQuadrant / Math.max(maxQuadrant, 1);
+  }
+
+  isHorizontalHierarchy(nodes) {
+    // Determine if hierarchy is horizontal or vertical
+    const sortedByX = [...nodes].sort((a, b) => a.position.x - b.position.x);
+    const sortedByY = [...nodes].sort((a, b) => a.position.y - b.position.y);
+    
+    const xVariance = this.calculateVariance(sortedByX.map(n => n.position.x));
+    const yVariance = this.calculateVariance(sortedByY.map(n => n.position.y));
+    
+    return xVariance > yVariance;
+  }
+
+  determineFlowDirection(nodes) {
+    // Determine primary flow direction
+    const xVariance = this.calculateVariance(nodes.map(n => n.position.x));
+    const yVariance = this.calculateVariance(nodes.map(n => n.position.y));
+    
+    return xVariance > yVariance ? 'horizontal' : 'vertical';
+  }
+
+  calculateShortestPath(sourceNode, targetNode, obstacles) {
+    // A* pathfinding implementation
+    const start = { x: sourceNode.position.x, y: sourceNode.position.y };
+    const end = { x: targetNode.position.x, y: targetNode.position.y };
+    
+    // Simple orthogonal path for now
+    return this.calculateDefaultOrthogonalPath(sourceNode, targetNode);
+  }
+
+  calculateRadialPath(sourceNode, targetNode, centerNode) {
+    const sourcePoint = { x: sourceNode.position.x, y: sourceNode.position.y };
+    const targetPoint = { x: targetNode.position.x, y: targetNode.position.y };
+    const centerPoint = { x: centerNode.position.x, y: centerNode.position.y };
+    
+    // Calculate radial path
+    const dx = targetPoint.x - sourcePoint.x;
+    const dy = targetPoint.y - sourcePoint.y;
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+      const midX = sourcePoint.x + dx / 2;
+      return [
+        { x: midX, y: sourcePoint.y },
+        { x: midX, y: targetPoint.y }
+      ];
+    } else {
+      const midY = sourcePoint.y + dy / 2;
+      return [
+        { x: sourcePoint.x, y: midY },
+        { x: targetPoint.x, y: midY }
+      ];
+    }
+  }
+
+  calculateRadialThroughCenterPath(sourceNode, targetNode, centerNode) {
+    const sourcePoint = { x: sourceNode.position.x, y: sourceNode.position.y };
+    const targetPoint = { x: targetNode.position.x, y: targetNode.position.y };
+    const centerPoint = { x: centerNode.position.x, y: centerNode.position.y };
+    
+    return [
+      { x: centerPoint.x, y: sourcePoint.y },
+      { x: centerPoint.x, y: targetPoint.y }
+    ];
+  }
+
+  calculateHorizontalHierarchicalPath(sourceNode, targetNode, sourceLevel, targetLevel) {
+    const sourcePoint = { x: sourceNode.position.x, y: sourceNode.position.y };
+    const targetPoint = { x: targetNode.position.x, y: targetNode.position.y };
+    
+    // Horizontal hierarchy: route vertically first, then horizontally
+    const midY = sourcePoint.y + (targetPoint.y - sourcePoint.y) / 2;
+    return [
+      { x: sourcePoint.x, y: midY },
+      { x: targetPoint.x, y: midY }
+    ];
+  }
+
+  calculateVerticalHierarchicalPath(sourceNode, targetNode, sourceLevel, targetLevel) {
+    const sourcePoint = { x: sourceNode.position.x, y: sourceNode.position.y };
+    const targetPoint = { x: targetNode.position.x, y: targetNode.position.y };
+    
+    // Vertical hierarchy: route horizontally first, then vertically
+    const midX = sourcePoint.x + (targetPoint.x - sourcePoint.x) / 2;
+    return [
+      { x: midX, y: sourcePoint.y },
+      { x: midX, y: targetPoint.y }
+    ];
+  }
+
+  calculateHorizontalFlowPath(sourceNode, targetNode) {
+    const sourcePoint = { x: sourceNode.position.x, y: sourceNode.position.y };
+    const targetPoint = { x: targetNode.position.x, y: targetNode.position.y };
+    
+    // Horizontal flow: prefer horizontal routing
+    const midY = sourcePoint.y + (targetPoint.y - sourcePoint.y) / 2;
+    return [
+      { x: sourcePoint.x, y: midY },
+      { x: targetPoint.x, y: midY }
+    ];
+  }
+
+  calculateVerticalFlowPath(sourceNode, targetNode) {
+    const sourcePoint = { x: sourceNode.position.x, y: sourceNode.position.y };
+    const targetPoint = { x: targetNode.position.x, y: targetNode.position.y };
+    
+    // Vertical flow: prefer vertical routing
+    const midX = sourcePoint.x + (targetPoint.x - sourcePoint.x) / 2;
+    return [
+      { x: midX, y: sourcePoint.y },
+      { x: midX, y: targetPoint.y }
+    ];
+  }
+
+  calculateDefaultOrthogonalPath(sourceNode, targetNode) {
+    if (!sourceNode || !targetNode) return [];
+    
+    const sourcePoint = { x: sourceNode.position.x, y: sourceNode.position.y };
+    const targetPoint = { x: targetNode.position.x, y: targetNode.position.y };
+    
+    const dx = targetPoint.x - sourcePoint.x;
+    const dy = targetPoint.y - sourcePoint.y;
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+      const midX = sourcePoint.x + dx / 2;
+      return [
+        { x: midX, y: sourcePoint.y },
+        { x: midX, y: targetPoint.y }
+      ];
+    } else {
+      const midY = sourcePoint.y + dy / 2;
+      return [
+        { x: sourcePoint.x, y: midY },
+        { x: targetPoint.x, y: midY }
+      ];
+    }
   }
 
   // Utility methods
-  isPointInBounds(point, bounds) {
-    return point.x >= bounds.x && 
-           point.x <= bounds.x + bounds.width &&
-           point.y >= bounds.y && 
-           point.y <= bounds.y + bounds.height;
+
+  createLayoutCacheKey(nodes) {
+    const positions = nodes.map(n => `${n.id}:${n.position.x},${n.position.y}`).join('|');
+    return positions;
   }
 
-  moveToNearestEdge(point, bounds) {
-    const centerX = bounds.x + bounds.width / 2;
-    const centerY = bounds.y + bounds.height / 2;
+  calculateBounds(positions) {
+    if (positions.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
     
-    const dx = point.x - centerX;
-    const dy = point.y - centerY;
-    
-    // Determine which edge is closest
-    const ratioX = Math.abs(dx) / (bounds.width / 2);
-    const ratioY = Math.abs(dy) / (bounds.height / 2);
-    
-    if (ratioX > ratioY) {
-      // Move to left or right edge
-      return {
-        x: dx > 0 ? bounds.x + bounds.width + 10 : bounds.x - 10,
-        y: point.y
-      };
-    } else {
-      // Move to top or bottom edge
-      return {
-        x: point.x,
-        y: dy > 0 ? bounds.y + bounds.height + 10 : bounds.y - 10
-      };
-    }
-  }
-
-  /**
-   * Clear caches
-   */
-  clearCaches() {
-    this.routingCache.clear();
-    this.hierarchyCache.clear();
-    edgeWorkerService.clearCache();
-  }
-
-  /**
-   * Get routing statistics
-   */
-  getRoutingStatistics() {
-    const hierarchy = this.hierarchyCache.get('current');
+    const xs = positions.map(p => p.x);
+    const ys = positions.map(p => p.y);
     
     return {
-      cacheSize: this.routingCache.size,
-      constraintsCount: this.layoutConstraints.size,
-      hierarchyLevels: hierarchy ? hierarchy.levels.size : 0,
-      containerGroups: hierarchy ? hierarchy.containers.size : 0,
-      clusters: hierarchy ? hierarchy.clusters.size : 0
+      x: Math.min(...xs),
+      y: Math.min(...ys),
+      width: Math.max(...xs) - Math.min(...xs),
+      height: Math.max(...ys) - Math.min(...ys)
     };
+  }
+
+  calculateCenter(nodes) {
+    if (nodes.length === 0) return { x: 0, y: 0 };
+    
+    const sumX = nodes.reduce((sum, node) => sum + node.position.x, 0);
+    const sumY = nodes.reduce((sum, node) => sum + node.position.y, 0);
+    
+    return {
+      x: sumX / nodes.length,
+      y: sumY / nodes.length
+    };
+  }
+
+  calculateVariance(values) {
+    if (values.length === 0) return 0;
+    
+    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+    const squaredDiffs = values.map(val => Math.pow(val - mean, 2));
+    const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / values.length;
+    
+    return variance;
+  }
+
+  updateRoutingStatistics(processingTime) {
+    this.routingStatistics.totalRoutes++;
+    this.routingStatistics.averageRoutingTime = 
+      (this.routingStatistics.averageRoutingTime * (this.routingStatistics.totalRoutes - 1) + processingTime) / 
+      this.routingStatistics.totalRoutes;
+  }
+
+  getRoutingStatistics() {
+    return { ...this.routingStatistics };
+  }
+
+  clearCaches() {
+    this.layoutCache.clear();
   }
 }
 
 // Create singleton instance
 const layoutAwareRoutingService = new LayoutAwareRoutingService();
-
-// Set up default layout constraints
-layoutAwareRoutingService.setLayoutConstraints('hierarchical', {
-  preferredRouting: 'orthogonal',
-  avoidanceMargin: 30,
-  containerAwareness: true,
-  hierarchyRespect: true
-});
-
-layoutAwareRoutingService.setLayoutConstraints('circular', {
-  preferredRouting: 'curved',
-  avoidanceMargin: 20,
-  containerAwareness: false,
-  hierarchyRespect: false
-});
-
-layoutAwareRoutingService.setLayoutConstraints('grid', {
-  preferredRouting: 'orthogonal',
-  avoidanceMargin: 25,
-  containerAwareness: true,
-  hierarchyRespect: false
-});
 
 export default layoutAwareRoutingService;
