@@ -22,7 +22,7 @@ import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
 import UniversalShapeNode from '../nodes/UniversalShapeNode';
-import { AdjustableEdge } from '../edges';
+import { EnhancedOrthogonalEdge } from '../edges';
 
 // Import modal components
 import PromptModal from '../modals/PromptModal';
@@ -43,6 +43,7 @@ import { autoLayoutNodes } from '../utils/autoLayout';
 
 // Import new service layer
 import { ServiceFactory } from '../../services/ServiceFactory';
+import enhancedEdgeManager from '../../services/EnhancedEdgeManager';
 
 
 
@@ -51,7 +52,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [serviceFactory, setServiceFactory] = useState(null);
     const [isServiceInitialized, setIsServiceInitialized] = useState(false);
 
-    // Initialize service layer
+    // Initialize service layer and enhanced edge manager
     useEffect(() => {
         const initializeServices = async () => {
             try {
@@ -62,9 +63,22 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 console.log('ServiceFactory initialized, setting state...');
                 setServiceFactory(factory);
                 setIsServiceInitialized(true);
-                console.log('Service layer initialized successfully');
+                
+                // Initialize enhanced edge manager
+                console.log('Initializing Enhanced Edge Manager...');
+                await enhancedEdgeManager.initialize({
+                    enablePerformanceMonitoring: true,
+                    enableLayoutAwareRouting: true,
+                    enableBatchProcessing: true,
+                    virtualBendsEnabled: true,
+                    intersectionDetectionEnabled: true,
+                    debounceTime: 100
+                });
+                console.log('Enhanced Edge Manager initialized successfully');
+                
+                console.log('All services initialized successfully');
             } catch (error) {
-                console.error('Failed to initialize service layer:', error);
+                console.error('Failed to initialize services:', error);
                 console.error('Error details:', error.stack);
             }
         };
@@ -161,7 +175,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }), []);
 
     const edgeTypes = useMemo(() => ({
-        adjustable: AdjustableEdge
+        adjustable: EnhancedOrthogonalEdge,
+        enhanced: EnhancedOrthogonalEdge
     }), []);
 
     // Stable node label change handler
@@ -329,7 +344,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     id: connection.id,
                     source: connection.source,
                     target: connection.target,
-                    type: 'adjustable', // Use adjustable type for waypoint functionality
+                    type: 'enhanced', // Use enhanced type for Draw.io-style functionality
                     animated: connection.animated || false,
                     style: {
                         strokeWidth: connection.style?.strokeWidth || 2,
@@ -352,50 +367,61 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         return { nodes: reactFlowNodes, edges: reactFlowEdges };
     }, [handleNodeLabelChange]);
 
-    // Migrate edges to ensure they have waypoint functionality
-    const migrateEdgesToAdjustable = useCallback((edges) => {
+    // Migrate edges to use enhanced orthogonal edge functionality  
+    const migrateEdgesToEnhanced = useCallback((edges) => {
         return edges.map(edge => {
-            // Ensure all edges use adjustable type for waypoint functionality
-            if (edge.type !== 'adjustable') {
-                const migratedEdge = {
-                    ...edge,
-                    type: 'adjustable',
-                    style: {
-                        ...edge.style,
-                        stroke: edge.style?.stroke || '#2563eb',
-                        strokeWidth: edge.style?.strokeWidth || 2
-                    },
-                    data: {
-                        ...edge.data,
-                        waypoints: edge.data?.waypoints || (edge.data?.control ? [edge.data.control] : []),
-                        intersection: edge.data?.intersection || 'none'
-                    }
-                };
-                return migratedEdge;
-            }
-            return edge;
+            // Ensure all edges use enhanced type for Draw.io-style functionality
+            const migratedEdge = {
+                ...edge,
+                type: 'enhanced',
+                style: {
+                    ...edge.style,
+                    stroke: edge.style?.stroke || '#2563eb',
+                    strokeWidth: edge.style?.strokeWidth || 2
+                },
+                data: {
+                    ...edge.data,
+                    waypoints: edge.data?.waypoints || (edge.data?.control ? [edge.data.control] : []),
+                    intersection: edge.data?.intersection || 'none'
+                }
+            };
+            return migratedEdge;
         });
     }, []);
+
+    // Register edges with enhanced edge manager
+    useEffect(() => {
+        if (enhancedEdgeManager.isInitialized && edges.length > 0 && nodes.length > 0) {
+            edges.forEach(edge => {
+                if (!enhancedEdgeManager.getEdgeInfo(edge.id)) {
+                    enhancedEdgeManager.registerEdge(edge.id, edge, nodes);
+                }
+            });
+        }
+    }, [edges, nodes]);
 
     // Initialize diagram from the provided configuration
     useEffect(() => {
         if (!isInitialized) {
             const config = initialDiagram || { containers: [], nodes: [], connections: [] };
             const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(config);
-            // Migrate edges to ensure waypoint functionality
-            const migratedEdges = migrateEdgesToAdjustable(initialEdges);
+            // Migrate edges to ensure waypoint functionality - now use enhanced edges
+            const enhancedEdges = initialEdges.map(edge => ({
+                ...edge,
+                type: 'enhanced' // Use our new enhanced edge type
+            }));
             const laidOut = autoLayoutNodes(initialNodes);
             setNodes(laidOut);
-            setEdges(migratedEdges);
+            setEdges(enhancedEdges);
             setHistory({
                 past: [],
-                present: { nodes: laidOut, edges: migratedEdges },
+                present: { nodes: laidOut, edges: enhancedEdges },
                 future: [],
             });
             laidOut.forEach(n => updateNodeInternals(n.id));
             setIsInitialized(true);
         }
-    }, [isInitialized, jsonToReactFlow, initialDiagram, updateNodeInternals, migrateEdgesToAdjustable]);
+    }, [isInitialized, jsonToReactFlow, initialDiagram, updateNodeInternals]);
 
     // Optimized save to history function
     const saveToHistory = useCallback(() => {
@@ -515,7 +541,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }, [project, setEdges, saveToHistory]);
 
     const defaultEdgeOptions = useMemo(() => ({
-        type: 'adjustable',
+        type: 'enhanced',
         animated: true,
         style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5' },
         data: { intersection: 'none' }
@@ -556,7 +582,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         const newEdge = {
             ...params,
             id: `edge-${Date.now()}`,
-            type: 'adjustable',
+            type: 'enhanced',
             animated: true,
             style: {
                 strokeWidth: 2,
@@ -1352,7 +1378,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         const importedData = JSON.parse(e.target.result);
                         const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(importedData);
                         // Migrate edges to ensure waypoint functionality 
-                        const migratedEdges = migrateEdgesToAdjustable(importedEdges);
+                        const migratedEdges = migrateEdgesToEnhanced(importedEdges);
                         applyAutoLayout(importedNodes);
                         setEdges(migratedEdges);
                         saveToHistory();
@@ -1365,7 +1391,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             }
         };
         inputElement.click();
-    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToAdjustable]);
+    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToEnhanced]);
 
     const importDiagramObject = useCallback(async (data) => {
         if (!serviceFactory || !isServiceInitialized) {
@@ -1377,7 +1403,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             }
             const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
             // Migrate edges to ensure waypoint functionality
-            const migratedEdges = migrateEdgesToAdjustable(importedEdges);
+            const migratedEdges = migrateEdgesToEnhanced(importedEdges);
             applyAutoLayout(importedNodes);
             setEdges(migratedEdges);
             saveToHistory();
@@ -1391,7 +1417,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             // If validation passes, import the diagram
             const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
             // Migrate edges to ensure waypoint functionality
-            const migratedEdges = migrateEdgesToAdjustable(importedEdges);
+            const migratedEdges = migrateEdgesToEnhanced(importedEdges);
             applyAutoLayout(importedNodes);
             setEdges(migratedEdges);
             saveToHistory();
@@ -1399,7 +1425,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             console.error('Error importing diagram:', error);
             alert('Error importing diagram: ' + error.message);
         }
-    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToAdjustable, serviceFactory, isServiceInitialized]);
+    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToEnhanced, serviceFactory, isServiceInitialized]);
 
 
     const handleJsonPasteImport = useCallback((data) => {
