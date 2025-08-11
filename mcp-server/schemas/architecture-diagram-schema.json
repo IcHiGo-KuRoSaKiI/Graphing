@@ -1,0 +1,879 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Architecture Diagram Schema",
+  "description": "Comprehensive JSON schema for generating architecture diagrams with advanced features including smart routing, technical details, and various node/edge types",
+  "type": "object",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Diagram metadata and configuration",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Diagram name/title",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the architecture",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "version": {
+          "type": "string",
+          "description": "Diagram version",
+          "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+          "default": "1.0.0"
+        },
+        "author": {
+          "type": "string",
+          "description": "Diagram creator/author",
+          "maxLength": 100
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp (ISO 8601)"
+        },
+        "updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp (ISO 8601)"
+        },
+        "tags": {
+          "type": "array",
+          "description": "Diagram tags for categorization",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "maxItems": 20
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain/business area",
+          "enum": [
+            "microservices", "monolith", "serverless", "event-driven", "layered",
+            "hexagonal", "clean-architecture", "service-mesh", "data-pipeline",
+            "ml-pipeline", "iot", "blockchain", "gaming", "fintech", "healthcare",
+            "e-commerce", "social-media", "enterprise", "startup", "research"
+          ]
+        },
+        "technology_stack": {
+          "type": "array",
+          "description": "Technologies used in the architecture",
+          "items": {
+            "type": "string",
+            "enum": [
+              "react", "vue", "angular", "svelte", "next.js", "nuxt", "gatsby",
+              "node.js", "express", "fastify", "nest.js", "deno", "bun",
+              "python", "django", "flask", "fastapi", "java", "spring", "spring-boot",
+              "kotlin", "scala", "go", "rust", "c#", ".net", "php", "laravel", "symfony",
+              "ruby", "rails", "elixir", "phoenix", "clojure",
+              "postgresql", "mysql", "mongodb", "redis", "elasticsearch", "cassandra",
+              "dynamodb", "neo4j", "influxdb", "clickhouse",
+              "docker", "kubernetes", "helm", "istio", "envoy", "nginx", "traefik",
+              "aws", "azure", "gcp", "cloudflare", "vercel", "netlify", "heroku",
+              "terraform", "ansible", "jenkins", "github-actions", "gitlab-ci",
+              "prometheus", "grafana", "jaeger", "zipkin", "elk-stack", "datadog",
+              "kafka", "rabbitmq", "pulsar", "nats", "aws-sqs", "aws-sns",
+              "graphql", "rest", "grpc", "websockets", "sse", "mqtt",
+              "jwt", "oauth2", "saml", "ldap", "vault", "consul",
+              "react-native", "flutter", "ionic", "electron", "tauri"
+            ]
+          },
+          "maxItems": 30
+        },
+        "complexity_level": {
+          "type": "string",
+          "enum": ["simple", "moderate", "complex", "enterprise"],
+          "description": "Architecture complexity level"
+        },
+        "deployment_environment": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["development", "staging", "production", "testing", "demo", "sandbox"]
+          },
+          "description": "Target deployment environments"
+        },
+        "architecture_patterns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "mvc", "mvvm", "mvp", "flux", "redux", "cqrs", "event-sourcing",
+              "saga", "circuit-breaker", "bulkhead", "strangler-fig", "anti-corruption-layer",
+              "api-gateway", "bff", "sidecar", "ambassador", "adapter", "facade"
+            ]
+          },
+          "description": "Architecture patterns used"
+        },
+        "quality_attributes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "scalability", "reliability", "availability", "performance", "security",
+              "maintainability", "usability", "portability", "testability", "observability"
+            ]
+          },
+          "description": "Key quality attributes"
+        }
+      },
+      "required": ["name", "description", "version", "author", "created"],
+      "additionalProperties": false
+    },
+    "viewport": {
+      "type": "object",
+      "description": "Diagram viewport settings",
+      "properties": {
+        "x": {"type": "number", "description": "Viewport X position"},
+        "y": {"type": "number", "description": "Viewport Y position"},
+        "zoom": {"type": "number", "minimum": 0.1, "maximum": 4.0, "default": 1.0}
+      },
+      "additionalProperties": false
+    },
+    "style": {
+      "type": "object",
+      "description": "Global diagram styling",
+      "properties": {
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark", "auto"],
+          "default": "light"
+        },
+        "colorScheme": {
+          "type": "string",
+          "enum": ["default", "blue", "green", "purple", "orange", "red", "minimal"],
+          "default": "default"
+        },
+        "gridSize": {"type": "number", "minimum": 10, "maximum": 50, "default": 20},
+        "snapToGrid": {"type": "boolean", "default": true},
+        "showGrid": {"type": "boolean", "default": true},
+        "background": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "default": "#FFFFFF"
+        }
+      },
+      "additionalProperties": false
+    },
+    "containers": {
+      "type": "array",
+      "description": "Container/boundary nodes that group other nodes",
+      "minItems": 0,
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique container identifier",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["container"],
+            "default": "container"
+          },
+          "label": {
+            "type": "string",
+            "description": "Container display name",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {"type": "number"},
+              "y": {"type": "number"}
+            },
+            "required": ["x", "y"],
+            "additionalProperties": false
+          },
+          "size": {
+            "type": "object",
+            "properties": {
+              "width": {"type": "number", "minimum": 100, "maximum": 2000},
+              "height": {"type": "number", "minimum": 100, "maximum": 2000}
+            },
+            "required": ["width", "height"],
+            "additionalProperties": false
+          },
+          "style": {
+            "type": "object",
+            "properties": {
+              "backgroundColor": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "description": "Container background color (very light tones: #F8FAFC, #F1F5F9, #F0F9FF)"
+              },
+              "borderColor": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "description": "Container border color (light tones: #E2E8F0, #CBD5E1)"
+              },
+              "borderWidth": {"type": "number", "minimum": 1, "maximum": 5, "default": 2},
+              "borderStyle": {
+                "type": "string",
+                "enum": ["solid", "dashed", "dotted"],
+                "default": "solid"
+              },
+              "borderRadius": {"type": "number", "minimum": 0, "maximum": 20, "default": 8},
+              "opacity": {"type": "number", "minimum": 0.1, "maximum": 1.0, "default": 1.0},
+              "shadow": {
+                "type": "object",
+                "properties": {
+                  "enabled": {"type": "boolean", "default": false},
+                  "blur": {"type": "number", "minimum": 0, "maximum": 20},
+                  "offsetX": {"type": "number", "minimum": -10, "maximum": 10},
+                  "offsetY": {"type": "number", "minimum": -10, "maximum": 10},
+                  "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "icon": {
+            "type": "string",
+            "description": "Container icon (emoji or icon name)",
+            "enum": [
+              "📦", "🖥️", "🗄️", "🌐", "⚙️", "🔐", "🏭", "📊", "🚀", "☁️",
+              "📚", "🔄", "🔗", "🎯", "📋", "🏢", "🛡️", "💰", "📱", "🎮",
+              "🤖", "⛓️", "🔮", "🏛️", "🏦", "🎭", "📧", "🌊", "📈", "🔒",
+              "🏗️", "🎪", "🏪", "🏰", "🎨", "📡", "🔬", "⚡", "🌪️", "🎼"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "Container purpose and contents description",
+            "maxLength": 500
+          },
+          "technicalDetails": {
+            "type": "object",
+            "description": "Technical specifications for the container",
+            "properties": {
+              "technology": {"type": "string", "maxLength": 50},
+              "framework": {"type": "string", "maxLength": 50},
+              "deployment": {"type": "string", "maxLength": 100},
+              "scalingStrategy": {"type": "string", "maxLength": 100},
+              "resourceRequirements": {
+                "type": "object",
+                "properties": {
+                  "cpu": {"type": "string"},
+                  "memory": {"type": "string"},
+                  "storage": {"type": "string"}
+                }
+              }
+            }
+          },
+          "zIndex": {"type": "number", "default": 0}
+        },
+        "required": ["id", "label", "position", "size"],
+        "additionalProperties": false
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "description": "Component nodes representing services, databases, APIs, etc.",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique node identifier",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "component", "container", "diamond", "circle", "hexagon", "triangle",
+              "database", "api", "service", "ui", "queue", "cache", "load-balancer"
+            ],
+            "description": "Node shape type"
+          },
+          "label": {
+            "type": "string",
+            "description": "Node display name with technical details: 'Service Name (Protocol, Performance, Security)'",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {"type": "number"},
+              "y": {"type": "number"}
+            },
+            "required": ["x", "y"],
+            "additionalProperties": false
+          },
+          "parentContainer": {
+            "type": "string",
+            "description": "ID of parent container (if any)",
+            "pattern": "^[a-zA-Z0-9_-]*$"
+          },
+          "size": {
+            "type": "object",
+            "properties": {
+              "width": {"type": "number", "minimum": 80, "maximum": 400, "default": 150},
+              "height": {"type": "number", "minimum": 60, "maximum": 300, "default": 100}
+            },
+            "additionalProperties": false
+          },
+          "style": {
+            "type": "object",
+            "properties": {
+              "backgroundColor": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "description": "Node background color (medium light: #E2E8F0, #CBD5E1, #DBEAFE)"
+              },
+              "borderColor": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "description": "Node border color (medium: #9CA3AF, #6B7280)"
+              },
+              "textColor": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "description": "Text color (dark: #374151, #1E3A8A, #065F46)"
+              },
+              "borderWidth": {"type": "number", "minimum": 1, "maximum": 5, "default": 2},
+              "borderStyle": {
+                "type": "string",
+                "enum": ["solid", "dashed", "dotted"],
+                "default": "solid"
+              },
+              "borderRadius": {"type": "number", "minimum": 0, "maximum": 20, "default": 8},
+              "opacity": {"type": "number", "minimum": 0.1, "maximum": 1.0, "default": 1.0},
+              "fontSize": {"type": "number", "minimum": 10, "maximum": 20, "default": 12},
+              "fontWeight": {
+                "type": "string",
+                "enum": ["normal", "bold", "lighter", "bolder"],
+                "default": "normal"
+              },
+              "gradient": {
+                "type": "object",
+                "properties": {
+                  "enabled": {"type": "boolean", "default": false},
+                  "direction": {"type": "string", "enum": ["to-r", "to-l", "to-t", "to-b", "to-tr", "to-tl", "to-br", "to-bl"]},
+                  "fromColor": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+                  "toColor": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}
+                }
+              },
+              "shadow": {
+                "type": "object",
+                "properties": {
+                  "enabled": {"type": "boolean", "default": false},
+                  "blur": {"type": "number", "minimum": 0, "maximum": 20},
+                  "offsetX": {"type": "number", "minimum": -10, "maximum": 10},
+                  "offsetY": {"type": "number", "minimum": -10, "maximum": 10},
+                  "color": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"}
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "icon": {
+            "type": "string",
+            "description": "Node icon",
+            "enum": [
+              "🔹", "🗄️", "⚛️", "🐳", "🔧", "👤", "📦", "🌐", "🔐", "💳",
+              "📊", "📈", "🔍", "⚡", "🔄", "📋", "🏠", "🎙️", "💰", "🪙",
+              "📂", "☁️", "🔗", "📡", "🏛️", "📌", "🖼️", "🕹️", "🔊", "💾",
+              "🎒", "🏆", "🔔", "🧠", "🖥️", "🎯", "🧪", "🎛️", "📚", "🔬",
+              "🤖", "📅", "🌉", "🦊", "📱", "🔒", "📺", "🎬", "👥", "💻",
+              "🐘", "🍃", "🔴", "🔵", "🟣", "⟠", "♦️", "⭕", "🔺", "⬢",
+              "🛢️", "🏪", "🎪", "🎨", "🌈", "⚙️", "🔌", "📻", "🎵", "🎬"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed node description including protocol, security, scaling, performance, infrastructure, monitoring",
+            "maxLength": 1000
+          },
+          "technicalDetails": {
+            "type": "object",
+            "description": "Comprehensive technical specifications",
+            "properties": {
+              "protocol": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "HTTP/1.1", "HTTP/2", "HTTP/3", "HTTPS", "WebSocket", "WebRTC",
+                    "gRPC", "GraphQL", "REST", "SOAP", "JSON-RPC", "XML-RPC",
+                    "TCP", "UDP", "MQTT", "CoAP", "AMQP", "STOMP", "SSE",
+                    "FTP", "SFTP", "SSH", "Telnet", "SMTP", "IMAP", "POP3",
+                    "DNS", "DHCP", "SNMP", "LDAP", "Kerberos", "OAuth2", "SAML"
+                  ]
+                }
+              },
+              "security": {
+                "type": "object",
+                "properties": {
+                  "authentication": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["JWT", "OAuth2", "SAML", "LDAP", "API-Key", "Basic-Auth", "mTLS", "Kerberos"]
+                    }
+                  },
+                  "authorization": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["RBAC", "ABAC", "ACL", "Claims-based", "Resource-based"]
+                    }
+                  },
+                  "encryption": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["TLS-1.2", "TLS-1.3", "AES-256", "RSA", "ECDSA", "ChaCha20"]
+                    }
+                  }
+                }
+              },
+              "performance": {
+                "type": "object",
+                "properties": {
+                  "throughput": {"type": "string", "description": "Requests per second, GB/s, etc."},
+                  "latency": {"type": "string", "description": "Response time (ms, μs)"},
+                  "availability": {"type": "string", "description": "SLA percentage (99.9%, 99.99%)"},
+                  "concurrency": {"type": "string", "description": "Concurrent connections/requests"}
+                }
+              },
+              "scaling": {
+                "type": "object",
+                "properties": {
+                  "horizontal": {"type": "boolean", "description": "Can scale horizontally"},
+                  "vertical": {"type": "boolean", "description": "Can scale vertically"},
+                  "autoScaling": {"type": "boolean", "description": "Auto-scaling enabled"},
+                  "maxInstances": {"type": "number", "description": "Maximum instances"},
+                  "scalingTriggers": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["CPU", "Memory", "Requests", "Queue-Length", "Custom-Metric"]
+                    }
+                  }
+                }
+              },
+              "infrastructure": {
+                "type": "object",
+                "properties": {
+                  "runtime": {"type": "string", "description": "Runtime environment"},
+                  "deployment": {"type": "string", "description": "Deployment method"},
+                  "monitoring": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "Prometheus", "Grafana", "Jaeger", "Zipkin", "OpenTelemetry",
+                        "DataDog", "New-Relic", "Splunk", "ELK-Stack", "CloudWatch",
+                        "Azure-Monitor", "GCP-Operations"
+                      ]
+                    }
+                  },
+                  "logging": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "Structured", "JSON", "Plain-Text", "ELK-Stack", "Fluentd",
+                        "Logstash", "Filebeat", "CloudWatch-Logs", "Azure-Logs", "GCP-Logs"
+                      ]
+                    }
+                  }
+                }
+              },
+              "dataStorage": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "SQL", "NoSQL", "Graph", "Time-Series", "Document", "Key-Value",
+                      "Column-Family", "Search-Engine", "Cache", "Queue", "Blob"
+                    ]
+                  },
+                  "technology": {"type": "string"},
+                  "consistency": {
+                    "type": "string",
+                    "enum": ["Strong", "Eventual", "Weak", "Session", "Bounded-Staleness"]
+                  },
+                  "replication": {
+                    "type": "string",
+                    "enum": ["Master-Slave", "Master-Master", "Cluster", "Sharded", "Distributed"]
+                  }
+                }
+              },
+              "businessLogic": {
+                "type": "object",
+                "properties": {
+                  "domain": {"type": "string", "description": "Business domain"},
+                  "responsibilities": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Key responsibilities"
+                  },
+                  "businessRules": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Important business rules"
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "ports": {
+            "type": "array",
+            "description": "Connection ports for smart routing",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "type": {
+                  "type": "string",
+                  "enum": ["input", "output", "bidirectional"]
+                },
+                "position": {
+                  "type": "string",
+                  "enum": ["top", "bottom", "left", "right"]
+                },
+                "protocol": {"type": "string"},
+                "description": {"type": "string"}
+              },
+              "required": ["id", "type", "position"]
+            },
+            "maxItems": 20
+          },
+          "zIndex": {"type": "number", "default": 1}
+        },
+        "required": ["id", "type", "label", "position"],
+        "additionalProperties": false
+      }
+    },
+    "connections": {
+      "type": "array",
+      "description": "Connections/edges between nodes with smart routing",
+      "minItems": 0,
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique connection identifier",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source node ID",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target node ID", 
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "sourcePort": {
+            "type": "string",
+            "description": "Source port ID (optional)"
+          },
+          "targetPort": {
+            "type": "string",
+            "description": "Target port ID (optional)"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "default", "straight", "step", "smoothstep", "bezier",
+              "adjustable", "orthogonal", "smart-orthogonal", "floating",
+              "enhanced-orthogonal", "optimized-orthogonal"
+            ],
+            "description": "Edge type for routing algorithm"
+          },
+          "label": {
+            "type": "string",
+            "description": "Connection label with technical details: 'Protocol (Performance, Security/Reliability)'",
+            "maxLength": 200
+          },
+          "animated": {
+            "type": "boolean",
+            "description": "Animate the connection",
+            "default": false
+          },
+          "bidirectional": {
+            "type": "boolean",
+            "description": "Bidirectional connection",
+            "default": false
+          },
+          "style": {
+            "type": "object",
+            "properties": {
+              "stroke": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "description": "Connection color (professional grays: #6B7280, #9CA3AF)"
+              },
+              "strokeWidth": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 10,
+                "default": 2
+              },
+              "strokeDasharray": {
+                "type": "string",
+                "description": "Dash pattern (e.g., '5,5' for dashed)",
+                "pattern": "^(\\d+,\\s*)*\\d+$|^$"
+              },
+              "opacity": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 1.0,
+                "default": 1.0
+              }
+            },
+            "additionalProperties": false
+          },
+          "markerStart": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["arrow", "arrowclosed", "circle", "diamond", "triangle"]
+              }
+            },
+            "additionalProperties": false
+          },
+          "markerEnd": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["arrow", "arrowclosed", "circle", "diamond", "triangle"]
+              }
+            },
+            "required": ["type"],
+            "additionalProperties": false
+          },
+          "routing": {
+            "type": "object",
+            "description": "Smart routing configuration",
+            "properties": {
+              "algorithm": {
+                "type": "string",
+                "enum": ["orthogonal", "dijkstra", "a-star", "manhattan", "euclidean"],
+                "default": "orthogonal"
+              },
+              "avoidObstacles": {
+                "type": "boolean",
+                "description": "Enable obstacle avoidance",
+                "default": true
+              },
+              "waypoints": {
+                "type": "array",
+                "description": "Custom waypoints for routing",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "x": {"type": "number"},
+                    "y": {"type": "number"}
+                  },
+                  "required": ["x", "y"]
+                },
+                "maxItems": 20
+              },
+              "gridSnap": {
+                "type": "boolean",
+                "description": "Snap to grid during routing",
+                "default": true
+              },
+              "jettyLength": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "Jetty length from node edge"
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed connection description including protocol, performance, security, reliability",
+            "maxLength": 1000
+          },
+          "technicalDetails": {
+            "type": "object",
+            "description": "Technical specifications for the connection",
+            "properties": {
+              "protocol": {
+                "type": "string",
+                "description": "Communication protocol used"
+              },
+              "dataFlow": {
+                "type": "string",
+                "enum": ["unidirectional", "bidirectional", "request-response", "publish-subscribe", "stream"]
+              },
+              "dataFormat": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["JSON", "XML", "Protocol-Buffers", "Avro", "MessagePack", "Binary", "Text"]
+                }
+              },
+              "security": {
+                "type": "object",
+                "properties": {
+                  "encryption": {"type": "string"},
+                  "authentication": {"type": "string"},
+                  "authorization": {"type": "string"}
+                }
+              },
+              "performance": {
+                "type": "object",
+                "properties": {
+                  "bandwidth": {"type": "string"},
+                  "latency": {"type": "string"},
+                  "throughput": {"type": "string"}
+                }
+              },
+              "reliability": {
+                "type": "object",
+                "properties": {
+                  "retryStrategy": {"type": "string"},
+                  "timeout": {"type": "string"},
+                  "circuitBreaker": {"type": "boolean"},
+                  "bulkhead": {"type": "boolean"}
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "zIndex": {"type": "number", "default": 0}
+        },
+        "required": ["id", "source", "target", "type"],
+        "additionalProperties": false
+      }
+    },
+    "layout": {
+      "type": "object",
+      "description": "Auto-layout configuration",
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["hierarchical", "force-directed", "circular", "grid", "manual"],
+          "default": "hierarchical"
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["TB", "BT", "LR", "RL"],
+          "description": "Layout direction (Top-Bottom, Bottom-Top, Left-Right, Right-Left)",
+          "default": "TB"
+        },
+        "spacing": {
+          "type": "object",
+          "properties": {
+            "nodeSpacing": {"type": "number", "minimum": 50, "maximum": 500, "default": 100},
+            "rankSpacing": {"type": "number", "minimum": 50, "maximum": 500, "default": 150},
+            "containerPadding": {"type": "number", "minimum": 20, "maximum": 100, "default": 40}
+          }
+        },
+        "alignment": {
+          "type": "string",
+          "enum": ["center", "left", "right", "top", "bottom"],
+          "default": "center"
+        },
+        "autoApply": {
+          "type": "boolean",
+          "description": "Automatically apply layout",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "export": {
+      "type": "object",
+      "description": "Export configuration",
+      "properties": {
+        "formats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["png", "jpg", "svg", "pdf", "json", "drawio"]
+          },
+          "description": "Supported export formats"
+        },
+        "quality": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1.0,
+          "description": "Export quality (for raster formats)"
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 5.0,
+          "description": "Export scale multiplier"
+        },
+        "includeBackground": {
+          "type": "boolean",
+          "description": "Include background in export",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "validation": {
+      "type": "object",
+      "description": "Validation rules and quality metrics",
+      "properties": {
+        "rules": {
+          "type": "object",
+          "properties": {
+            "minNodes": {"type": "number", "minimum": 1, "default": 3},
+            "maxNodes": {"type": "number", "maximum": 200, "default": 100},
+            "minConnections": {"type": "number", "minimum": 0, "default": 2},
+            "maxConnections": {"type": "number", "maximum": 500, "default": 300},
+            "requireContainers": {"type": "boolean", "default": false},
+            "requireTechnicalDetails": {"type": "boolean", "default": true}
+          }
+        },
+        "quality": {
+          "type": "object",
+          "properties": {
+            "completenessScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "How complete the diagram is (0-1)"
+            },
+            "connectivityScore": {
+              "type": "number", 
+              "minimum": 0,
+              "maximum": 1,
+              "description": "How well connected components are (0-1)"
+            },
+            "complexityScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Appropriate complexity level (0-1)"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["metadata", "nodes"],
+  "additionalProperties": false
+}
