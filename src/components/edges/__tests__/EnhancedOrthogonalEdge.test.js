@@ -218,7 +218,7 @@ describe('EnhancedOrthogonalEdge', () => {
     it('should handle segment hover states', async () => {
       renderEdge();
       
-      await waitFor(() => {
+      await waitFor(async () => {
         const segment = document.querySelector('line[stroke="rgba(59, 130, 246, 0.3)"]');
         if (segment) {
           fireEvent.mouseEnter(segment);
