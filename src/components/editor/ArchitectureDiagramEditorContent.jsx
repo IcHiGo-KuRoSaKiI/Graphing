@@ -23,6 +23,7 @@ import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
 import UniversalShapeNode from '../nodes/UniversalShapeNode';
 import { DrawIoOrthogonalEdge } from '../edges';
+import OptimizedOrthogonalEdge from '../edges/OptimizedOrthogonalEdge';
 
 // Import modal components
 import PromptModal from '../modals/PromptModal';
@@ -175,10 +176,14 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }), []);
 
     const edgeTypes = useMemo(() => ({
-        adjustable: DrawIoOrthogonalEdge,
-        enhanced: DrawIoOrthogonalEdge,
-        smart: DrawIoOrthogonalEdge,
-        drawio: DrawIoOrthogonalEdge
+        adjustable: OptimizedOrthogonalEdge,
+        enhanced: OptimizedOrthogonalEdge,
+        smart: OptimizedOrthogonalEdge,
+        drawio: OptimizedOrthogonalEdge,
+        orthogonal: OptimizedOrthogonalEdge,
+        segment: OptimizedOrthogonalEdge,
+        elbow: OptimizedOrthogonalEdge,
+        straight: OptimizedOrthogonalEdge
     }), []);
 
     // Stable node label change handler
