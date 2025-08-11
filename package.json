@@ -63,7 +63,7 @@
     "build:css": "tailwindcss -i ./src/index.css -o ./dist/graphing.css --minify --postcss",
     "prepare": "npm run build:lib && npm run build:css",
     "prepublishOnly": "npm run prepare",
-    "test": "react-scripts test",
+    "test": "react-scripts test --passWithNoTests --watchAll=false",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
