@@ -3,6 +3,9 @@ export { ValidationService } from './ValidationService.js';
 export { LayoutService } from './LayoutService.js';
 export { ExportService } from './ExportService.js';
 export { TechnicalDetailsService } from './TechnicalDetailsService.js';
-export { default as OrthogonalRouter } from './OrthogonalRouter.js';
-export { default as EdgeRoutingService } from './EdgeRoutingService.js';
-export { default as ConnectionService } from './ConnectionService.js'; 
+
+// Enhanced edge services
+export { default as EdgeWorkerService } from './EdgeWorkerService.js';
+export { default as LayoutAwareRoutingService } from './LayoutAwareRoutingService.js';
+export { default as EdgePerformanceMonitor } from './EdgePerformanceMonitor.js';
+export { default as EnhancedEdgeManager } from './EnhancedEdgeManager.js'; 

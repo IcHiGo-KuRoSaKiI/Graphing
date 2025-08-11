@@ -1,7 +1,15 @@
 import AdjustableEdge from './AdjustableEdge';
+import EnhancedOrthogonalEdge from './EnhancedOrthogonalEdge';
 import FloatingEdge from './FloatingEdge';
 import FloatingConnectionLine from './FloatingConnectionLine';
-import OrthogonalEdge from './OrthogonalEdge';
-import IntelligentOrthogonalEdge from './IntelligentOrthogonalEdge';
+import SmartOrthogonalEdge from './SmartOrthogonalEdge';
+import DrawIoOrthogonalEdge from './DrawIoOrthogonalEdge';
 
-export { AdjustableEdge, FloatingEdge, FloatingConnectionLine, OrthogonalEdge, IntelligentOrthogonalEdge };
+export { 
+  AdjustableEdge, 
+  EnhancedOrthogonalEdge,
+  FloatingEdge, 
+  FloatingConnectionLine,
+  SmartOrthogonalEdge,
+  DrawIoOrthogonalEdge
+};

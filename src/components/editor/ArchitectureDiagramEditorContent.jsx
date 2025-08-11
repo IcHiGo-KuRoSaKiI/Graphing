@@ -22,7 +22,8 @@ import TriangleNode from '../nodes/TriangleNode';
 import ContainerNode from '../nodes/ContainerNode';
 import ComponentNode from '../nodes/ComponentNode';
 import UniversalShapeNode from '../nodes/UniversalShapeNode';
-import { AdjustableEdge, IntelligentOrthogonalEdge } from '../edges';
+import { DrawIoOrthogonalEdge } from '../edges';
+import OptimizedOrthogonalEdge from '../edges/OptimizedOrthogonalEdge';
 
 // Import modal components
 import PromptModal from '../modals/PromptModal';
@@ -31,20 +32,19 @@ import ContainerSelectorModal from '../modals/ContainerSelectorModal';
 import ShapeSelectorModal from '../modals/ShapeSelectorModal';
 import JsonPasteModal from '../modals/JsonPasteModal';
 import JsonValidatorModal from '../modals/JsonValidatorModal';
+import ExportModal from '../modals/ExportModal';
 
 // Import editor components
 import TailwindPropertyEditor from './TailwindPropertyEditor';
 import TechnicalDetailsPanel from './TechnicalDetailsPanel';
 import ShapeLibraryPanel from './ShapeLibraryPanel';
-import LayoutSettingsPanel from './LayoutSettingsPanel';
 
 import EnhancedMenuBar from './EnhancedMenuBar';
-import { autoLayoutNodes, applyLayoutAlgorithm } from '../utils/autoLayout';
+import { autoLayoutNodes } from '../utils/autoLayout';
 
 // Import new service layer
 import { ServiceFactory } from '../../services/ServiceFactory';
-
-// Remove competing connection services - stick with React Flow's built-in system
+import enhancedEdgeManager from '../../services/EnhancedEdgeManager';
 
 
 
@@ -53,7 +53,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [serviceFactory, setServiceFactory] = useState(null);
     const [isServiceInitialized, setIsServiceInitialized] = useState(false);
 
-    // Initialize service layer
+    // Initialize service layer and enhanced edge manager
     useEffect(() => {
         const initializeServices = async () => {
             try {
@@ -64,13 +64,23 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 console.log('ServiceFactory initialized, setting state...');
                 setServiceFactory(factory);
                 setIsServiceInitialized(true);
-                console.log('Service layer initialized successfully');
+                
+                // Initialize enhanced edge manager
+                console.log('Initializing Enhanced Edge Manager...');
+                await enhancedEdgeManager.initialize({
+                    enablePerformanceMonitoring: true,
+                    enableLayoutAwareRouting: true,
+                    enableBatchProcessing: true,
+                    virtualBendsEnabled: true,
+                    intersectionDetectionEnabled: true,
+                    debounceTime: 100
+                });
+                console.log('Enhanced Edge Manager initialized successfully');
+                
+                console.log('All services initialized successfully');
             } catch (error) {
-                console.error('Failed to initialize service layer:', error);
+                console.error('Failed to initialize services:', error);
                 console.error('Error details:', error.stack);
-                // Don't throw - allow the app to work without service layer
-                setServiceFactory(null);
-                setIsServiceInitialized(false);
             }
         };
         initializeServices();
@@ -94,10 +104,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [selectedElementForTechnicalDetails, setSelectedElementForTechnicalDetails] = useState(null);
     const [technicalDetailsEnabled, setTechnicalDetailsEnabled] = useState(true); // NEW
     const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 }); // NEW
-    
-    // Layout settings state
-    const [layoutSettingsOpen, setLayoutSettingsOpen] = useState(false);
-    const [currentLayoutAlgorithm, setCurrentLayoutAlgorithm] = useState('hierarchical');
 
     const getDiagramBounds = useCallback(() => {
         if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
@@ -114,7 +120,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }, [nodes]);
 
     const updateNodeInternals = useUpdateNodeInternals();
-    const { project } = useReactFlow();
+    const { screenToFlowPosition } = useReactFlow();
 
     // State for modals
     const [promptModal, setPromptModal] = useState({ isOpen: false, title: '', message: '', defaultValue: '', onConfirm: null });
@@ -123,6 +129,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [shapeSelectorModal, setShapeSelectorModal] = useState({ isOpen: false });
     const [jsonPasteModal, setJsonPasteModal] = useState({ isOpen: false, onConfirm: null });
     const [jsonValidatorModal, setJsonValidatorModal] = useState({ isOpen: false });
+    const [exportModal, setExportModal] = useState({ isOpen: false });
 
     // Refs
     const reactFlowWrapper = useRef(null);
@@ -158,7 +165,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     );
 
     // Custom node types
-    // Memoized node types - moved outside component to prevent React Flow warning
     const nodeTypes = useMemo(() => ({
         diamond: DiamondNode,
         circle: CircleNode,
@@ -169,11 +175,15 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         universalShape: UniversalShapeNode,
     }), []);
 
-    // Memoized edge types - moved outside component to prevent React Flow warning
     const edgeTypes = useMemo(() => ({
-        default: IntelligentOrthogonalEdge, // Default to intelligent routing
-        adjustable: AdjustableEdge,
-        intelligent: IntelligentOrthogonalEdge
+        adjustable: OptimizedOrthogonalEdge,
+        enhanced: OptimizedOrthogonalEdge,
+        smart: OptimizedOrthogonalEdge,
+        drawio: OptimizedOrthogonalEdge,
+        orthogonal: OptimizedOrthogonalEdge,
+        segment: OptimizedOrthogonalEdge,
+        elbow: OptimizedOrthogonalEdge,
+        straight: OptimizedOrthogonalEdge
     }), []);
 
     // Stable node label change handler
@@ -300,30 +310,15 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         // Convert nodes
         if (data.nodes) {
             data.nodes.forEach(node => {
-                // For child nodes, calculate position relative to parent container
-                let nodePosition = node.position;
-                if (node.parentContainer) {
-                    const parentContainer = data.containers?.find(c => c.id === node.parentContainer);
-                    if (parentContainer) {
-                        // Make position relative to parent container
-                        nodePosition = {
-                            x: node.position.x - parentContainer.position.x,
-                            y: node.position.y - parentContainer.position.y
-                        };
-                    }
-                }
-                
-                const reactFlowNode = {
+                reactFlowNodes.push({
                     id: node.id,
-                    type: node.type || 'component',
-                    position: nodePosition,
+                    type: 'component',
+                    position: node.position,
                     parentNode: node.parentContainer,
-                    extent: node.parentContainer ? 'parent' : undefined,
                     data: {
                         label: node.label,
                         color: node.color || '#E3F2FD',
                         borderColor: node.borderColor || '#90CAF9',
-                        textColor: node.textColor || '#000000',
                         icon: node.icon,
                         description: node.description,
                         onLabelChange: handleNodeLabelChange
@@ -336,16 +331,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     draggable: true,
                     selectable: true,
                     zIndex: node.zIndex || 10
-                };
-                
-                reactFlowNodes.push(reactFlowNode);
+                });
             });
         }
 
-        // Convert connections (support both 'connections' and 'edges' for backward compatibility)
-        const connections = data.connections || data.edges || [];
-        if (connections.length > 0) {
-            connections.forEach(connection => {
+        // Convert connections
+        if (data.connections) {
+            data.connections.forEach(connection => {
                 // Convert old control points to waypoints and ensure we use adjustable edge type
                 let waypoints = [];
                 if (connection.waypoints) {
@@ -355,35 +347,15 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     waypoints = [connection.control];
                 }
                 
-                // Ensure we have valid source and target handles
-                // If not specified, use intelligent defaults based on node types
-                let sourceHandle = connection.sourceHandle;
-                let targetHandle = connection.targetHandle;
-                
-                if (!sourceHandle) {
-                    // For containers and components, use center handles as defaults
-                    sourceHandle = 'right-source';
-                }
-                
-                if (!targetHandle) {
-                    targetHandle = 'left-target';
-                }
-                
-                // Use original type if specified, otherwise default to intelligent
-                const edgeType = connection.type || 'intelligent';
-                
-                const reactFlowEdge = {
+                reactFlowEdges.push({
                     id: connection.id,
                     source: connection.source,
                     target: connection.target,
-                    sourceHandle: sourceHandle,
-                    targetHandle: targetHandle,
-                    type: edgeType, // Force intelligent type for all imported edges
+                    type: 'enhanced', // Use enhanced type for Draw.io-style functionality
                     animated: connection.animated || false,
                     style: {
                         strokeWidth: connection.style?.strokeWidth || 2,
                         stroke: connection.style?.stroke || '#2563eb',
-                        strokeDasharray: connection.style?.strokeDasharray || 'none',
                         zIndex: connection.zIndex || 5
                     },
                     zIndex: connection.zIndex || 5,
@@ -393,80 +365,70 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         label: connection.label,
                         description: connection.description || '',
                         waypoints: waypoints,
-                        intersection: connection.intersection || 'none',
-                        autoRouted: true,
-                        routingMode: 'intelligent',
-                        manuallyEdited: false
+                        intersection: connection.intersection || 'none'
                     }
-                };
-                
-                reactFlowEdges.push(reactFlowEdge);
+                });
             });
         }
 
-        // Summary: containers -> nodes, connections -> edges
-        
         return { nodes: reactFlowNodes, edges: reactFlowEdges };
     }, [handleNodeLabelChange]);
 
-    // Migrate edges to ensure they have waypoint functionality
-    const migrateEdgesToIntelligent = useCallback((edges, targetRoutingMode = 'intelligent') => {
+    // Migrate edges to use enhanced orthogonal edge functionality  
+    const migrateEdgesToEnhanced = useCallback((edges) => {
         return edges.map(edge => {
-            // Ensure all edges use intelligent routing for optimal orthogonal paths
+            // Ensure all edges use enhanced type for Draw.io-style functionality
             const migratedEdge = {
                 ...edge,
-                type: 'intelligent', // Always use intelligent routing
+                type: 'enhanced',
                 style: {
                     ...edge.style,
                     stroke: edge.style?.stroke || '#2563eb',
-                    strokeWidth: edge.style?.strokeWidth || 2,
-                    zIndex: 5
+                    strokeWidth: edge.style?.strokeWidth || 2
                 },
-                zIndex: 5,
-                markerEnd: edge.markerEnd || { type: 'arrow' },
                 data: {
                     ...edge.data,
-                    label: edge.data?.label || '',
-                    description: edge.data?.description || '',
-                    intersection: edge.data?.intersection || 'none',
-                    waypoints: [], // Clear old waypoints to allow intelligent routing to recalculate
-                    autoRouted: true,
-                    routingMode: 'intelligent',
-                    manuallyEdited: false // Allow intelligent routing to recalculate
+                    waypoints: edge.data?.waypoints || (edge.data?.control ? [edge.data.control] : []),
+                    intersection: edge.data?.intersection || 'none'
                 }
             };
-            console.log('Migrated edge to intelligent routing:', migratedEdge);
             return migratedEdge;
         });
     }, []);
+
+    // Register edges with enhanced edge manager
+    useEffect(() => {
+        if (enhancedEdgeManager.isInitialized && edges.length > 0 && nodes.length > 0) {
+            edges.forEach(edge => {
+                if (!enhancedEdgeManager.getEdgeInfo(edge.id)) {
+                    enhancedEdgeManager.registerEdge(edge.id, edge, nodes);
+                }
+            });
+        }
+    }, [edges, nodes]);
 
     // Initialize diagram from the provided configuration
     useEffect(() => {
         if (!isInitialized) {
             const config = initialDiagram || { containers: [], nodes: [], connections: [] };
             const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(config);
-            
-            // Migrate edges to ensure waypoint functionality
-            const migratedEdges = migrateEdgesToIntelligent(initialEdges, 'intelligent');
-            
-            // Apply auto-layout to nodes
+            // Migrate edges to ensure waypoint functionality - now use enhanced edges
+            const enhancedEdges = initialEdges.map(edge => ({
+                ...edge,
+                type: 'enhanced' // Use our new enhanced edge type
+            }));
             const laidOut = autoLayoutNodes(initialNodes);
             setNodes(laidOut);
-            setEdges(migratedEdges);
-            
-            // Update node internals after layout
-            laidOut.forEach(n => updateNodeInternals(n.id));
-            
-            // Set history
+            setEdges(enhancedEdges);
             setHistory({
                 past: [],
-                present: { nodes: laidOut, edges: migratedEdges },
+                present: { nodes: laidOut, edges: enhancedEdges },
                 future: [],
             });
-            
+            laidOut.forEach(n => updateNodeInternals(n.id));
             setIsInitialized(true);
         }
-    }, [isInitialized, jsonToReactFlow, initialDiagram, updateNodeInternals, migrateEdgesToIntelligent]);
+    }, [isInitialized, jsonToReactFlow, initialDiagram, updateNodeInternals]);
 
     // Optimized save to history function
     const saveToHistory = useCallback(() => {
@@ -560,26 +522,16 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
     }, []);
 
-    // Use React Flow's built-in connection system
-
-    // Simple connection start handling
-    const onConnectStart = useCallback((event, params) => {
-        // Basic connection start logic
-    }, []);
-
-    // Simple connection end handling
-    const onConnectEnd = useCallback((event) => {
-        // Basic connection end logic
-    }, []);
+    const onConnectStart = useCallback(() => { }, []);
+    const onConnectEnd = useCallback(() => { }, []);
 
     const onEdgeDoubleClick = useCallback((event, edge) => {
         event.preventDefault(); // Prevent default browser behavior (e.g., text selection)
         event.stopPropagation(); // Stop event propagation
 
-        const flowBounds = reactFlowWrapper.current.getBoundingClientRect();
-        const position = project({
-            x: event.clientX - flowBounds.left,
-            y: event.clientY - flowBounds.top,
+        const position = screenToFlowPosition({
+            x: event.clientX,
+            y: event.clientY,
         });
 
         setEdges((eds) =>
@@ -592,37 +544,56 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             })
         );
         saveToHistory();
-    }, [project, setEdges, saveToHistory]);
+    }, [screenToFlowPosition, setEdges, saveToHistory]);
 
-    // Routing mode state
-    const [routingMode, setRoutingMode] = useState('intelligent'); // 'intelligent' or 'manual'
-
-    // Default edge options for new connections
     const defaultEdgeOptions = useMemo(() => ({
-        type: routingMode,
-        animated: false,
-        style: { strokeWidth: 2, stroke: '#2563eb' },
+        type: 'enhanced',
+        animated: true,
+        style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5' },
         data: { intersection: 'none' }
-    }), [routingMode]);
+    }), []);
 
-    // Smart connection handling with routing mode selection
+    // Handle new connections
     const onConnect = useCallback((params) => {
-        console.log('Connection params:', params);
-        
-        // Ensure we have valid source and target
-        if (!params.source || !params.target) {
-            console.error('Invalid connection params:', params);
-            return;
+        const sourceNode = nodes.find(n => n.id === params.source);
+        const targetNode = nodes.find(n => n.id === params.target);
+
+        let defaultWaypoint = [];
+        if (sourceNode && targetNode) {
+            const sourceX = sourceNode.position.x + (sourceNode.width || 150) / 2;
+            const sourceY = sourceNode.position.y + (sourceNode.height || 80) / 2;
+            const targetX = targetNode.position.x + (targetNode.width || 150) / 2;
+            const targetY = targetNode.position.y + (targetNode.height || 80) / 2;
+            
+            // Create orthogonal waypoints for step-like routing
+            const midX = (sourceX + targetX) / 2;
+            const midY = (sourceY + targetY) / 2;
+            
+            // Create a simple L-shaped path (step routing)
+            if (Math.abs(sourceX - targetX) > Math.abs(sourceY - targetY)) {
+                // Horizontal routing preference
+                defaultWaypoint = [
+                    { x: midX, y: sourceY },
+                    { x: midX, y: targetY }
+                ];
+            } else {
+                // Vertical routing preference
+                defaultWaypoint = [
+                    { x: sourceX, y: midY },
+                    { x: targetX, y: midY }
+                ];
+            }
         }
-        
+
         const newEdge = {
             ...params,
-            id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            type: 'intelligent', // Always use intelligent routing for new connections
-            animated: false,
+            id: `edge-${Date.now()}`,
+            type: 'enhanced',
+            animated: true,
             style: {
                 strokeWidth: 2,
                 stroke: '#2563eb',
+                strokeDasharray: '5 5',
                 zIndex: 5
             },
             zIndex: 5,
@@ -631,50 +602,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 label: '',
                 description: '',
                 intersection: 'none',
-                waypoints: [], // Start with empty waypoints for intelligent routing
-                autoRouted: true,
-                routingMode: 'intelligent',
-                manuallyEdited: false
+                waypoints: defaultWaypoint
             }
         };
-        
-        console.log('Creating new edge:', newEdge);
-        
-        // Use React Flow's built-in addEdge
         setEdges((eds) => addEdge(newEdge, eds));
         saveToHistory();
-    }, [saveToHistory]);
-
-    // Toggle routing mode
-    const toggleRoutingMode = useCallback(() => {
-        setRoutingMode(prev => prev === 'intelligent' ? 'adjustable' : 'intelligent');
-    }, []);
-
-    // Convert all existing edges to intelligent routing
-    const convertAllEdgesToIntelligent = useCallback(() => {
-        setEdges(currentEdges => {
-            const convertedEdges = currentEdges.map(edge => ({
-                ...edge,
-                type: 'intelligent',
-                data: {
-                    ...edge.data,
-                    autoRouted: true,
-                    routingMode: 'intelligent',
-                    manuallyEdited: false,
-                    waypoints: [] // Clear old waypoints to allow intelligent routing
-                }
-            }));
-            
-            console.log('Converted', currentEdges.length, 'edges to intelligent routing');
-            return convertedEdges;
-        });
-        
-        // Update routing mode to intelligent
-        setRoutingMode('intelligent');
-        saveToHistory();
-    }, [saveToHistory]);
-
-
+    }, [saveToHistory, nodes]);
 
 
 
@@ -788,45 +721,41 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }, [selectedElements, saveToHistory]);
 
     const applyAutoLayout = useCallback(async (currentNodes) => {
-        try {
-            // Always try the old method first as a reliable fallback
+        if (!serviceFactory || !isServiceInitialized) {
+            console.warn('Service layer not initialized, falling back to old method');
             const laidOut = autoLayoutNodes(currentNodes);
             setNodes(laidOut);
             laidOut.forEach(n => updateNodeInternals(n.id));
+            return;
+        }
+
+        try {
+            const diagramData = reactFlowToJson(currentNodes, edges);
+            const result = await serviceFactory.layoutDiagram(diagramData, {
+                algorithm: 'default',
+                options: { spacing: 50 }
+            });
             
-            // If service layer is available, try to optimize further
-            if (serviceFactory && isServiceInitialized) {
-                try {
-                    const diagramData = reactFlowToJson(laidOut, edges);
-                    const result = await serviceFactory.layoutDiagram(diagramData, {
-                        algorithm: 'default',
-                        options: { spacing: 50 }
-                    });
-                    
-                    if (result.success && result.diagramData) {
-                        const { nodes: optimizedNodes } = jsonToReactFlow(result.diagramData);
-                        setNodes(optimizedNodes);
-                        optimizedNodes.forEach(n => updateNodeInternals(n.id));
-                    }
-                } catch (serviceError) {
-                    console.warn('Service layer auto-layout failed, using basic layout:', serviceError);
-                    // Keep the basic layout that was already applied
-                }
+            if (result && result.success) {
+                const { nodes: laidOutNodes } = jsonToReactFlow(result.diagramData);
+                setNodes(laidOutNodes);
+                laidOutNodes.forEach(n => updateNodeInternals(n.id));
+            } else {
+                const errorMessage = result?.error || 'Unknown layout error';
+                console.error('Auto-layout failed:', errorMessage);
+                // Fallback to old method
+                const laidOut = autoLayoutNodes(currentNodes);
+                setNodes(laidOut);
+                laidOut.forEach(n => updateNodeInternals(n.id));
             }
         } catch (error) {
-            console.error('Auto-layout failed:', error);
-            // Apply a simple grid layout as final fallback
-            const simpleLayout = currentNodes.map((node, index) => ({
-                ...node,
-                position: {
-                    x: 100 + (index % 3) * 200,
-                    y: 100 + Math.floor(index / 3) * 150
-                }
-            }));
-            setNodes(simpleLayout);
-            simpleLayout.forEach(n => updateNodeInternals(n.id));
+            console.error('Error applying auto-layout:', error.message || error);
+            // Fallback to old method
+            const laidOut = autoLayoutNodes(currentNodes);
+            setNodes(laidOut);
+            laidOut.forEach(n => updateNodeInternals(n.id));
         }
-    }, [updateNodeInternals, serviceFactory, isServiceInitialized, edges, reactFlowToJson, jsonToReactFlow]);
+    }, [updateNodeInternals, serviceFactory, isServiceInitialized, edges]);
 
     // Add new container node
     const addContainerNode = useCallback(() => {
@@ -835,7 +764,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             if (reactFlowWrapper.current) {
                 const { left, top, width, height } = reactFlowWrapper.current.getBoundingClientRect();
                 const center = { x: left + width / 2, y: top + height / 2 };
-                position = project({ x: center.x - left, y: center.y - top });
+                position = screenToFlowPosition({ x: center.x, y: center.y });
             }
 
             const newNode = {
@@ -863,7 +792,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             setNodes((nds) => [...nds, newNode]);
             saveToHistory();
         });
-    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal, project]);
+    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal, screenToFlowPosition]);
 
     // Add new component node
     const addComponentNode = useCallback(() => {
@@ -988,7 +917,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         if (reactFlowWrapper.current) {
             const { left, top, width, height } = reactFlowWrapper.current.getBoundingClientRect();
             const center = { x: left + width / 2, y: top + height / 2 };
-            position = project({ x: center.x - left, y: center.y - top });
+            position = screenToFlowPosition({ x: center.x, y: center.y });
         }
 
         const newNode = {
@@ -1012,7 +941,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         setNodes((nds) => [...nds, newNode]);
         setShapeLibraryOpen(false);
         saveToHistory();
-    }, [handleNodeLabelChange, saveToHistory, project]);
+    }, [handleNodeLabelChange, saveToHistory, screenToFlowPosition]);
 
     // Copy selected elements
     const copySelected = useCallback(() => {
@@ -1455,25 +1384,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     try {
                         const importedData = JSON.parse(e.target.result);
                         const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(importedData);
-                        
                         // Migrate edges to ensure waypoint functionality 
-                        const migratedEdges = migrateEdgesToIntelligent(importedEdges, 'intelligent');
-                        
-                        // Apply auto-layout to nodes
-                        const laidOut = autoLayoutNodes(importedNodes);
-                        console.log('Laid out nodes:', laidOut);
-                        
-                        setNodes(laidOut);
+                        const migratedEdges = migrateEdgesToEnhanced(importedEdges);
+                        applyAutoLayout(importedNodes);
                         setEdges(migratedEdges);
-                        
-                        // Update node internals after layout
-                        laidOut.forEach(n => updateNodeInternals(n.id));
-                        
                         saveToHistory();
-                        
-                        console.log('Import completed successfully');
-                        console.log('Final nodes state:', laidOut);
-                        console.log('Final edges state:', migratedEdges);
                     } catch (error) {
                         console.error('Error importing diagram:', error);
                         alert('Error importing diagram. Please check the file format.');
@@ -1483,47 +1398,41 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             }
         };
         inputElement.click();
-    }, [jsonToReactFlow, autoLayoutNodes, saveToHistory, migrateEdgesToIntelligent, updateNodeInternals]);
+    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToEnhanced]);
 
     const importDiagramObject = useCallback(async (data) => {
-        try {
-            // Simple validation first
+        if (!serviceFactory || !isServiceInitialized) {
+            console.warn('Service layer not initialized, falling back to old method');
+            // Simple validation fallback
             if (!data || !data.containers || !data.nodes || !data.connections) {
-                alert('Invalid diagram JSON structure');
+                alert('Invalid diagram JSON');
                 return;
             }
-            
-            console.log('Importing diagram with data:', data);
-            
-            // Convert to React Flow format
             const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
-            
-            console.log('Converted nodes:', importedNodes);
-            console.log('Converted edges:', importedEdges);
-            
-            // Migrate edges to ensure proper routing
-            const migratedEdges = migrateEdgesToIntelligent(importedEdges, 'intelligent');
-            
-            console.log('Migrated edges:', migratedEdges);
-            
-            // Apply auto-layout to nodes
-            const laidOut = autoLayoutNodes(importedNodes);
-            setNodes(laidOut);
+            // Migrate edges to ensure waypoint functionality
+            const migratedEdges = migrateEdgesToEnhanced(importedEdges);
+            applyAutoLayout(importedNodes);
             setEdges(migratedEdges);
-            
-            // Update node internals after layout
-            laidOut.forEach(n => updateNodeInternals(n.id));
-            
-            // Save to history
             saveToHistory();
-            
-            console.log('Import completed successfully');
-            
-        } catch (error) {
-            console.error('Import failed:', error);
-            alert('Failed to import diagram: ' + error.message);
+            return;
         }
-    }, [jsonToReactFlow, autoLayoutNodes, saveToHistory, updateNodeInternals, migrateEdgesToIntelligent]);
+
+        try {
+            // Validate the diagram data
+            await serviceFactory.validateDiagram(data);
+            
+            // If validation passes, import the diagram
+            const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
+            // Migrate edges to ensure waypoint functionality
+            const migratedEdges = migrateEdgesToEnhanced(importedEdges);
+            applyAutoLayout(importedNodes);
+            setEdges(migratedEdges);
+            saveToHistory();
+        } catch (error) {
+            console.error('Error importing diagram:', error);
+            alert('Error importing diagram: ' + error.message);
+        }
+    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToEnhanced, serviceFactory, isServiceInitialized]);
 
 
     const handleJsonPasteImport = useCallback((data) => {
@@ -1649,23 +1558,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         applyAutoLayout(nodes);
         saveToHistory();
     }, [nodes, saveToHistory, applyAutoLayout]);
-
-    // Layout settings handlers
-    const handleLayoutSettingsOpen = useCallback(() => {
-        setLayoutSettingsOpen(true);
-    }, []);
-
-    const handleLayoutSettingsClose = useCallback(() => {
-        setLayoutSettingsOpen(false);
-    }, []);
-
-    const handleLayoutChange = useCallback((algorithm) => {
-        setCurrentLayoutAlgorithm(algorithm);
-        const updatedNodes = applyLayoutAlgorithm([...nodes], algorithm);
-        setNodes(updatedNodes);
-        updateNodeInternals(updatedNodes.map(n => n.id));
-        saveToHistory();
-    }, [nodes, setNodes, updateNodeInternals, saveToHistory]);
 
     // Enhanced selection operations
     const selectAllElements = useCallback(() => {
@@ -1924,6 +1816,32 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         }
     }, [technicalDetailsPanelOpen, selectedElementForTechnicalDetails, nodes]);
 
+    // New export modal handlers
+    const openExportModal = useCallback(() => {
+        setExportModal({ isOpen: true });
+    }, []);
+
+    const closeExportModal = useCallback(() => {
+        setExportModal({ isOpen: false });
+    }, []);
+
+    // Get diagram data for export
+    const getDiagramDataForExport = useCallback(() => {
+        return {
+            nodes,
+            edges,
+            containers: nodes.filter(node => node.type === 'container'),
+            connections: edges,
+            metadata: {
+                name: 'Architecture Diagram',
+                description: 'Exported architecture diagram',
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                nodeCount: nodes.length,
+                edgeCount: edges.length
+            }
+        };
+    }, [nodes, edges]);
 
     return (
         <div className="architecture-diagram-editor h-full flex flex-col">
@@ -1989,6 +1907,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     onExportPNG={exportAsPNG}
                     onExportJPG={exportAsJPG}
                     onExportSVG={exportAsSVG}
+                    onExportModal={openExportModal}
 
                     // Edit operations
                     onUndo={undo}
@@ -2012,7 +1931,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
                     onValidateJSON={showJsonValidatorModal}
                     onAutoLayout={autoLayout}
-                    onLayoutSettings={handleLayoutSettingsOpen}
 
                     // State props
                     canUndo={history.past.length > 0}
@@ -2030,28 +1948,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
                 {/* Quick Action Buttons */}
                 <div className="flex items-center gap-2 p-2 bg-white/5 border-t border-white/10">
-                    {/* Routing Mode Toggle */}
-                    <button
-                        className={`p-2 rounded flex items-center justify-center w-11 h-11 text-white border border-white/20 transition-all touch-manipulation hover:-translate-y-0.5 hover:shadow-md active:scale-95 ${
-                            routingMode === 'intelligent' 
-                                ? 'bg-green-500/80 hover:bg-green-500/90' 
-                                : 'bg-blue-500/80 hover:bg-blue-500/90'
-                        }`}
-                        onClick={toggleRoutingMode}
-                        title={`Routing: ${routingMode === 'intelligent' ? 'Intelligent (Auto)' : 'Manual (Adjustable)'}`}
-                    >
-                        {routingMode === 'intelligent' ? '🧠' : '✏️'}
-                    </button>
-                    {/* Convert All Edges Button */}
-                    {edges.length > 0 && edges.some(e => e.type !== 'intelligent') && (
-                        <button
-                            className="p-2 rounded flex items-center justify-center w-11 h-11 text-white bg-purple-500/80 hover:bg-purple-500/90 border border-white/20 transition-all touch-manipulation hover:-translate-y-0.5 hover:shadow-md active:scale-95"
-                            onClick={convertAllEdgesToIntelligent}
-                            title="Convert all existing edges to intelligent routing"
-                        >
-                            🔄
-                        </button>
-                    )}
                     <button
                         className={`p-2 rounded flex items-center justify-center w-11 h-11 text-white bg-white/10 border border-white/20 transition-all touch-manipulation ${history.past.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/20 hover:-translate-y-0.5 hover:shadow-md active:scale-95'
                             }`}
@@ -2143,7 +2039,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     onNodeDragStop={onNodeDragStop}
                     nodeTypes={nodeTypes}
                     edgeTypes={edgeTypes}
-                    connectionMode="loose"
+                    connectionMode="loose"  // Changed from "strict" to "loose"
                     connectionLineStyle={{ stroke: '#2563eb', strokeWidth: 2 }}
                     fitView
                     snapToGrid={false}
@@ -2304,14 +2200,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 onClose={() => setJsonValidatorModal({ isOpen: false })}
             />
             
-            {/* Layout Settings Panel */}
-            <LayoutSettingsPanel
-                nodes={nodes}
-                setNodes={setNodes}
-                isOpen={layoutSettingsOpen}
-                onClose={handleLayoutSettingsClose}
-                currentLayoutAlgorithm={currentLayoutAlgorithm}
-                onLayoutChange={handleLayoutChange}
+            {/* Export Modal */}
+            <ExportModal
+                isOpen={exportModal.isOpen}
+                onClose={closeExportModal}
+                diagramData={getDiagramDataForExport()}
             />
             
             {/* Shape Library Panel */}
