@@ -46,6 +46,11 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
 
+    - name: Publish to NPM
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
     - name: Determine version bump
       id: version_bump
       run: |
@@ -79,8 +84,3 @@ jobs:
           - Auto-generated release from commit: ${{ github.event.head_commit.message }}
         draft: false
         prerelease: false
-
-    - name: Publish to NPM
-      run: npm publish --access public
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
