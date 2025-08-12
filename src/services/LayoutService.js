@@ -74,8 +74,8 @@ export class LayoutService {
         // Convert to React Flow format for auto-layout
         const reactFlowData = this.convertToReactFlowFormat(containers, nodes);
         
-        // Apply auto-layout using existing utility
-        const layoutedNodes = autoLayoutNodes(reactFlowData.nodes);
+        // Apply auto-layout using existing utility with circular layout by default
+        const layoutedNodes = autoLayoutNodes(reactFlowData.nodes, 'circular');
         
         // Convert back to diagram format
         const layoutedData = this.convertFromReactFlowFormat(layoutedNodes, connections);

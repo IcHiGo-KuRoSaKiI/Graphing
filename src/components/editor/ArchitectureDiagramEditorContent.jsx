@@ -38,6 +38,7 @@ import ExportModal from '../modals/ExportModal';
 import TailwindPropertyEditor from './TailwindPropertyEditor';
 import TechnicalDetailsPanel from './TechnicalDetailsPanel';
 import ShapeLibraryPanel from './ShapeLibraryPanel';
+import LayoutSettingsPanel from './LayoutSettingsPanel';
 
 import EnhancedMenuBar from './EnhancedMenuBar';
 import { autoLayoutNodes } from '../utils/autoLayout';
@@ -104,6 +105,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [selectedElementForTechnicalDetails, setSelectedElementForTechnicalDetails] = useState(null);
     const [technicalDetailsEnabled, setTechnicalDetailsEnabled] = useState(true); // NEW
     const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 }); // NEW
+    
+    // Layout settings state
+    const [layoutPanelOpen, setLayoutPanelOpen] = useState(false);
+    const [currentLayoutAlgorithm, setCurrentLayoutAlgorithm] = useState('circular');
 
     const getDiagramBounds = useCallback(() => {
         if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
@@ -417,7 +422,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 ...edge,
                 type: 'enhanced' // Use our new enhanced edge type
             }));
-            const laidOut = autoLayoutNodes(initialNodes);
+            // Apply circular layout by default for initial diagrams
+            const laidOut = autoLayoutNodes(initialNodes, 'circular');
             setNodes(laidOut);
             setEdges(enhancedEdges);
             setHistory({
@@ -720,10 +726,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         saveToHistory();
     }, [selectedElements, saveToHistory]);
 
-    const applyAutoLayout = useCallback(async (currentNodes) => {
+    const applyAutoLayout = useCallback(async (currentNodes, algorithm = 'circular') => {
         if (!serviceFactory || !isServiceInitialized) {
             console.warn('Service layer not initialized, falling back to old method');
-            const laidOut = autoLayoutNodes(currentNodes);
+            const laidOut = autoLayoutNodes(currentNodes, algorithm);
             setNodes(laidOut);
             laidOut.forEach(n => updateNodeInternals(n.id));
             return;
@@ -732,7 +738,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         try {
             const diagramData = reactFlowToJson(currentNodes, edges);
             const result = await serviceFactory.layoutDiagram(diagramData, {
-                algorithm: 'default',
+                algorithm: algorithm,
                 options: { spacing: 50 }
             });
             
@@ -744,14 +750,14 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 const errorMessage = result?.error || 'Unknown layout error';
                 console.error('Auto-layout failed:', errorMessage);
                 // Fallback to old method
-                const laidOut = autoLayoutNodes(currentNodes);
+                const laidOut = autoLayoutNodes(currentNodes, algorithm);
                 setNodes(laidOut);
                 laidOut.forEach(n => updateNodeInternals(n.id));
             }
         } catch (error) {
             console.error('Error applying auto-layout:', error.message || error);
             // Fallback to old method
-            const laidOut = autoLayoutNodes(currentNodes);
+            const laidOut = autoLayoutNodes(currentNodes, algorithm);
             setNodes(laidOut);
             laidOut.forEach(n => updateNodeInternals(n.id));
         }
@@ -1386,7 +1392,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                         const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(importedData);
                         // Migrate edges to ensure waypoint functionality 
                         const migratedEdges = migrateEdgesToEnhanced(importedEdges);
-                        applyAutoLayout(importedNodes);
+                        // Apply circular layout by default for imported diagrams
+                        applyAutoLayout(importedNodes, 'circular');
                         setEdges(migratedEdges);
                         saveToHistory();
                     } catch (error) {
@@ -1411,7 +1418,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
             // Migrate edges to ensure waypoint functionality
             const migratedEdges = migrateEdgesToEnhanced(importedEdges);
-            applyAutoLayout(importedNodes);
+            // Apply circular layout by default for imported diagrams
+            applyAutoLayout(importedNodes, 'circular');
             setEdges(migratedEdges);
             saveToHistory();
             return;
@@ -1425,7 +1433,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
             // Migrate edges to ensure waypoint functionality
             const migratedEdges = migrateEdgesToEnhanced(importedEdges);
-            applyAutoLayout(importedNodes);
+            // Apply circular layout by default for imported diagrams
+            applyAutoLayout(importedNodes, 'circular');
             setEdges(migratedEdges);
             saveToHistory();
         } catch (error) {
@@ -1479,7 +1488,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             'New Diagram',
             'Are you sure you want to create a new diagram? All unsaved changes will be lost.',
             () => {
-                applyAutoLayout([]);
+                applyAutoLayout([], 'circular');
                 setEdges([]);
                 setSelectedElements({ nodes: [], edges: [] });
                 saveToHistory();
@@ -1555,9 +1564,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const exportAsSVG = useCallback(() => exportImage('svg'), [exportImage]);
 
     const autoLayout = useCallback(() => {
-        applyAutoLayout(nodes);
+        applyAutoLayout(nodes, 'circular');
         saveToHistory();
     }, [nodes, saveToHistory, applyAutoLayout]);
+
+    const onLayoutSettings = useCallback(() => {
+        setLayoutPanelOpen(true);
+    }, []);
 
     // Enhanced selection operations
     const selectAllElements = useCallback(() => {
@@ -1931,6 +1944,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
                     onValidateJSON={showJsonValidatorModal}
                     onAutoLayout={autoLayout}
+                    onLayoutSettings={onLayoutSettings}
 
                     // State props
                     canUndo={history.past.length > 0}
@@ -2224,6 +2238,18 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 }}
                 position={panelOffset} // NEW
             />
+            
+            {/* Layout Settings Panel */}
+            {layoutPanelOpen && (
+                <LayoutSettingsPanel
+                    nodes={nodes}
+                    setNodes={setNodes}
+                    isOpen={layoutPanelOpen}
+                    onClose={() => setLayoutPanelOpen(false)}
+                    currentLayoutAlgorithm={currentLayoutAlgorithm}
+                    onLayoutChange={setCurrentLayoutAlgorithm}
+                />
+            )}
             
             {/* Technical Details Tooltip - Removed unused component to fix ESLint errors */}
         </div>

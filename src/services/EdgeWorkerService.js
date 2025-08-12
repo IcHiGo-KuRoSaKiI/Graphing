@@ -619,9 +619,9 @@ class EdgeWorkerService {
   }
 }
 
-// Create singleton instance - check if worker should be disabled
+// Create singleton instance - disable worker by default for library builds
 const shouldUseWorker = typeof window !== 'undefined' ? 
-  window.__GRAPHING_USE_WORKER__ !== false : true;
+  window.__GRAPHING_USE_WORKER__ === true : false; // Only enable if explicitly set to true
 
 const edgeWorkerService = new EdgeWorkerService({ useWorker: shouldUseWorker });
 

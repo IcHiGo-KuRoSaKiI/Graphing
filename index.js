@@ -5,9 +5,18 @@ export * from './components/index.js';
 
 // Export a function to configure the library
 export const configureGraphing = (options = {}) => {
-  // Configure EdgeWorkerService globally
+  // Configure worker behavior globally
+  if (options.useWorker !== undefined) {
+    window.__GRAPHING_USE_WORKER__ = options.useWorker;
+  }
+  
+  // Configure worker path if provided
   if (options.workerPath) {
-    // You could set this globally or pass it to components that need it
     window.__GRAPHING_WORKER_PATH__ = options.workerPath;
   }
+  
+  console.log('🔧 Graphing: Library configured', {
+    useWorker: window.__GRAPHING_USE_WORKER__,
+    workerPath: window.__GRAPHING_WORKER_PATH__
+  });
 };
