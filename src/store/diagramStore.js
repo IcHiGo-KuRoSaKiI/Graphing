@@ -223,6 +223,103 @@ const useDiagramStore = create((set, get) => ({
         }
     }),
 
+    // Helper functions for specific modals
+    showPromptModal: (title, message, defaultValue, onConfirm) => {
+        const wrappedOnConfirm = (value) => {
+            onConfirm(value);
+            get().closeModal('prompt');
+        };
+        set((state) => ({
+            modals: {
+                ...state.modals,
+                prompt: {
+                    isOpen: true,
+                    config: { title, message, defaultValue, onConfirm: wrappedOnConfirm }
+                }
+            }
+        }));
+    },
+
+    showConfirmModal: (title, message, onConfirm) => {
+        const wrappedOnConfirm = () => {
+            onConfirm();
+            get().closeModal('confirm');
+        };
+        set((state) => ({
+            modals: {
+                ...state.modals,
+                confirm: {
+                    isOpen: true,
+                    config: { title, message, onConfirm: wrappedOnConfirm }
+                }
+            }
+        }));
+    },
+
+    showContainerSelectorModal: (title, message, containers, onSelect) => {
+        const wrappedOnSelect = (containerId) => {
+            onSelect(containerId);
+            get().closeModal('containerSelector');
+        };
+        set((state) => ({
+            modals: {
+                ...state.modals,
+                containerSelector: {
+                    isOpen: true,
+                    config: { title, message, containers, onSelect: wrappedOnSelect }
+                }
+            }
+        }));
+    },
+
+    showShapeSelectorModal: () => {
+        set((state) => ({
+            modals: {
+                ...state.modals,
+                shapeSelector: {
+                    isOpen: true,
+                    config: {}
+                }
+            }
+        }));
+    },
+
+    showJsonPasteModal: (onConfirm) => {
+        set((state) => ({
+            modals: {
+                ...state.modals,
+                jsonPaste: {
+                    isOpen: true,
+                    config: { onConfirm }
+                }
+            }
+        }));
+    },
+
+    showJsonValidatorModal: () => {
+        set((state) => ({
+            modals: {
+                ...state.modals,
+                jsonValidator: {
+                    isOpen: true,
+                    config: {}
+                }
+            }
+        }));
+    },
+
+    showExportModal: () => {
+        set((state) => ({
+            modals: {
+                ...state.modals,
+                export: {
+                    isOpen: true,
+                    config: {}
+                }
+            }
+        }));
+    },
+
     // ========================================
     // INITIALIZATION STATE
     // ========================================

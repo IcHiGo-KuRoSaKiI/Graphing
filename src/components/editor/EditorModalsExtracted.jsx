@@ -13,39 +13,25 @@ import ExportModal from '../modals/ExportModal';
  * Extracted from ArchitectureDiagramEditorContent (lines 2175-2222)
  * Manages all modal dialogs in the editor
  *
- * This is a DIRECT extraction - exact same JSX, just moved to a separate file
+ * Now uses Zustand closeModal function instead of individual setModal functions
  */
 const EditorModalsExtracted = ({
-    // Prompt Modal props
+    // Modal state
     promptModal,
-    setPromptModal,
-
-    // Confirm Modal props
     confirmModal,
-    setConfirmModal,
-
-    // Container Selector Modal props
     containerSelectorModal,
-    setContainerSelectorModal,
-
-    // Shape Selector Modal props
     shapeSelectorModal,
-    setShapeSelectorModal,
-    addShapeNode,
-
-    // JSON Paste Modal props
     jsonPasteModal,
-    setJsonPasteModal,
-    handleJsonPasteImport,
-
-    // JSON Validator Modal props
     jsonValidatorModal,
-    setJsonValidatorModal,
-    validateJson,
-
-    // Export Modal props
     exportModal,
-    closeExportModal,
+
+    // Close function
+    closeModal,
+
+    // Action handlers
+    addShapeNode,
+    handleJsonPasteImport,
+    validateJson,
     getDiagramDataForExport
 }) => {
     return (
@@ -53,60 +39,60 @@ const EditorModalsExtracted = ({
             {/* Prompt Modal */}
             <PromptModal
                 isOpen={promptModal.isOpen}
-                title={promptModal.title}
-                message={promptModal.message}
-                defaultValue={promptModal.defaultValue}
-                onConfirm={promptModal.onConfirm}
-                onCancel={() => setPromptModal(prev => ({ ...prev, isOpen: false }))}
+                title={promptModal.config?.title}
+                message={promptModal.config?.message}
+                defaultValue={promptModal.config?.defaultValue}
+                onConfirm={promptModal.config?.onConfirm}
+                onCancel={() => closeModal('prompt')}
             />
 
             {/* Confirm Modal */}
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
-                title={confirmModal.title}
-                message={confirmModal.message}
-                onConfirm={confirmModal.onConfirm}
-                onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                title={confirmModal.config?.title}
+                message={confirmModal.config?.message}
+                onConfirm={confirmModal.config?.onConfirm}
+                onCancel={() => closeModal('confirm')}
             />
 
             {/* Container Selector Modal */}
             <ContainerSelectorModal
                 isOpen={containerSelectorModal.isOpen}
-                title={containerSelectorModal.title}
-                message={containerSelectorModal.message}
-                containers={containerSelectorModal.containers}
-                onSelect={containerSelectorModal.onSelect}
-                onCancel={() => setContainerSelectorModal(prev => ({ ...prev, isOpen: false }))}
+                title={containerSelectorModal.config?.title}
+                message={containerSelectorModal.config?.message}
+                containers={containerSelectorModal.config?.containers}
+                onSelect={containerSelectorModal.config?.onSelect}
+                onCancel={() => closeModal('containerSelector')}
             />
 
             {/* Shape Selector Modal */}
             <ShapeSelectorModal
                 isOpen={shapeSelectorModal.isOpen}
                 onSelect={(shapeType) => {
-                    setShapeSelectorModal({ isOpen: false });
+                    closeModal('shapeSelector');
                     addShapeNode(shapeType);
                 }}
-                onCancel={() => setShapeSelectorModal({ isOpen: false })}
+                onCancel={() => closeModal('shapeSelector')}
             />
 
             {/* JSON Paste Modal */}
             <JsonPasteModal
                 isOpen={jsonPasteModal.isOpen}
                 onConfirm={handleJsonPasteImport}
-                onCancel={() => setJsonPasteModal({ isOpen: false, onConfirm: null })}
+                onCancel={() => closeModal('jsonPaste')}
             />
 
             {/* JSON Validator Modal */}
             <JsonValidatorModal
                 isOpen={jsonValidatorModal.isOpen}
                 onValidate={validateJson}
-                onClose={() => setJsonValidatorModal({ isOpen: false })}
+                onClose={() => closeModal('jsonValidator')}
             />
 
             {/* Export Modal */}
             <ExportModal
                 isOpen={exportModal.isOpen}
-                onClose={closeExportModal}
+                onClose={() => closeModal('export')}
                 diagramData={getDiagramDataForExport()}
             />
         </>

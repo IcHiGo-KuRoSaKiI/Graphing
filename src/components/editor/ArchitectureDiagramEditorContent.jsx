@@ -100,10 +100,16 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const shapeLibraryOpen = useDiagramStore(state => state.shapeLibraryOpen);
     const setShapeLibraryOpen = useDiagramStore(state => state.setShapeLibraryOpen);
 
-    // Modal state from Zustand
+    // Modal state and actions from Zustand
     const modals = useDiagramStore(state => state.modals);
-    const openModal = useDiagramStore(state => state.openModal);
     const closeModal = useDiagramStore(state => state.closeModal);
+    const showPromptModal = useDiagramStore(state => state.showPromptModal);
+    const showConfirmModal = useDiagramStore(state => state.showConfirmModal);
+    const showContainerSelectorModal = useDiagramStore(state => state.showContainerSelectorModal);
+    const showShapeSelectorModal = useDiagramStore(state => state.showShapeSelectorModal);
+    const showJsonPasteModal = useDiagramStore(state => state.showJsonPasteModal);
+    const showJsonValidatorModal = useDiagramStore(state => state.showJsonValidatorModal);
+    const showExportModal = useDiagramStore(state => state.showExportModal);
 
     // Local state only for things not in Zustand yet
     const [isInitialized, setIsInitialized] = useState(false);
@@ -113,43 +119,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 });
     const [layoutPanelOpen, setLayoutPanelOpen] = useState(false);
     // currentLayoutAlgorithm now comes from useLayoutHandlers hook
-
-    // Modals converted to Zustand-compatible format
-    const promptModal = modals.prompt;
-    const setPromptModal = (value) => {
-        const config = typeof value === 'function' ? value(promptModal.config) : value;
-        config.isOpen === false ? closeModal('prompt') : openModal('prompt', config);
-    };
-    const confirmModal = modals.confirm;
-    const setConfirmModal = (value) => {
-        const config = typeof value === 'function' ? value(confirmModal.config) : value;
-        config.isOpen === false ? closeModal('confirm') : openModal('confirm', config);
-    };
-    const containerSelectorModal = modals.containerSelector;
-    const setContainerSelectorModal = (value) => {
-        const config = typeof value === 'function' ? value(containerSelectorModal.config) : value;
-        config.isOpen === false ? closeModal('containerSelector') : openModal('containerSelector', config);
-    };
-    const shapeSelectorModal = modals.shapeSelector;
-    const setShapeSelectorModal = (value) => {
-        const config = typeof value === 'function' ? value(shapeSelectorModal.config) : value;
-        config.isOpen === false ? closeModal('shapeSelector') : openModal('shapeSelector', config);
-    };
-    const jsonPasteModal = modals.jsonPaste;
-    const setJsonPasteModal = (value) => {
-        const config = typeof value === 'function' ? value(jsonPasteModal.config) : value;
-        config.isOpen === false ? closeModal('jsonPaste') : openModal('jsonPaste', config);
-    };
-    const jsonValidatorModal = modals.jsonValidator;
-    const setJsonValidatorModal = (value) => {
-        const config = typeof value === 'function' ? value(jsonValidatorModal.config) : value;
-        config.isOpen === false ? closeModal('jsonValidator') : openModal('jsonValidator', config);
-    };
-    const exportModal = modals.export;
-    const setExportModal = (value) => {
-        const config = typeof value === 'function' ? value(exportModal.config) : value;
-        config.isOpen === false ? closeModal('export') : openModal('export', config);
-    };
 
     const getDiagramBounds = useCallback(() => {
         if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
@@ -345,58 +314,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isInitialized]); // ONLY depend on isInitialized to prevent re-runs and clearing imported data
-    // Helper functions for modals
-    const showPromptModal = useCallback((title, message, defaultValue, onConfirm) => {
-        setPromptModal({
-            isOpen: true,
-            title,
-            message,
-            defaultValue,
-            onConfirm: (value) => {
-                onConfirm(value);
-                setPromptModal(prev => ({ ...prev, isOpen: false }));
-            },
-        });
-    }, []);
-
-    const showConfirmModal = useCallback((title, message, onConfirm) => {
-        setConfirmModal({
-            isOpen: true,
-            title,
-            message,
-            onConfirm: () => {
-                onConfirm();
-                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-            },
-        });
-    }, []);
-
-    const showContainerSelectorModal = useCallback((title, message, containers, onSelect) => {
-        setContainerSelectorModal({
-            isOpen: true,
-            title,
-            message,
-            containers,
-            onSelect: (containerId) => {
-                onSelect(containerId);
-                setContainerSelectorModal(prev => ({ ...prev, isOpen: false }));
-            },
-        });
-    }, []);
-
-    const showShapeSelectorModal = useCallback(() => {
-        setShapeSelectorModal({
-            isOpen: true,
-        });
-    }, []);
-
-    const showJsonPasteModal = useCallback((onConfirm) => {
-        setJsonPasteModal({ isOpen: true, onConfirm });
-    }, []);
-
-    const showJsonValidatorModal = useCallback(() => {
-        setJsonValidatorModal({ isOpen: true });
-    }, []);
 
     // Handle property changes for both nodes and edges
     const handleElementPropertyChange = useCallback((elementType, property, value) => {
@@ -1061,6 +978,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             console.log('✅ Updating node internals...');
             importedNodes.forEach(n => updateNodeInternals(n.id));
 
+            // Apply auto-layout to organize imported nodes
+            console.log('✅ Applying auto-layout...');
+            await applyAutoLayout(importedNodes, currentLayoutAlgorithm);
+
             // Fit view to show all imported nodes
             console.log('✅ Fitting view to imported diagram...');
             setTimeout(() => {
@@ -1109,6 +1030,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             console.log('✅ Updating node internals...');
             importedNodes.forEach(n => updateNodeInternals(n.id));
 
+            // Apply auto-layout to organize imported nodes
+            console.log('✅ Applying auto-layout...');
+            await applyAutoLayout(importedNodes, currentLayoutAlgorithm);
+
             // Fit view to show all imported nodes
             console.log('✅ Fitting view to imported diagram...');
             setTimeout(() => {
@@ -1126,7 +1051,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             alert('Error importing diagram: ' + error.message);
             throw error;
         }
-    }, [jsonToReactFlow, saveToHistory, migrateEdgesToEnhanced, serviceFactory, isServiceInitialized, setNodes, setEdges, updateNodeInternals, fitView]);
+    }, [jsonToReactFlow, saveToHistory, migrateEdgesToEnhanced, serviceFactory, isServiceInitialized, setNodes, setEdges, updateNodeInternals, fitView, applyAutoLayout, currentLayoutAlgorithm]);
 
 
     const handleJsonPasteImport = useCallback(async (data) => {
@@ -1134,13 +1059,13 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         try {
             await importDiagramObject(data);
             console.log('✅ Closing modal...');
-            setJsonPasteModal({ isOpen: false, onConfirm: null });
+            closeModal('jsonPaste');
         } catch (error) {
             console.error('❌ handleJsonPasteImport error:', error);
             // Don't close modal on error so user can see the error and try again
             throw error;
         }
-    }, [importDiagramObject]);
+    }, [importDiagramObject, closeModal]);
 
     const validateJson = useCallback(async (data) => {
         if (!serviceFactory || !isServiceInitialized) {
@@ -1437,15 +1362,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         }
     }, [technicalDetailsPanelOpen, selectedElementForTechnicalDetails, nodes]);
 
-    // New export modal handlers
-    const openExportModal = useCallback(() => {
-        setExportModal({ isOpen: true });
-    }, []);
-
-    const closeExportModal = useCallback(() => {
-        setExportModal({ isOpen: false });
-    }, []);
-
     // Get diagram data for export
     const getDiagramDataForExport = useCallback(() => {
         return {
@@ -1495,7 +1411,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     onExportPNG={exportAsPNG}
                     onExportJPG={exportAsJPG}
                     onExportSVG={exportAsSVG}
-                    onExportModal={openExportModal}
+                    onExportModal={showExportModal}
 
                     // Edit operations
                     onUndo={undo}
@@ -1657,23 +1573,17 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
             {/* Modals - Extracted to separate component */}
             <EditorModalsExtracted
-                promptModal={promptModal}
-                setPromptModal={setPromptModal}
-                confirmModal={confirmModal}
-                setConfirmModal={setConfirmModal}
-                containerSelectorModal={containerSelectorModal}
-                setContainerSelectorModal={setContainerSelectorModal}
-                shapeSelectorModal={shapeSelectorModal}
-                setShapeSelectorModal={setShapeSelectorModal}
+                promptModal={modals.prompt}
+                confirmModal={modals.confirm}
+                containerSelectorModal={modals.containerSelector}
+                shapeSelectorModal={modals.shapeSelector}
+                jsonPasteModal={modals.jsonPaste}
+                jsonValidatorModal={modals.jsonValidator}
+                exportModal={modals.export}
+                closeModal={closeModal}
                 addShapeNode={addShapeNode}
-                jsonPasteModal={jsonPasteModal}
-                setJsonPasteModal={setJsonPasteModal}
                 handleJsonPasteImport={handleJsonPasteImport}
-                jsonValidatorModal={jsonValidatorModal}
-                setJsonValidatorModal={setJsonValidatorModal}
                 validateJson={validateJson}
-                exportModal={exportModal}
-                closeExportModal={closeExportModal}
                 getDiagramDataForExport={getDiagramDataForExport}
             />
 
