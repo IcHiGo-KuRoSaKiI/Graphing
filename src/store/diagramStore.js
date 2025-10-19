@@ -19,11 +19,6 @@ const useDiagramStore = create((set, get) => ({
             ? nodesOrUpdater(currentNodes)
             : nodesOrUpdater;
         const validNodes = Array.isArray(newNodes) ? newNodes : [];
-        console.log('🏪 STORE setNodes called:', {
-            nodeCount: validNodes.length,
-            nodes: validNodes,
-            stackTrace: new Error().stack
-        });
         set({ nodes: validNodes });
     },
     setEdges: (edgesOrUpdater) => {
@@ -33,10 +28,6 @@ const useDiagramStore = create((set, get) => ({
             ? edgesOrUpdater(currentEdges)
             : edgesOrUpdater;
         const validEdges = Array.isArray(newEdges) ? newEdges : [];
-        console.log('🏪 STORE setEdges called:', {
-            edgeCount: validEdges.length,
-            edges: validEdges
-        });
         set({ edges: validEdges });
     },
 

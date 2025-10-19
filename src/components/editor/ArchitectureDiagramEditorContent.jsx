@@ -33,6 +33,7 @@ import { useEdgeHandlers } from '../../hooks/useEdgeHandlers';
 import { useClipboardHandlers } from '../../hooks/useClipboardHandlers';
 import { useLayoutHandlers } from '../../hooks/useLayoutHandlers';
 import { useDiagramConverters } from '../../hooks/useDiagramConverters';
+import { useImportExport } from '../../hooks/useImportExport';
 
 
 
@@ -45,16 +46,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     useEffect(() => {
         const initializeServices = async () => {
             try {
-                console.log('Starting service layer initialization...');
                 const factory = ServiceFactory.create();
-                console.log('ServiceFactory created, initializing...');
                 await factory.initialize();
-                console.log('ServiceFactory initialized, setting state...');
                 setServiceFactory(factory);
                 setIsServiceInitialized(true);
                 
                 // Initialize enhanced edge manager
-                console.log('Initializing Enhanced Edge Manager...');
                 await enhancedEdgeManager.initialize({
                     enablePerformanceMonitoring: true,
                     enableLayoutAwareRouting: true,
@@ -63,9 +60,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     intersectionDetectionEnabled: true,
                     debounceTime: 100
                 });
-                console.log('Enhanced Edge Manager initialized successfully');
                 
-                console.log('All services initialized successfully');
             } catch (error) {
                 console.error('Failed to initialize services:', error);
                 console.error('Error details:', error.stack);
@@ -137,15 +132,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const updateNodeInternals = useUpdateNodeInternals();
     const { screenToFlowPosition, fitView } = useReactFlow();
 
-    // Debug: Log when nodes/edges change
-    useEffect(() => {
-        console.log('🔄 Component nodes/edges updated:', {
-            nodeCount: nodes.length,
-            edgeCount: edges.length,
-            nodes,
-            edges
-        });
-    }, [nodes, edges]);
 
     // Modal state now comes from Zustand (see lines 110-124)
 
@@ -225,6 +211,61 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         isServiceInitialized
     );
 
+    // Migrate edges to use enhanced orthogonal edge functionality
+    const migrateEdgesToEnhanced = useCallback((edges) => {
+        return edges.map(edge => {
+            // Ensure all edges use enhanced type for Draw.io-style functionality
+            const migratedEdge = {
+                ...edge,
+                type: 'enhanced',
+                style: {
+                    ...edge.style,
+                    stroke: edge.style?.stroke || '#2563eb',
+                    strokeWidth: edge.style?.strokeWidth || 2
+                },
+                data: {
+                    ...edge.data,
+                    waypoints: edge.data?.waypoints || (edge.data?.control ? [edge.data.control] : []),
+                    intersection: edge.data?.intersection || 'none'
+                }
+            };
+            return migratedEdge;
+        });
+    }, []);
+
+    // Import/Export handlers
+    const {
+        exportJSON,
+        exportToDrawioXML,
+        exportAsPNG,
+        exportAsJPG,
+        exportAsSVG,
+        importDiagram,
+        importFromDrawioXML,
+        handleJsonPasteImport,
+        validateJson,
+        newDiagram,
+        saveDiagram,
+        saveAsDiagram,
+        openDiagram,
+        getDiagramDataForExport
+    } = useImportExport({
+        serviceFactory,
+        isServiceInitialized,
+        reactFlowToJson,
+        jsonToReactFlow,
+        migrateEdgesToEnhanced,
+        handleNodeLabelChange,
+        saveToHistory,
+        updateNodeInternals,
+        fitView,
+        applyAutoLayout,
+        currentLayoutAlgorithm,
+        setIsInitialized,
+        reactFlowWrapper,
+        getDiagramBounds
+    });
+
     // Handle selection changes - includes edges and technical details panel logic
     const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }) => {
         setSelectedElements({
@@ -256,28 +297,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }, [setEdges]);
 
     // Conversion functions now come from useDiagramConverters hook (see line 192)
-
-    // Migrate edges to use enhanced orthogonal edge functionality  
-    const migrateEdgesToEnhanced = useCallback((edges) => {
-        return edges.map(edge => {
-            // Ensure all edges use enhanced type for Draw.io-style functionality
-            const migratedEdge = {
-                ...edge,
-                type: 'enhanced',
-                style: {
-                    ...edge.style,
-                    stroke: edge.style?.stroke || '#2563eb',
-                    strokeWidth: edge.style?.strokeWidth || 2
-                },
-                data: {
-                    ...edge.data,
-                    waypoints: edge.data?.waypoints || (edge.data?.control ? [edge.data.control] : []),
-                    intersection: edge.data?.intersection || 'none'
-                }
-            };
-            return migratedEdge;
-        });
-    }, []);
+    // migrateEdgesToEnhanced now defined earlier (before useImportExport hook) at line 223
 
     // Register edges with enhanced edge manager
     useEffect(() => {
@@ -293,10 +313,8 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     // Initialize diagram from the provided configuration
     useEffect(() => {
         if (!isInitialized) {
-            console.log('🔧 INITIALIZATION EFFECT RUNNING - isInitialized:', isInitialized);
             const config = initialDiagram || { containers: [], nodes: [], connections: [] };
             const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(config);
-            console.log('🔧 Initial config converted:', initialNodes.length, 'nodes');
 
             // Migrate edges to ensure waypoint functionality - now use enhanced edges
             const enhancedEdges = initialEdges.map(edge => ({
@@ -305,7 +323,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             }));
             // Apply circular layout by default for initial diagrams
             const laidOut = autoLayoutNodes(initialNodes, 'circular');
-            console.log('🔧 Setting initial nodes/edges and marking as initialized');
             setNodes(laidOut);
             setEdges(enhancedEdges);
             pushToHistory({ nodes: laidOut, edges: enhancedEdges });
@@ -612,485 +629,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [copySelected, pasteElements, deleteSelected, undo, redo]);
 
-    // Export and import functions using service layer
-    const exportJSON = useCallback(async () => {
-        if (!serviceFactory || !isServiceInitialized) {
-            console.warn('Service layer not initialized, falling back to old method');
-            // Fallback to old method
-            const diagramData = {
-                metadata: {
-                    name: 'Architecture Diagram',
-                    description: 'Exported architecture diagram',
-                    version: '1.0',
-                    exportDate: new Date().toISOString(),
-                },
-                containers: nodes
-                    .filter((node) => node.type === 'container')
-                    .map((container) => ({
-                        id: container.id,
-                        label: container.data.label,
-                        position: container.position,
-                        size: {
-                            width: container.style?.width || 400,
-                            height: container.style?.height || 300,
-                        },
-                        color: container.data.color,
-                        bgColor: container.data.bgColor,
-                        borderColor: container.data.borderColor,
-                        icon: container.data.icon,
-                        description: container.data.description,
-                        zIndex: container.zIndex || 1
-                    })),
-                nodes: nodes
-                    .filter((node) => node.type !== 'container')
-                    .map((node) => ({
-                        id: node.id,
-                        label: node.data.label,
-                        type: node.type,
-                        position: node.position,
-                        parentContainer: node.parentNode,
-                        size: {
-                            width: node.style?.width || 150,
-                            height: node.style?.height || 80,
-                        },
-                        color: node.data.color,
-                        borderColor: node.data.borderColor,
-                        icon: node.data.icon,
-                        description: node.data.description,
-                        zIndex: node.zIndex || 10
-                    })),
-                connections: edges.map((edge) => ({
-                    id: edge.id,
-                    source: edge.source,
-                    target: edge.target,
-                    label: edge.data?.label,
-                    type: edge.type,
-                    animated: edge.animated,
-                    description: edge.data?.description,
-                    waypoints: edge.data?.waypoints,
-                    markerStart: edge.markerStart,
-                    markerEnd: edge.markerEnd,
-                    intersection: edge.data?.intersection,
-                    style: {
-                        strokeWidth: edge.style?.strokeWidth || 2,
-                        strokeDasharray: edge.style?.strokeDasharray,
-                    },
-                    zIndex: edge.zIndex || 5
-                })),
-            };
+    // Import/Export functions now come from useImportExport hook (see lines 230-260)
 
-            const dataStr = JSON.stringify(diagramData, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-            const exportFileDefaultName = 'architecture-diagram.json';
-
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-            return;
-        }
-
-        try {
-            const diagramData = reactFlowToJson(nodes, edges);
-            const result = await serviceFactory.exportDiagram(diagramData, 'json', {
-                filename: 'architecture-diagram.json',
-                prettyPrint: true
-            });
-            
-            if (result.success) {
-                const linkElement = document.createElement('a');
-                linkElement.setAttribute('href', result.dataUri);
-                linkElement.setAttribute('download', result.filename);
-                linkElement.click();
-            } else {
-                console.error('Export failed:', result.error);
-                alert('Export failed. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error exporting JSON:', error);
-            alert('Error exporting diagram. Please try again.');
-        }
-    }, [nodes, edges, serviceFactory, isServiceInitialized]);
-
-    // Import from draw.io XML
-    const importFromDrawioXML = useCallback(() => {
-        const inputElement = document.createElement('input');
-        inputElement.type = 'file';
-        inputElement.accept = '.drawio,.xml';
-        inputElement.onchange = (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const xmlContent = e.target.result;
-                        const parser = new DOMParser();
-                        const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
-
-                        const cells = xmlDoc.querySelectorAll('mxCell');
-
-                        const tempNodes = [];
-                        const tempEdges = [];
-
-                        cells.forEach(cell => {
-                            const id = cell.getAttribute('id');
-                            if (id === '0' || id === '1') return; // skip root
-
-                            const value = cell.getAttribute('value') || '';
-                            const style = cell.getAttribute('style') || '';
-                            const vertex = cell.getAttribute('vertex');
-                            const edge = cell.getAttribute('edge');
-
-                            const geometry = cell.querySelector('mxGeometry');
-                            if (!geometry) return;
-
-                            const x = parseFloat(geometry.getAttribute('x')) || 0;
-                            const y = parseFloat(geometry.getAttribute('y')) || 0;
-                            const width = parseFloat(geometry.getAttribute('width')) || 120;
-                            const height = parseFloat(geometry.getAttribute('height')) || 80;
-
-                            if (vertex) {
-                                tempNodes.push({
-                                    oldId: id,
-                                    value,
-                                    style,
-                                    x,
-                                    y,
-                                    width,
-                                    height,
-                                    parent: cell.getAttribute('parent')
-                                });
-                            } else if (edge) {
-                                tempEdges.push({
-                                    oldId: id,
-                                    value,
-                                    style,
-                                    source: cell.getAttribute('source'),
-                                    target: cell.getAttribute('target')
-                                });
-                            }
-                        });
-
-                        const cellIdMap = new Map();
-                        const importedNodes = [];
-
-                        tempNodes.forEach(n => {
-                            const newId = `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                            cellIdMap.set(n.oldId, newId);
-
-                            let nodeType = 'component';
-                            if (n.style.includes('swimlane')) nodeType = 'container';
-                            else if (n.style.includes('rhombus')) nodeType = 'diamond';
-                            else if (n.style.includes('ellipse')) nodeType = 'circle';
-                            else if (n.style.includes('hexagon')) nodeType = 'hexagon';
-                            else if (n.style.includes('triangle')) nodeType = 'triangle';
-
-                            const fillColorMatch = n.style.match(/fillColor=([^;]+)/);
-                            const strokeColorMatch = n.style.match(/strokeColor=([^;]+)/);
-                            const fillColor = fillColorMatch ? fillColorMatch[1] : '#ffffff';
-                            const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
-
-                            const [firstLine, ...restLines] = n.value.split('\n');
-                            importedNodes.push({
-                                id: newId,
-                                type: nodeType,
-                                position: { x: n.x, y: n.y },
-                                data: {
-                                    label: firstLine,
-                                    color: fillColor,
-                                    borderColor: strokeColor,
-                                    icon: nodeType === 'container' ? '📦' : '🔹',
-                                    description: restLines.join('\n'),
-                                    onLabelChange: handleNodeLabelChange
-                                },
-                                style: {
-                                    width: n.width,
-                                    height: n.height,
-                                    zIndex: nodeType === 'container' ? 1 : 10
-                                },
-                                draggable: true,
-                                selectable: true,
-                                zIndex: nodeType === 'container' ? 1 : 10,
-                                __parentOldId: n.parent
-                            });
-                        });
-
-                        importedNodes.forEach(node => {
-                            if (node.__parentOldId && cellIdMap.has(node.__parentOldId)) {
-                                node.parentNode = cellIdMap.get(node.__parentOldId);
-                            }
-                            delete node.__parentOldId;
-                        });
-
-                        const importedEdges = tempEdges.map(e => {
-                            const strokeWidthMatch = e.style.match(/strokeWidth=([^;]+)/);
-                            const strokeColorMatch = e.style.match(/strokeColor=([^;]+)/);
-                            const strokeWidth = strokeWidthMatch ? parseInt(strokeWidthMatch[1]) : 2;
-                            const strokeColor = strokeColorMatch ? strokeColorMatch[1] : '#000000';
-                            const isDashed = e.style.includes('dashed=1');
-
-                            return {
-                                id: `imported-edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                                source: cellIdMap.get(e.source) || e.source,
-                                target: cellIdMap.get(e.target) || e.target,
-                                label: e.value,
-                                type: 'smoothstep',
-                                animated: false,
-                                style: {
-                                    strokeWidth,
-                                    stroke: strokeColor,
-                                    strokeDasharray: isDashed ? '5,5' : undefined,
-                                    zIndex: 5
-                                },
-                                zIndex: 5,
-                                data: { label: e.value, description: '' }
-                            };
-                        });
-
-                        const nodeMap = Object.fromEntries(importedNodes.map(n => [n.id, n]));
-                        const filteredEdges = [];
-                        importedEdges.forEach(edge => {
-                            const s = nodeMap[edge.source];
-                            const t = nodeMap[edge.target];
-                            if (s && t && s.type === 'container' && t.type === 'container') {
-                                t.parentNode = s.id;
-                                t.position = {
-                                    x: t.position.x - s.position.x,
-                                    y: t.position.y - s.position.y
-                                };
-                            } else {
-                                filteredEdges.push(edge);
-                            }
-                        });
-
-                        setNodes(importedNodes);
-                        setEdges(filteredEdges);
-                        saveToHistory();
-
-                    } catch (error) {
-                        console.error('Error importing draw.io XML:', error);
-                        alert('Error importing draw.io file. Please check the file format.');
-                    }
-                };
-                reader.readAsText(file);
-            }
-        };
-        inputElement.click();
-    }, [handleNodeLabelChange, saveToHistory, setNodes, setEdges]);
-
-    // Convert to draw.io XML format using service layer
-    const exportToDrawioXML = useCallback(async () => {
-        if (!serviceFactory || !isServiceInitialized) {
-            console.warn('Service layer not initialized, falling back to old method');
-            return;
-        }
-
-        try {
-            const diagramData = reactFlowToJson(nodes, edges);
-            const result = await serviceFactory.exportDiagram(diagramData, 'drawio', {
-                filename: 'architecture-diagram.drawio'
-            });
-            
-            if (result.success) {
-                const linkElement = document.createElement('a');
-                linkElement.setAttribute('href', result.dataUri);
-                linkElement.setAttribute('download', result.filename);
-                linkElement.click();
-            } else {
-                console.error('Export failed:', result.error);
-                alert('Export failed. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error exporting to Draw.io XML:', error);
-            alert('Error exporting diagram. Please try again.');
-        }
-    }, [nodes, edges, serviceFactory, isServiceInitialized]);
-
-    const importDiagram = useCallback(() => {
-        const inputElement = document.createElement('input');
-        inputElement.type = 'file';
-        inputElement.accept = '.json';
-        inputElement.onchange = (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const importedData = JSON.parse(e.target.result);
-                        const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(importedData);
-                        // Migrate edges to ensure waypoint functionality
-                        const migratedEdges = migrateEdgesToEnhanced(importedEdges);
-
-                        // Set nodes and edges directly - positions are already in the JSON
-                        setNodes(importedNodes);
-                        setEdges(migratedEdges);
-
-                        // Update node internals for proper rendering
-                        importedNodes.forEach(n => updateNodeInternals(n.id));
-
-                        saveToHistory();
-                    } catch (error) {
-                        console.error('Error importing diagram:', error);
-                        alert('Error importing diagram. Please check the file format.');
-                    }
-                };
-                reader.readAsText(file);
-            }
-        };
-        inputElement.click();
-    }, [jsonToReactFlow, saveToHistory, migrateEdgesToEnhanced, setNodes, setEdges, updateNodeInternals]);
-
-    const importDiagramObject = useCallback(async (data) => {
-        console.log('📥 importDiagramObject called with data:', data);
-
-        if (!serviceFactory || !isServiceInitialized) {
-            console.warn('Service layer not initialized, falling back to old method');
-            // Simple validation fallback
-            if (!data || !data.containers || !data.nodes || !data.connections) {
-                console.error('Invalid diagram JSON - missing required fields');
-                alert('Invalid diagram JSON');
-                throw new Error('Invalid diagram JSON');
-            }
-
-            console.log('✅ Converting JSON to ReactFlow format...');
-            const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
-            console.log('✅ Converted:', importedNodes.length, 'nodes,', importedEdges.length, 'edges');
-
-            // Migrate edges to ensure waypoint functionality
-            const migratedEdges = migrateEdgesToEnhanced(importedEdges);
-            console.log('✅ Migrated edges');
-
-            // Set nodes and edges directly - positions are already in the JSON
-            console.log('✅ Setting nodes and edges in store...');
-            setNodes(importedNodes);
-            setEdges(migratedEdges);
-
-            // Verify store was updated
-            const storeState = useDiagramStore.getState();
-            console.log('📊 Store after update:', {
-                nodeCount: storeState.nodes.length,
-                edgeCount: storeState.edges.length,
-                nodes: storeState.nodes,
-                edges: storeState.edges
-            });
-
-            // Update node internals for proper rendering
-            console.log('✅ Updating node internals...');
-            importedNodes.forEach(n => updateNodeInternals(n.id));
-
-            // Apply auto-layout to organize imported nodes
-            console.log('✅ Applying auto-layout...');
-            await applyAutoLayout(importedNodes, currentLayoutAlgorithm);
-
-            // Fit view to show all imported nodes
-            console.log('✅ Fitting view to imported diagram...');
-            setTimeout(() => {
-                fitView({ padding: 0.2, duration: 300 });
-            }, 100);
-
-            console.log('✅ Setting initialized flag...');
-            setIsInitialized(true);
-
-            console.log('✅ Saving to history...');
-            saveToHistory();
-            console.log('✅ Import completed successfully!');
-            return;
-        }
-
-        try {
-            // Validate the diagram data
-            console.log('🔍 Validating diagram with service layer...');
-            await serviceFactory.validateDiagram(data);
-            console.log('✅ Validation passed');
-
-            // If validation passes, import the diagram
-            console.log('✅ Converting JSON to ReactFlow format...');
-            const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
-            console.log('✅ Converted:', importedNodes.length, 'nodes,', importedEdges.length, 'edges');
-
-            // Migrate edges to ensure waypoint functionality
-            const migratedEdges = migrateEdgesToEnhanced(importedEdges);
-            console.log('✅ Migrated edges');
-
-            // Set nodes and edges directly - positions are already in the JSON
-            console.log('✅ Setting nodes and edges in store...');
-            setNodes(importedNodes);
-            setEdges(migratedEdges);
-
-            // Verify store was updated
-            const storeState = useDiagramStore.getState();
-            console.log('📊 Store after update:', {
-                nodeCount: storeState.nodes.length,
-                edgeCount: storeState.edges.length,
-                nodes: storeState.nodes,
-                edges: storeState.edges
-            });
-
-            // Update node internals for proper rendering
-            console.log('✅ Updating node internals...');
-            importedNodes.forEach(n => updateNodeInternals(n.id));
-
-            // Apply auto-layout to organize imported nodes
-            console.log('✅ Applying auto-layout...');
-            await applyAutoLayout(importedNodes, currentLayoutAlgorithm);
-
-            // Fit view to show all imported nodes
-            console.log('✅ Fitting view to imported diagram...');
-            setTimeout(() => {
-                fitView({ padding: 0.2, duration: 300 });
-            }, 100);
-
-            console.log('✅ Setting initialized flag...');
-            setIsInitialized(true);
-
-            console.log('✅ Saving to history...');
-            saveToHistory();
-            console.log('✅ Import completed successfully!');
-        } catch (error) {
-            console.error('❌ Error importing diagram:', error);
-            alert('Error importing diagram: ' + error.message);
-            throw error;
-        }
-    }, [jsonToReactFlow, saveToHistory, migrateEdgesToEnhanced, serviceFactory, isServiceInitialized, setNodes, setEdges, updateNodeInternals, fitView, applyAutoLayout, currentLayoutAlgorithm]);
-
-
-    const handleJsonPasteImport = useCallback(async (data) => {
-        console.log('🎯 handleJsonPasteImport called');
-        try {
-            await importDiagramObject(data);
-            console.log('✅ Closing modal...');
-            closeModal('jsonPaste');
-        } catch (error) {
-            console.error('❌ handleJsonPasteImport error:', error);
-            // Don't close modal on error so user can see the error and try again
-            throw error;
-        }
-    }, [importDiagramObject, closeModal]);
-
-    const validateJson = useCallback(async (data) => {
-        if (!serviceFactory || !isServiceInitialized) {
-            console.warn('Service layer not initialized, falling back to old method');
-            // Simple validation fallback
-            const valid = data && data.containers && data.nodes && data.connections;
-            const errors = valid ? [] : ['Invalid diagram structure'];
-            return { valid, errors };
-        }
-
-        try {
-            // Validate the diagram data
-            await serviceFactory.validateDiagram(data);
-            return {
-                valid: true,
-                errors: []
-            };
-        } catch (error) {
-            console.error('Error validating diagram:', error);
-            return {
-                valid: false,
-                errors: [error.message]
-            };
-        }
-    }, [serviceFactory, isServiceInitialized]);
+    // onLayoutSettings
+    const onLayoutSettings = useCallback(() => {
+        setLayoutPanelOpen(true);
+    }, []);
 
     // Clean up timeout on unmount
     useEffect(() => {
@@ -1099,92 +643,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 clearTimeout(saveTimeoutRef.current);
             }
         };
-    }, []);
-
-    const newDiagram = useCallback(() => {
-        showConfirmModal(
-            'New Diagram',
-            'Are you sure you want to create a new diagram? All unsaved changes will be lost.',
-            () => {
-                applyAutoLayout([], 'circular');
-                setEdges([]);
-                setSelectedElements({ nodes: [], edges: [] });
-                saveToHistory();
-            }
-        );
-    }, [applyAutoLayout, saveToHistory, showConfirmModal]);
-
-    const saveDiagram = useCallback(() => {
-        exportJSON();
-    }, [exportJSON]);
-
-    const saveAsDiagram = useCallback(() => {
-        exportJSON();
-    }, [exportJSON]);
-
-    const openDiagram = useCallback(() => {
-        importDiagram();
-    }, [importDiagram]);
-
-    // Image export helpers using service layer
-    const exportImage = useCallback(async (type) => {
-        if (!serviceFactory || !isServiceInitialized) {
-            console.warn('Service layer not initialized, falling back to old method');
-            if (!reactFlowWrapper.current) return;
-            const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
-            const isDark = !!reactFlowWrapper.current.closest('.dark');
-            const bounds = getDiagramBounds();
-            const margin = 20;
-            const width = bounds.width + margin * 2;
-            const height = bounds.height + margin * 2;
-            const common = {
-                cacheBust: true,
-                backgroundColor: isDark ? '#111111' : '#ffffff',
-                width,
-                height,
-                style: {
-                    width: `${width}px`,
-                    height: `${height}px`,
-                    transform: `translate(${-bounds.x + margin}px, ${-bounds.y + margin}px)`
-                }
-            };
-            // Fallback image export not available without service layer
-            console.error('Image export not available without service layer');
-            alert('Image export not available. Please try again later.');
-            return;
-        }
-
-        try {
-            const diagramData = reactFlowToJson(nodes, edges);
-            const result = await serviceFactory.exportDiagram(diagramData, type, {
-                filename: `diagram.${type}`,
-                backgroundColor: reactFlowWrapper.current?.closest('.dark') ? '#111111' : '#ffffff',
-                margin: 20
-            });
-            
-            if (result.success) {
-                const link = document.createElement('a');
-                link.download = result.filename;
-                link.href = result.dataUri;
-                link.click();
-            } else {
-                console.error('Image export failed:', result.error);
-                alert('Image export failed. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error exporting image:', error);
-            alert('Error exporting image. Please try again.');
-        }
-    }, [getDiagramBounds, serviceFactory, isServiceInitialized, nodes, edges]);
-
-    const exportAsPNG = useCallback(() => exportImage("png"), [exportImage]);
-    const exportAsJPG = useCallback(() => exportImage('jpg'), [exportImage]);
-    const exportAsSVG = useCallback(() => exportImage('svg'), [exportImage]);
-
-    // autoLayout now comes from useLayoutHandlers hook (see line 216)
-
-    const onLayoutSettings = useCallback(() => {
-        setLayoutPanelOpen(true);
     }, []);
 
     // Enhanced selection operations
@@ -1205,7 +663,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             deleteSelected();
         }
     }, [selectedElements, copySelected, deleteSelected]);
-
 
     const linkSelectedNodes = useCallback(() => {
         if (selectedElements.nodes.length < 2) {
@@ -1257,12 +714,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         }
     }, [selectedElements, edges, saveToHistory, updateNodeInternals]);
 
-    // copySelectedWithLinks and pasteElementsWithLinks now come from useClipboardHandlers hook (see line 206)
-
     // Update panel position when node is dragged
     useEffect(() => {
         if (!technicalDetailsPanelOpen || !selectedElementForTechnicalDetails) return;
-        
+
         // Debounce position updates to reduce ResizeObserver calls
         const timer = setTimeout(() => {
             const node = nodes.find(n => n.id === selectedElementForTechnicalDetails.id);
@@ -1270,22 +725,22 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 // Get the React Flow wrapper
                 const reactFlowWrapper = document.querySelector('.react-flow');
                 if (!reactFlowWrapper) return;
-                
+
                 // Get the actual DOM element of the node
                 const nodeElement = document.querySelector(`[data-id="${node.id}"]`);
                 if (!nodeElement) return;
-                
+
                 const nodeRect = nodeElement.getBoundingClientRect();
-                
+
                 // Calculate panel position relative to the node in screen coordinates
                 let x = nodeRect.right + 20; // 20px to the right of the node
                 let y = nodeRect.top;
-                
+
                 // If panel would go off-screen, position it to the left
                 if (x + 320 > window.innerWidth) {
                     x = nodeRect.left - 340; // 320px panel width + 20px gap
                 }
-                
+
                 // Keep panel within viewport height
                 if (y + 400 > window.innerHeight) {
                     y = window.innerHeight - 420;
@@ -1293,35 +748,35 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 if (y < 10) {
                     y = 10;
                 }
-                
+
                 setPanelOffset({ x, y });
             }
         }, 100); // Increased delay to ensure DOM is ready and reduce ResizeObserver calls
-        
+
         return () => clearTimeout(timer);
     }, [nodes, technicalDetailsPanelOpen, selectedElementForTechnicalDetails]);
 
     // Additional effect to handle React Flow viewport changes more robustly
     useEffect(() => {
         if (!technicalDetailsPanelOpen || !selectedElementForTechnicalDetails) return;
-        
+
         const handleReactFlowViewportChange = () => {
             const node = nodes.find(n => n.id === selectedElementForTechnicalDetails.id);
             if (node && node.position) {
                 const nodeElement = document.querySelector(`[data-id="${node.id}"]`);
                 if (!nodeElement) return;
-                
+
                 const nodeRect = nodeElement.getBoundingClientRect();
-                
+
                 // Calculate panel position relative to the node
                 let x = nodeRect.right + 20;
                 let y = nodeRect.top;
-                
+
                 // If panel would go off-screen, position it to the left
                 if (x + 320 > window.innerWidth) {
                     x = nodeRect.left - 340;
                 }
-                
+
                 // Keep panel within viewport height
                 if (y + 400 > window.innerHeight) {
                     y = window.innerHeight - 420;
@@ -1329,11 +784,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 if (y < 10) {
                     y = 10;
                 }
-                
+
                 setPanelOffset({ x, y });
             }
         };
-        
+
         // Use a more aggressive approach to catch all viewport changes
         const reactFlowWrapper = document.querySelector('.react-flow');
         if (reactFlowWrapper) {
@@ -1342,7 +797,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             events.forEach(event => {
                 reactFlowWrapper.addEventListener(event, handleReactFlowViewportChange, { passive: true });
             });
-            
+
             // Also listen to the viewport element specifically
             const viewport = reactFlowWrapper.querySelector('.react-flow__viewport');
             if (viewport) {
@@ -1350,7 +805,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     viewport.addEventListener(event, handleReactFlowViewportChange, { passive: true });
                 });
             }
-            
+
             return () => {
                 events.forEach(event => {
                     reactFlowWrapper.removeEventListener(event, handleReactFlowViewportChange);
@@ -1361,24 +816,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             };
         }
     }, [technicalDetailsPanelOpen, selectedElementForTechnicalDetails, nodes]);
-
-    // Get diagram data for export
-    const getDiagramDataForExport = useCallback(() => {
-        return {
-            nodes,
-            edges,
-            containers: nodes.filter(node => node.type === 'container'),
-            connections: edges,
-            metadata: {
-                name: 'Architecture Diagram',
-                description: 'Exported architecture diagram',
-                version: '1.0',
-                exportDate: new Date().toISOString(),
-                nodeCount: nodes.length,
-                edgeCount: edges.length
-            }
-        };
-    }, [nodes, edges]);
 
     return (
         <div className="architecture-diagram-editor h-full flex flex-col">

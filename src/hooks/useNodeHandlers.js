@@ -15,11 +15,8 @@ export const useNodeHandlers = (saveToHistory) => {
 
     // Handle node changes (position, selection, etc.)
     const handleNodesChange = useCallback((changes) => {
-        console.log('🔧 handleNodesChange called with changes:', changes);
         setNodes((nds) => {
-            console.log('🔧 handleNodesChange updater - current nodes:', nds.length);
             const updated = applyNodeChanges(changes, nds);
-            console.log('🔧 handleNodesChange updater - updated nodes:', updated.length);
             return updated;
         });
     }, [setNodes]);
