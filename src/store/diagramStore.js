@@ -12,8 +12,8 @@ const useDiagramStore = create((set, get) => ({
     nodes: [],
     edges: [],
 
-    setNodes: (nodes) => set({ nodes }),
-    setEdges: (edges) => set({ edges }),
+    setNodes: (nodes) => set({ nodes: Array.isArray(nodes) ? nodes : [] }),
+    setEdges: (edges) => set({ edges: Array.isArray(edges) ? edges : [] }),
 
     onNodesChange: (changes) => {
         set({

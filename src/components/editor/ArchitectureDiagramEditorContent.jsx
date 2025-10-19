@@ -27,6 +27,13 @@ import enhancedEdgeManager from '../../services/EnhancedEdgeManager';
 // Import Zustand store
 import useDiagramStore from '../../store/diagramStore';
 
+// Import custom hooks
+import { useNodeHandlers } from '../../hooks/useNodeHandlers';
+import { useEdgeHandlers } from '../../hooks/useEdgeHandlers';
+import { useClipboardHandlers } from '../../hooks/useClipboardHandlers';
+import { useLayoutHandlers } from '../../hooks/useLayoutHandlers';
+import { useDiagramConverters } from '../../hooks/useDiagramConverters';
+
 
 
 const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showThemeToggle, onToggleFullscreen, isFullscreen, onToggleMini, showMiniToggle }) => {
@@ -105,7 +112,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [technicalDetailsEnabled, setTechnicalDetailsEnabled] = useState(true);
     const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 });
     const [layoutPanelOpen, setLayoutPanelOpen] = useState(false);
-    const [currentLayoutAlgorithm, setCurrentLayoutAlgorithm] = useState('circular');
+    // currentLayoutAlgorithm now comes from useLayoutHandlers hook
 
     // Modals converted to Zustand-compatible format
     const promptModal = modals.prompt;
@@ -138,7 +145,17 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     }, [nodes]);
 
     const updateNodeInternals = useUpdateNodeInternals();
-    const { screenToFlowPosition } = useReactFlow();
+    const { screenToFlowPosition, fitView } = useReactFlow();
+
+    // Debug: Log when nodes/edges change
+    useEffect(() => {
+        console.log('🔄 Component nodes/edges updated:', {
+            nodeCount: nodes.length,
+            edgeCount: edges.length,
+            nodes,
+            edges
+        });
+    }, [nodes, edges]);
 
     // Modal state now comes from Zustand (see lines 110-124)
 
@@ -166,190 +183,89 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     // Custom node types
     // nodeTypes and edgeTypes moved to EditorCanvasExtracted
 
-    // Stable node label change handler
-    const handleNodeLabelChange = useCallback((nodeId, label) => {
-        setNodes((nds) =>
-            nds.map((node) => {
-                if (node.id === nodeId) {
-                    return {
-                        ...node,
-                        data: {
-                            ...node.data,
-                            label,
-                        },
-                    };
-                }
-                return node;
-            })
-        );
-
-        // Debounced history save
+    // Optimized save to history function (defined early for use in hooks)
+    const saveToHistory = useCallback(() => {
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
         }
         saveTimeoutRef.current = setTimeout(() => {
             const store = useDiagramStore.getState();
             pushToHistory({ nodes: store.nodes, edges: store.edges });
-        }, 500);
-    }, [setNodes, pushToHistory]);
+        }, 300);
+    }, [pushToHistory]);
 
-    // Conversion functions for service layer
-    const reactFlowToJson = useCallback((reactFlowNodes, reactFlowEdges) => {
-        return {
-            containers: reactFlowNodes
-                .filter((node) => node.type === 'container')
-                .map((container) => ({
-                    id: container.id,
-                    label: container.data.label,
-                    position: container.position,
-                    size: {
-                        width: container.style?.width || 400,
-                        height: container.style?.height || 300,
-                    },
-                    color: container.data.color,
-                    bgColor: container.data.bgColor,
-                    borderColor: container.data.borderColor,
-                    icon: container.data.icon,
-                    description: container.data.description,
-                    zIndex: container.zIndex || 1
-                })),
-            nodes: reactFlowNodes
-                .filter((node) => node.type !== 'container')
-                .map((node) => ({
-                    id: node.id,
-                    label: node.data.label,
-                    type: node.type,
-                    position: node.position,
-                    parentContainer: node.parentNode,
-                    size: {
-                        width: node.style?.width || 150,
-                        height: node.style?.height || 80,
-                    },
-                    color: node.data.color,
-                    borderColor: node.data.borderColor,
-                    icon: node.data.icon,
-                    description: node.data.description,
-                    zIndex: node.zIndex || 10
-                })),
-            connections: reactFlowEdges.map((edge) => ({
-                id: edge.id,
-                source: edge.source,
-                target: edge.target,
-                label: edge.data?.label,
-                type: edge.type,
-                animated: edge.animated,
-                description: edge.data?.description,
-                waypoints: edge.data?.waypoints,
-                markerStart: edge.markerStart,
-                markerEnd: edge.markerEnd,
-                intersection: edge.data?.intersection,
-                style: {
-                    strokeWidth: edge.style?.strokeWidth || 2,
-                    strokeDasharray: edge.style?.strokeDasharray,
-                },
-                zIndex: edge.zIndex || 5
-            }))
-        };
-    }, []);
+    // Use custom hooks for handlers
+    const { handleNodesChange, onNodeDragStop, handleNodeLabelChange } = useNodeHandlers(saveToHistory);
 
-    const jsonToReactFlow = useCallback((data) => {
-        const reactFlowNodes = [];
-        const reactFlowEdges = [];
+    // Diagram converters (need handleNodeLabelChange)
+    const { reactFlowToJson, jsonToReactFlow } = useDiagramConverters(handleNodeLabelChange);
 
-        // Convert containers
-        if (data.containers) {
-            data.containers.forEach(container => {
-                reactFlowNodes.push({
-                    id: container.id,
-                    type: 'container',
-                    position: container.position,
-                    data: {
-                        label: container.label,
-                        color: container.color || '#f5f5f5',
-                        bgColor: container.bgColor || '#f5f5f5',
-                        borderColor: container.borderColor || '#ddd',
-                        icon: container.icon,
-                        description: container.description,
-                        onLabelChange: handleNodeLabelChange
-                    },
-                    style: {
-                        width: container.size?.width || 400,
-                        height: container.size?.height || 300,
-                        zIndex: container.zIndex || 1,
-                    },
-                    draggable: true,
-                    selectable: true,
-                    zIndex: container.zIndex || 1
-                });
-            });
+    // Other handlers
+    const {
+        onEdgeUpdate,
+        onEdgeUpdateStart,
+        onEdgeUpdateEnd,
+        onEdgeDoubleClick,
+        onEdgeClick,
+        onConnect,
+        onConnectStart,
+        onConnectEnd,
+        defaultEdgeOptions
+    } = useEdgeHandlers(saveToHistory);
+
+    const {
+        copySelected,
+        copySelectedWithLinks,
+        pasteElements,
+        pasteElementsWithLinks,
+        deleteSelected,
+        hasClipboard
+    } = useClipboardHandlers(saveToHistory);
+
+    const {
+        applyAutoLayout,
+        autoLayout,
+        currentLayoutAlgorithm,
+        setCurrentLayoutAlgorithm
+    } = useLayoutHandlers(
+        saveToHistory,
+        reactFlowToJson,
+        jsonToReactFlow,
+        serviceFactory,
+        isServiceInitialized
+    );
+
+    // Handle selection changes - includes edges and technical details panel logic
+    const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }) => {
+        setSelectedElements({
+            nodes: selectedNodes || [],
+            edges: selectedEdges || [],
+        });
+
+        // Update technical details panel
+        if (technicalDetailsEnabled) {
+            if (selectedNodes.length === 1) {
+                setSelectedElementForTechnicalDetails({ ...selectedNodes[0], type: 'node' });
+                setTechnicalDetailsPanelOpen(true);
+            } else if (selectedEdges.length === 1) {
+                setSelectedElementForTechnicalDetails({ ...selectedEdges[0], type: 'edge' });
+                setTechnicalDetailsPanelOpen(true);
+            } else {
+                setTechnicalDetailsPanelOpen(false);
+                setSelectedElementForTechnicalDetails(null);
+            }
+        } else {
+            setTechnicalDetailsPanelOpen(false);
+            setSelectedElementForTechnicalDetails(null);
         }
+    }, [technicalDetailsEnabled, setSelectedElements, setSelectedElementForTechnicalDetails, setTechnicalDetailsPanelOpen]);
 
-        // Convert nodes
-        if (data.nodes) {
-            data.nodes.forEach(node => {
-                reactFlowNodes.push({
-                    id: node.id,
-                    type: 'component',
-                    position: node.position,
-                    parentNode: node.parentContainer,
-                    data: {
-                        label: node.label,
-                        color: node.color || '#E3F2FD',
-                        borderColor: node.borderColor || '#90CAF9',
-                        icon: node.icon,
-                        description: node.description,
-                        onLabelChange: handleNodeLabelChange
-                    },
-                    style: {
-                        width: node.size?.width || 150,
-                        height: node.size?.height || 80,
-                        zIndex: node.zIndex || 10,
-                    },
-                    draggable: true,
-                    selectable: true,
-                    zIndex: node.zIndex || 10
-                });
-            });
-        }
+    // Edge changes handler
+    const onEdgesChange = useCallback((changes) => {
+        setEdges((eds) => applyEdgeChanges(changes, eds));
+    }, [setEdges]);
 
-        // Convert connections
-        if (data.connections) {
-            data.connections.forEach(connection => {
-                // Convert old control points to waypoints and ensure we use adjustable edge type
-                let waypoints = [];
-                if (connection.waypoints) {
-                    waypoints = connection.waypoints;
-                } else if (connection.control) {
-                    // Migrate old single control point to waypoints array
-                    waypoints = [connection.control];
-                }
-                
-                reactFlowEdges.push({
-                    id: connection.id,
-                    source: connection.source,
-                    target: connection.target,
-                    type: 'enhanced', // Use enhanced type for Draw.io-style functionality
-                    animated: connection.animated || false,
-                    style: {
-                        strokeWidth: connection.style?.strokeWidth || 2,
-                        stroke: connection.style?.stroke || '#2563eb',
-                        zIndex: connection.zIndex || 5
-                    },
-                    zIndex: connection.zIndex || 5,
-                    markerStart: connection.markerStart,
-                    markerEnd: connection.markerEnd || { type: 'arrow' },
-                    data: {
-                        label: connection.label,
-                        description: connection.description || '',
-                        waypoints: waypoints,
-                        intersection: connection.intersection || 'none'
-                    }
-                });
-            });
-        }
-
-        return { nodes: reactFlowNodes, edges: reactFlowEdges };
-    }, [handleNodeLabelChange]);
+    // Conversion functions now come from useDiagramConverters hook (see line 192)
 
     // Migrate edges to use enhanced orthogonal edge functionality  
     const migrateEdgesToEnhanced = useCallback((edges) => {
@@ -403,18 +319,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             setIsInitialized(true);
         }
     }, [isInitialized, jsonToReactFlow, initialDiagram, updateNodeInternals]);
-
-    // Optimized save to history function
-    const saveToHistory = useCallback(() => {
-        if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-        }
-        saveTimeoutRef.current = setTimeout(() => {
-            const store = useDiagramStore.getState();
-            pushToHistory({ nodes: store.nodes, edges: store.edges });
-        }, 300);
-    }, [pushToHistory]);
-
     // Helper functions for modals
     const showPromptModal = useCallback((title, message, defaultValue, onConfirm) => {
         setPromptModal({
@@ -467,160 +371,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const showJsonValidatorModal = useCallback(() => {
         setJsonValidatorModal({ isOpen: true });
     }, []);
-
-    // Optimized change handlers
-    const handleNodesChange = useCallback((changes) => {
-        setNodes((nds) => applyNodeChanges(changes, nds));
-    }, []);
-
-    const onEdgesChange = useCallback((changes) => {
-        setEdges((eds) => applyEdgeChanges(changes, eds));
-    }, []);
-
-    const onNodeDragStop = useCallback((event, node) => {
-        const updatedNode = { ...node, position: node.position };
-        setNodes(prevNodes => 
-            prevNodes.map(n => n.id === node.id ? updatedNode : n)
-        );
-        saveToHistory();
-    }, [saveToHistory]);
-
-    const onEdgeUpdateStart = useCallback(() => { }, []);
-    const onEdgeUpdateEnd = useCallback(() => {
-        saveToHistory();
-    }, [saveToHistory]);
-    const onEdgeUpdate = useCallback((oldEdge, newConnection) => {
-        setEdges((eds) => reconnectEdge(oldEdge, newConnection, eds));
-    }, []);
-
-    const onConnectStart = useCallback(() => { }, []);
-    const onConnectEnd = useCallback(() => { }, []);
-
-    const onEdgeDoubleClick = useCallback((event, edge) => {
-        event.preventDefault(); // Prevent default browser behavior (e.g., text selection)
-        event.stopPropagation(); // Stop event propagation
-
-        const position = screenToFlowPosition({
-            x: event.clientX,
-            y: event.clientY,
-        });
-
-        setEdges((eds) =>
-            eds.map((e) => {
-                if (e.id === edge.id) {
-                    const newWaypoints = [...(e.data.waypoints || []), position];
-                    return { ...e, data: { ...e.data, waypoints: newWaypoints } };
-                }
-                return e;
-            })
-        );
-        saveToHistory();
-    }, [screenToFlowPosition, setEdges, saveToHistory]);
-
-    const defaultEdgeOptions = useMemo(() => ({
-        type: 'enhanced',
-        animated: true,
-        style: { strokeWidth: 2, stroke: '#2563eb', strokeDasharray: '5 5' },
-        data: { intersection: 'none' }
-    }), []);
-
-    // Handle new connections
-    const onConnect = useCallback((params) => {
-        const sourceNode = nodes.find(n => n.id === params.source);
-        const targetNode = nodes.find(n => n.id === params.target);
-
-        let defaultWaypoint = [];
-        if (sourceNode && targetNode) {
-            const sourceX = sourceNode.position.x + (sourceNode.width || 150) / 2;
-            const sourceY = sourceNode.position.y + (sourceNode.height || 80) / 2;
-            const targetX = targetNode.position.x + (targetNode.width || 150) / 2;
-            const targetY = targetNode.position.y + (targetNode.height || 80) / 2;
-            
-            // Create orthogonal waypoints for step-like routing
-            const midX = (sourceX + targetX) / 2;
-            const midY = (sourceY + targetY) / 2;
-            
-            // Create a simple L-shaped path (step routing)
-            if (Math.abs(sourceX - targetX) > Math.abs(sourceY - targetY)) {
-                // Horizontal routing preference
-                defaultWaypoint = [
-                    { x: midX, y: sourceY },
-                    { x: midX, y: targetY }
-                ];
-            } else {
-                // Vertical routing preference
-                defaultWaypoint = [
-                    { x: sourceX, y: midY },
-                    { x: targetX, y: midY }
-                ];
-            }
-        }
-
-        const newEdge = {
-            ...params,
-            id: `edge-${Date.now()}`,
-            type: 'enhanced',
-            animated: true,
-            style: {
-                strokeWidth: 2,
-                stroke: '#2563eb',
-                strokeDasharray: '5 5',
-                zIndex: 5
-            },
-            zIndex: 5,
-            markerEnd: { type: 'arrow' },
-            data: {
-                label: '',
-                description: '',
-                intersection: 'none',
-                waypoints: defaultWaypoint
-            }
-        };
-        setEdges((eds) => addEdge(newEdge, eds));
-        saveToHistory();
-    }, [saveToHistory, nodes]);
-
-
-
-    // Handle selection changes - now includes edges
-    const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }) => {
-        setSelectedElements({
-            nodes: selectedNodes || [],
-            edges: selectedEdges || [],
-        });
-        
-        // Update technical details panel
-        if (technicalDetailsEnabled) {
-            if (selectedNodes.length === 1) {
-                setSelectedElementForTechnicalDetails({ ...selectedNodes[0], type: 'node' });
-                setTechnicalDetailsPanelOpen(true);
-            } else if (selectedEdges.length === 1) {
-                setSelectedElementForTechnicalDetails({ ...selectedEdges[0], type: 'edge' });
-                setTechnicalDetailsPanelOpen(true);
-            } else {
-                setTechnicalDetailsPanelOpen(false);
-                setSelectedElementForTechnicalDetails(null);
-            }
-        } else {
-            setTechnicalDetailsPanelOpen(false);
-            setSelectedElementForTechnicalDetails(null);
-        }
-    }, [technicalDetailsEnabled]);
-
-    // Handle edge click - now uses property panel instead of modal
-    const onEdgeClick = useCallback((event, edge) => {
-        event.stopPropagation();
-        setSelectedElements({
-            nodes: [],
-            edges: [edge],
-        });
-        
-        // Update technical details only if enabled
-        if (technicalDetailsEnabled) {
-            setSelectedElementForTechnicalDetails({ ...edge, type: 'edge' });
-            setTechnicalDetailsPanelOpen(true);
-        }
-    }, [technicalDetailsEnabled]);
 
     // Handle property changes for both nodes and edges
     const handleElementPropertyChange = useCallback((elementType, property, value) => {
@@ -691,42 +441,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         saveToHistory();
     }, [selectedElements, saveToHistory]);
 
-    const applyAutoLayout = useCallback(async (currentNodes, algorithm = 'circular') => {
-        if (!serviceFactory || !isServiceInitialized) {
-            console.warn('Service layer not initialized, falling back to old method');
-            const laidOut = autoLayoutNodes(currentNodes, algorithm);
-            setNodes(laidOut);
-            laidOut.forEach(n => updateNodeInternals(n.id));
-            return;
-        }
-
-        try {
-            const diagramData = reactFlowToJson(currentNodes, edges);
-            const result = await serviceFactory.layoutDiagram(diagramData, {
-                algorithm: algorithm,
-                options: { spacing: 50 }
-            });
-            
-            if (result && result.success) {
-                const { nodes: laidOutNodes } = jsonToReactFlow(result.diagramData);
-                setNodes(laidOutNodes);
-                laidOutNodes.forEach(n => updateNodeInternals(n.id));
-            } else {
-                const errorMessage = result?.error || 'Unknown layout error';
-                console.error('Auto-layout failed:', errorMessage);
-                // Fallback to old method
-                const laidOut = autoLayoutNodes(currentNodes, algorithm);
-                setNodes(laidOut);
-                laidOut.forEach(n => updateNodeInternals(n.id));
-            }
-        } catch (error) {
-            console.error('Error applying auto-layout:', error.message || error);
-            // Fallback to old method
-            const laidOut = autoLayoutNodes(currentNodes, algorithm);
-            setNodes(laidOut);
-            laidOut.forEach(n => updateNodeInternals(n.id));
-        }
-    }, [updateNodeInternals, serviceFactory, isServiceInitialized, edges]);
+    // applyAutoLayout now comes from useLayoutHandlers hook (see line 216)
 
     // Add new container node
     const addContainerNode = useCallback(() => {
@@ -914,67 +629,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         saveToHistory();
     }, [handleNodeLabelChange, saveToHistory, screenToFlowPosition]);
 
-    // Copy selected elements
-    const copySelected = useCallback(() => {
-        if (selectedElements.nodes.length > 0 || selectedElements.edges.length > 0) {
-            setClipboardData({
-                nodes: selectedElements.nodes,
-                edges: selectedElements.edges
-            });
-        }
-    }, [selectedElements]);
-
-    // Paste elements
-    const pasteElements = useCallback(() => {
-        if (clipboardData) {
-            const newNodes = clipboardData.nodes.map(node => ({
-                ...node,
-                id: `${node.type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                position: {
-                    x: node.position.x + 50,
-                    y: node.position.y + 50
-                },
-                selected: false
-            }));
-
-            const newEdges = clipboardData.edges.map(edge => ({
-                ...edge,
-                id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                selected: false
-            }));
-
-            setNodes((nds) => [...nds, ...newNodes]);
-            setEdges((eds) => [...eds, ...newEdges]);
-            saveToHistory();
-        }
-    }, [clipboardData, saveToHistory]);
-
-    // Delete selected elements
-    const deleteSelected = useCallback(() => {
-        if (selectedElements.nodes.length === 0 && selectedElements.edges.length === 0) return;
-
-        const selectedNodeIds = selectedElements.nodes.map((node) => node.id);
-
-        const edgesToKeep = edges.filter(
-            (edge) =>
-                !selectedNodeIds.includes(edge.source) &&
-                !selectedNodeIds.includes(edge.target) &&
-                !selectedElements.edges.map((e) => e.id).includes(edge.id)
-        );
-
-        const nodesToKeep = nodes.filter((node) => {
-            return (
-                !selectedNodeIds.includes(node.id) &&
-                (!node.parentNode || !selectedNodeIds.includes(node.parentNode))
-            );
-        });
-
-        setNodes(nodesToKeep);
-        setEdges(edgesToKeep);
-        setSelectedElements({ nodes: [], edges: [] });
-        saveToHistory();
-    }, [selectedElements, nodes, edges, saveToHistory]);
-
+    // copySelected, pasteElements, deleteSelected now come from useClipboardHandlers hook (see line 206)
     // Undo/Redo now comes from Zustand (see lines 78-80)
 
     useEffect(() => {
@@ -1278,7 +933,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             }
         };
         inputElement.click();
-    }, [handleNodeLabelChange, saveToHistory]);
+    }, [handleNodeLabelChange, saveToHistory, setNodes, setEdges]);
 
     // Convert to draw.io XML format using service layer
     const exportToDrawioXML = useCallback(async () => {
@@ -1320,11 +975,16 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     try {
                         const importedData = JSON.parse(e.target.result);
                         const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(importedData);
-                        // Migrate edges to ensure waypoint functionality 
+                        // Migrate edges to ensure waypoint functionality
                         const migratedEdges = migrateEdgesToEnhanced(importedEdges);
-                        // Apply circular layout by default for imported diagrams
-                        applyAutoLayout(importedNodes, 'circular');
+
+                        // Set nodes and edges directly - positions are already in the JSON
+                        setNodes(importedNodes);
                         setEdges(migratedEdges);
+
+                        // Update node internals for proper rendering
+                        importedNodes.forEach(n => updateNodeInternals(n.id));
+
                         saveToHistory();
                     } catch (error) {
                         console.error('Error importing diagram:', error);
@@ -1335,48 +995,122 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             }
         };
         inputElement.click();
-    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToEnhanced]);
+    }, [jsonToReactFlow, saveToHistory, migrateEdgesToEnhanced, setNodes, setEdges, updateNodeInternals]);
 
     const importDiagramObject = useCallback(async (data) => {
+        console.log('📥 importDiagramObject called with data:', data);
+
         if (!serviceFactory || !isServiceInitialized) {
             console.warn('Service layer not initialized, falling back to old method');
             // Simple validation fallback
             if (!data || !data.containers || !data.nodes || !data.connections) {
+                console.error('Invalid diagram JSON - missing required fields');
                 alert('Invalid diagram JSON');
-                return;
+                throw new Error('Invalid diagram JSON');
             }
+
+            console.log('✅ Converting JSON to ReactFlow format...');
             const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
+            console.log('✅ Converted:', importedNodes.length, 'nodes,', importedEdges.length, 'edges');
+
             // Migrate edges to ensure waypoint functionality
             const migratedEdges = migrateEdgesToEnhanced(importedEdges);
-            // Apply circular layout by default for imported diagrams
-            applyAutoLayout(importedNodes, 'circular');
+            console.log('✅ Migrated edges');
+
+            // Set nodes and edges directly - positions are already in the JSON
+            console.log('✅ Setting nodes and edges in store...');
+            setNodes(importedNodes);
             setEdges(migratedEdges);
+
+            // Verify store was updated
+            const storeState = useDiagramStore.getState();
+            console.log('📊 Store after update:', {
+                nodeCount: storeState.nodes.length,
+                edgeCount: storeState.edges.length,
+                nodes: storeState.nodes,
+                edges: storeState.edges
+            });
+
+            // Update node internals for proper rendering
+            console.log('✅ Updating node internals...');
+            importedNodes.forEach(n => updateNodeInternals(n.id));
+
+            // Fit view to show all imported nodes
+            console.log('✅ Fitting view to imported diagram...');
+            setTimeout(() => {
+                fitView({ padding: 0.2, duration: 300 });
+            }, 100);
+
+            console.log('✅ Setting initialized flag...');
+            setIsInitialized(true);
+
+            console.log('✅ Saving to history...');
             saveToHistory();
+            console.log('✅ Import completed successfully!');
             return;
         }
 
         try {
             // Validate the diagram data
+            console.log('🔍 Validating diagram with service layer...');
             await serviceFactory.validateDiagram(data);
-            
+            console.log('✅ Validation passed');
+
             // If validation passes, import the diagram
+            console.log('✅ Converting JSON to ReactFlow format...');
             const { nodes: importedNodes, edges: importedEdges } = jsonToReactFlow(data);
+            console.log('✅ Converted:', importedNodes.length, 'nodes,', importedEdges.length, 'edges');
+
             // Migrate edges to ensure waypoint functionality
             const migratedEdges = migrateEdgesToEnhanced(importedEdges);
-            // Apply circular layout by default for imported diagrams
-            applyAutoLayout(importedNodes, 'circular');
+            console.log('✅ Migrated edges');
+
+            // Set nodes and edges directly - positions are already in the JSON
+            console.log('✅ Setting nodes and edges in store...');
+            setNodes(importedNodes);
             setEdges(migratedEdges);
+
+            // Verify store was updated
+            const storeState = useDiagramStore.getState();
+            console.log('📊 Store after update:', {
+                nodeCount: storeState.nodes.length,
+                edgeCount: storeState.edges.length,
+                nodes: storeState.nodes,
+                edges: storeState.edges
+            });
+
+            // Update node internals for proper rendering
+            console.log('✅ Updating node internals...');
+            importedNodes.forEach(n => updateNodeInternals(n.id));
+
+            // Fit view to show all imported nodes
+            console.log('✅ Fitting view to imported diagram...');
+            setTimeout(() => {
+                fitView({ padding: 0.2, duration: 300 });
+            }, 100);
+
+            console.log('✅ Saving to history...');
             saveToHistory();
+            console.log('✅ Import completed successfully!');
         } catch (error) {
-            console.error('Error importing diagram:', error);
+            console.error('❌ Error importing diagram:', error);
             alert('Error importing diagram: ' + error.message);
+            throw error;
         }
-    }, [jsonToReactFlow, applyAutoLayout, saveToHistory, migrateEdgesToEnhanced, serviceFactory, isServiceInitialized]);
+    }, [jsonToReactFlow, saveToHistory, migrateEdgesToEnhanced, serviceFactory, isServiceInitialized, setNodes, setEdges, updateNodeInternals, fitView]);
 
 
-    const handleJsonPasteImport = useCallback((data) => {
-        importDiagramObject(data);
-        setJsonPasteModal({ isOpen: false, onConfirm: null });
+    const handleJsonPasteImport = useCallback(async (data) => {
+        console.log('🎯 handleJsonPasteImport called');
+        try {
+            await importDiagramObject(data);
+            console.log('✅ Closing modal...');
+            setJsonPasteModal({ isOpen: false, onConfirm: null });
+        } catch (error) {
+            console.error('❌ handleJsonPasteImport error:', error);
+            // Don't close modal on error so user can see the error and try again
+            throw error;
+        }
     }, [importDiagramObject]);
 
     const validateJson = useCallback(async (data) => {
@@ -1493,10 +1227,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const exportAsJPG = useCallback(() => exportImage('jpg'), [exportImage]);
     const exportAsSVG = useCallback(() => exportImage('svg'), [exportImage]);
 
-    const autoLayout = useCallback(() => {
-        applyAutoLayout(nodes, 'circular');
-        saveToHistory();
-    }, [nodes, saveToHistory, applyAutoLayout]);
+    // autoLayout now comes from useLayoutHandlers hook (see line 216)
 
     const onLayoutSettings = useCallback(() => {
         setLayoutPanelOpen(true);
@@ -1572,89 +1303,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         }
     }, [selectedElements, edges, saveToHistory, updateNodeInternals]);
 
-    // Enhanced copy function that includes linked elements
-    const copySelectedWithLinks = useCallback(() => {
-        if (selectedElements.nodes.length === 0) return;
-
-        const collectIds = (ids, all = []) => {
-            ids.forEach(id => {
-                if (!all.includes(id)) {
-                    all.push(id);
-                    nodes.forEach(n => {
-                        if (n.parentNode === id) {
-                            collectIds([n.id], all);
-                        }
-                    });
-                }
-            });
-            return all;
-        };
-
-        const selectedNodeIds = collectIds(selectedElements.nodes.map(n => n.id));
-
-        const copiedNodes = nodes.filter(n => selectedNodeIds.includes(n.id));
-        const connectedEdges = edges.filter(
-            edge => selectedNodeIds.includes(edge.source) && selectedNodeIds.includes(edge.target)
-        );
-
-        setClipboardData({
-            nodes: copiedNodes,
-            edges: connectedEdges
-        });
-
-        // Optionally show a toast notification
-        // toast.success(`Copied ${selectedElements.nodes.length} nodes and ${connectedEdges.length} connections`);
-    }, [selectedElements, edges, nodes]);
-
-    // Enhanced paste function that preserves links between pasted elements
-    const pasteElementsWithLinks = useCallback(() => {
-        if (!clipboardData || clipboardData.nodes.length === 0) return;
-
-        // Create a mapping from old IDs to new IDs
-        const idMapping = {};
-
-        // Create new nodes with new IDs
-        const newNodes = clipboardData.nodes.map(node => {
-            const newId = `${node.type}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-            idMapping[node.id] = newId;
-
-            return {
-                ...node,
-                id: newId,
-                parentNode: node.parentNode ? (idMapping[node.parentNode] || node.parentNode) : undefined,
-                position: {
-                    x: node.position.x + 50,
-                    y: node.position.y + 50
-                },
-                selected: false
-            };
-        });
-
-        // Create new edges with updated source and target IDs
-        const newEdges = clipboardData.edges.map(edge => {
-            const newSource = idMapping[edge.source];
-            const newTarget = idMapping[edge.target];
-
-            // Only create edges if both source and target nodes were copied
-            if (newSource && newTarget) {
-                return {
-                    ...edge,
-                    id: `edge-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-                    source: newSource,
-                    target: newTarget,
-                    selected: false
-                };
-            }
-            return null;
-        }).filter(Boolean); // Filter out null edges
-
-        setNodes((nds) => [...nds, ...newNodes]);
-        setEdges(edges => [...edges, ...newEdges]);
-        saveToHistory();
-
-        // Optionally show a toast notification
-        // toast.success(`Pasted ${newNodes.length} nodes and ${newEdges.length} connections`);
-    }, [clipboardData, saveToHistory]);
+    // copySelectedWithLinks and pasteElementsWithLinks now come from useClipboardHandlers hook (see line 206)
 
     // Update panel position when node is dragged
     useEffect(() => {

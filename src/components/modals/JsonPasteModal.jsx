@@ -3,22 +3,27 @@ import React, { useState, useRef, useEffect } from 'react';
 const JsonPasteModal = ({ isOpen, title = 'Paste JSON', onConfirm, onCancel }) => {
   const [value, setValue] = useState('');
   const [error, setError] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
   const textareaRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
       setValue('');
       setError(null);
+      setIsImporting(false);
       if (textareaRef.current) textareaRef.current.focus();
     }
   }, [isOpen]);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     try {
+      setError(null);
+      setIsImporting(true);
       const data = JSON.parse(value);
-      if (onConfirm) onConfirm(data);
+      if (onConfirm) await onConfirm(data);
     } catch (e) {
-      setError('Invalid JSON');
+      setError(e.message || 'Invalid JSON');
+      setIsImporting(false);
       return;
     }
   };
@@ -42,8 +47,10 @@ const JsonPasteModal = ({ isOpen, title = 'Paste JSON', onConfirm, onCancel }) =
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         </div>
         <div className="modal-footer">
-          <button className="modal-button cancel" onClick={onCancel}>Cancel</button>
-          <button className="modal-button confirm" onClick={handleConfirm}>Import</button>
+          <button className="modal-button cancel" onClick={onCancel} disabled={isImporting}>Cancel</button>
+          <button className="modal-button confirm" onClick={handleConfirm} disabled={isImporting}>
+            {isImporting ? 'Importing...' : 'Import'}
+          </button>
         </div>
       </div>
     </div>
