@@ -1,12 +1,8 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect , useMemo} from 'react';
 import { X, Move } from 'lucide-react';
-import ReactFlow, {
-    Controls,
-    Background,
+import {
     addEdge,
     reconnectEdge,
-    MiniMap,
-    Panel,
     applyNodeChanges,
     applyEdgeChanges,
     useUpdateNodeInternals,
@@ -14,20 +10,12 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-// Import node components
-import DiamondNode from '../nodes/DiamondNode';
-import CircleNode from '../nodes/CircleNode';
-import HexagonNode from '../nodes/HexagonNode';
-import TriangleNode from '../nodes/TriangleNode';
-import ContainerNode from '../nodes/ContainerNode';
-import ComponentNode from '../nodes/ComponentNode';
-import UniversalShapeNode from '../nodes/UniversalShapeNode';
-import { DrawIoOrthogonalEdge } from '../edges';
-import OptimizedOrthogonalEdge from '../edges/OptimizedOrthogonalEdge';
+// Node and edge components now imported in EditorCanvasExtracted
 
 // Import extracted components
 import EditorModalsExtracted from './EditorModalsExtracted';
 import EditorPanelsExtracted from './EditorPanelsExtracted';
+import EditorCanvasExtracted from './EditorCanvasExtracted';
 
 import EnhancedMenuBar from './EnhancedMenuBar';
 import { autoLayoutNodes } from '../utils/autoLayout';
@@ -35,6 +23,9 @@ import { autoLayoutNodes } from '../utils/autoLayout';
 // Import new service layer
 import { ServiceFactory } from '../../services/ServiceFactory';
 import enhancedEdgeManager from '../../services/EnhancedEdgeManager';
+
+// Import Zustand store
+import useDiagramStore from '../../store/diagramStore';
 
 
 
@@ -76,28 +67,61 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         initializeServices();
     }, []);
 
-    // State for nodes and edges
-    const [nodes, setNodes] = useState([]);
-    const [edges, setEdges] = useState([]);
-    const [selectedElements, setSelectedElements] = useState({ nodes: [], edges: [] });
-    const [history, setHistory] = useState({ past: [], present: { nodes: [], edges: [] }, future: [] });
+    // Get all state from Zustand store
+    const nodes = useDiagramStore(state => state.nodes);
+    const edges = useDiagramStore(state => state.edges);
+    const setNodes = useDiagramStore(state => state.setNodes);
+    const setEdges = useDiagramStore(state => state.setEdges);
+    const selectedElements = useDiagramStore(state => state.selectedElements);
+    const setSelectedElements = useDiagramStore(state => state.setSelectedElements);
+    const history = useDiagramStore(state => state.history);
+    const pushToHistory = useDiagramStore(state => state.pushToHistory);
+    const undo = useDiagramStore(state => state.undo);
+    const redo = useDiagramStore(state => state.redo);
+    const clipboardData = useDiagramStore(state => state.clipboardData);
+    const setClipboardData = useDiagramStore(state => state.setClipboardData);
+
+    // UI state from Zustand
+    const propertyPanelOpen = useDiagramStore(state => state.propertyPanelOpen);
+    const setPropertyPanelOpen = useDiagramStore(state => state.setPropertyPanelOpen);
+    const propertyPanelMinimized = useDiagramStore(state => state.propertyPanelMinimized);
+    const setPropertyPanelMinimized = useDiagramStore(state => state.setPropertyPanelMinimized);
+    const statsPanelOpen = useDiagramStore(state => state.statsPanelOpen);
+    const setStatsPanelOpen = useDiagramStore(state => state.setStatsPanelOpen);
+    const panMode = useDiagramStore(state => state.panMode);
+    const setPanMode = useDiagramStore(state => state.setPanMode);
+    const shapeLibraryOpen = useDiagramStore(state => state.shapeLibraryOpen);
+    const setShapeLibraryOpen = useDiagramStore(state => state.setShapeLibraryOpen);
+
+    // Modal state from Zustand
+    const modals = useDiagramStore(state => state.modals);
+    const openModal = useDiagramStore(state => state.openModal);
+    const closeModal = useDiagramStore(state => state.closeModal);
+
+    // Local state only for things not in Zustand yet
     const [isInitialized, setIsInitialized] = useState(false);
-    const [clipboardData, setClipboardData] = useState(null);
-    const [propertyPanelOpen, setPropertyPanelOpen] = useState(true);
-    const [propertyPanelMinimized, setPropertyPanelMinimized] = useState(false);
-    const [statsPanelOpen, setStatsPanelOpen] = useState(true);
-    const [panMode, setPanMode] = useState(false);
-    const [shapeLibraryOpen, setShapeLibraryOpen] = useState(false);
-    
-    // Technical details state
     const [technicalDetailsPanelOpen, setTechnicalDetailsPanelOpen] = useState(false);
     const [selectedElementForTechnicalDetails, setSelectedElementForTechnicalDetails] = useState(null);
-    const [technicalDetailsEnabled, setTechnicalDetailsEnabled] = useState(true); // NEW
-    const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 }); // NEW
-    
-    // Layout settings state
+    const [technicalDetailsEnabled, setTechnicalDetailsEnabled] = useState(true);
+    const [panelOffset, setPanelOffset] = useState({ x: 0, y: 0 });
     const [layoutPanelOpen, setLayoutPanelOpen] = useState(false);
     const [currentLayoutAlgorithm, setCurrentLayoutAlgorithm] = useState('circular');
+
+    // Modals converted to Zustand-compatible format
+    const promptModal = modals.prompt;
+    const setPromptModal = (value) => typeof value === 'function' ? openModal('prompt', value(promptModal.config)) : openModal('prompt', value);
+    const confirmModal = modals.confirm;
+    const setConfirmModal = (value) => typeof value === 'function' ? openModal('confirm', value(confirmModal.config)) : openModal('confirm', value);
+    const containerSelectorModal = modals.containerSelector;
+    const setContainerSelectorModal = (value) => typeof value === 'function' ? openModal('containerSelector', value(containerSelectorModal.config)) : openModal('containerSelector', value);
+    const shapeSelectorModal = modals.shapeSelector;
+    const setShapeSelectorModal = (value) => typeof value === 'function' ? openModal('shapeSelector', value(shapeSelectorModal.config)) : openModal('shapeSelector', value);
+    const jsonPasteModal = modals.jsonPaste;
+    const setJsonPasteModal = (value) => typeof value === 'function' ? openModal('jsonPaste', value(jsonPasteModal.config)) : openModal('jsonPaste', value);
+    const jsonValidatorModal = modals.jsonValidator;
+    const setJsonValidatorModal = (value) => typeof value === 'function' ? openModal('jsonValidator', value(jsonValidatorModal.config)) : openModal('jsonValidator', value);
+    const exportModal = modals.export;
+    const setExportModal = (value) => typeof value === 'function' ? openModal('export', value(exportModal.config)) : openModal('export', value);
 
     const getDiagramBounds = useCallback(() => {
         if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
@@ -116,38 +140,19 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const updateNodeInternals = useUpdateNodeInternals();
     const { screenToFlowPosition } = useReactFlow();
 
-    // State for modals
-    const [promptModal, setPromptModal] = useState({ isOpen: false, title: '', message: '', defaultValue: '', onConfirm: null });
-    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
-    const [containerSelectorModal, setContainerSelectorModal] = useState({ isOpen: false, title: '', message: '', containers: [], onSelect: null });
-    const [shapeSelectorModal, setShapeSelectorModal] = useState({ isOpen: false });
-    const [jsonPasteModal, setJsonPasteModal] = useState({ isOpen: false, onConfirm: null });
-    const [jsonValidatorModal, setJsonValidatorModal] = useState({ isOpen: false });
-    const [exportModal, setExportModal] = useState({ isOpen: false });
+    // Modal state now comes from Zustand (see lines 110-124)
 
     // Refs
     const reactFlowWrapper = useRef(null);
     const saveTimeoutRef = useRef(null);
 
-    const togglePropertyPanel = useCallback(() => {
-        setPropertyPanelOpen((prev) => {
-            const next = !prev;
-            if (next) setPropertyPanelMinimized(false);
-            return next;
-        });
-    }, []);
-
+    const togglePropertyPanel = useDiagramStore(state => state.togglePropertyPanel);
     const togglePropertyPanelMinimized = useCallback(() => {
-        setPropertyPanelMinimized((prev) => !prev);
-    }, []);
+        setPropertyPanelMinimized(!propertyPanelMinimized);
+    }, [propertyPanelMinimized, setPropertyPanelMinimized]);
+    const toggleStatsPanel = useDiagramStore(state => state.toggleStatsPanel);
 
-    const toggleStatsPanel = useCallback(() => {
-        setStatsPanelOpen((prev) => !prev);
-    }, []);
-
-    const togglePanMode = useCallback(() => {
-        setPanMode((prev) => !prev);
-    }, []);
+    const togglePanMode = useDiagramStore(state => state.togglePanMode);
 
     const handleContextMenu = useCallback(
         (event) => {
@@ -159,26 +164,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     );
 
     // Custom node types
-    const nodeTypes = useMemo(() => ({
-        diamond: DiamondNode,
-        circle: CircleNode,
-        hexagon: HexagonNode,
-        triangle: TriangleNode,
-        container: ContainerNode,
-        component: ComponentNode,
-        universalShape: UniversalShapeNode,
-    }), []);
-
-    const edgeTypes = useMemo(() => ({
-        adjustable: OptimizedOrthogonalEdge,
-        enhanced: OptimizedOrthogonalEdge,
-        smart: OptimizedOrthogonalEdge,
-        drawio: OptimizedOrthogonalEdge,
-        orthogonal: OptimizedOrthogonalEdge,
-        segment: OptimizedOrthogonalEdge,
-        elbow: OptimizedOrthogonalEdge,
-        straight: OptimizedOrthogonalEdge
-    }), []);
+    // nodeTypes and edgeTypes moved to EditorCanvasExtracted
 
     // Stable node label change handler
     const handleNodeLabelChange = useCallback((nodeId, label) => {
@@ -202,13 +188,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             clearTimeout(saveTimeoutRef.current);
         }
         saveTimeoutRef.current = setTimeout(() => {
-            setHistory((prev) => ({
-                past: [...prev.past, prev.present],
-                present: { nodes, edges },
-                future: [],
-            }));
+            const store = useDiagramStore.getState();
+            pushToHistory({ nodes: store.nodes, edges: store.edges });
         }, 500);
-    }, [nodes, edges]);
+    }, [setNodes, pushToHistory]);
 
     // Conversion functions for service layer
     const reactFlowToJson = useCallback((reactFlowNodes, reactFlowEdges) => {
@@ -415,11 +398,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             const laidOut = autoLayoutNodes(initialNodes, 'circular');
             setNodes(laidOut);
             setEdges(enhancedEdges);
-            setHistory({
-                past: [],
-                present: { nodes: laidOut, edges: enhancedEdges },
-                future: [],
-            });
+            pushToHistory({ nodes: laidOut, edges: enhancedEdges });
             laidOut.forEach(n => updateNodeInternals(n.id));
             setIsInitialized(true);
         }
@@ -431,13 +410,10 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             clearTimeout(saveTimeoutRef.current);
         }
         saveTimeoutRef.current = setTimeout(() => {
-            setHistory((prev) => ({
-                past: [...prev.past, prev.present],
-                present: { nodes, edges },
-                future: [],
-            }));
+            const store = useDiagramStore.getState();
+            pushToHistory({ nodes: store.nodes, edges: store.edges });
         }, 300);
-    }, [nodes, edges]);
+    }, [pushToHistory]);
 
     // Helper functions for modals
     const showPromptModal = useCallback((title, message, defaultValue, onConfirm) => {
@@ -999,42 +975,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         saveToHistory();
     }, [selectedElements, nodes, edges, saveToHistory]);
 
-    // Undo/Redo functions
-    const undo = useCallback(() => {
-        setHistory((prev) => {
-            if (prev.past.length === 0) return prev;
-
-            const newPresent = prev.past[prev.past.length - 1];
-            const newPast = prev.past.slice(0, prev.past.length - 1);
-
-            setNodes(newPresent.nodes);
-            setEdges(newPresent.edges);
-
-            return {
-                past: newPast,
-                present: newPresent,
-                future: [prev.present, ...prev.future],
-            };
-        });
-    }, []);
-
-    const redo = useCallback(() => {
-        setHistory((prev) => {
-            if (prev.future.length === 0) return prev;
-
-            const newPresent = prev.future[0];
-            const newFuture = prev.future.slice(1);
-
-            setNodes(newPresent.nodes);
-            setEdges(newPresent.edges);
-
-            return {
-                past: [...prev.past, prev.present],
-                present: newPresent,
-                future: newFuture,
-            };
-        });
-    }, []);
+    // Undo/Redo now comes from Zustand (see lines 78-80)
 
     useEffect(() => {
         const handleKeyDown = (event) => {
@@ -1987,112 +1928,54 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                 </div>
             </div>
 
-            {/* Main Editor */}
-            <div
-                className="flex-1 w-full h-full relative bg-white dark:bg-gray-800"
-                ref={reactFlowWrapper}
-                onContextMenu={handleContextMenu}
-            >
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={handleNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    onConnectStart={onConnectStart}
-                    onConnectEnd={onConnectEnd}
-                    onSelectionChange={onSelectionChange}
-                    onEdgeClick={onEdgeClick}
-                    onEdgeUpdate={onEdgeUpdate}
-                    onEdgeUpdateStart={onEdgeUpdateStart}
-                    onEdgeUpdateEnd={onEdgeUpdateEnd}
-                    onNodeDragStop={onNodeDragStop}
-                    nodeTypes={nodeTypes}
-                    edgeTypes={edgeTypes}
-                    connectionMode="loose"  // Changed from "strict" to "loose"
-                    connectionLineStyle={{ stroke: '#2563eb', strokeWidth: 2 }}
-                    fitView
-                    snapToGrid={false}
-                    defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-                    attributionPosition="bottom-right"
-                    deleteKeyCode={null}
-                    selectionOnDrag={!panMode}
-                    panOnDrag={panMode ? [0, 1] : [1]}
-                    selectionMode="partial"
-                    minZoom={0.2}
-                    maxZoom={2}
-                    defaultEdgeOptions={defaultEdgeOptions}
-                    elevateNodesOnSelect={true}
-                    nodesDraggable={true}
-                    nodesConnectable={true}
-                    elementsSelectable={true}
-                    zoomOnScroll={true}
-                    zoomOnPinch={true}
-                    panOnScroll={false}
-                    preventScrolling={true}
-                    onTouchStart={(e) => {
-                        // Enhanced touch support for mobile devices
-                        if (e.touches.length === 2) {
-                            // Two finger touch - enable pan mode temporarily for better navigation
-                            setPanMode(true);
-                        }
-                    }}
-                    onTouchEnd={(e) => {
-                        // Reset pan mode after touch interaction
-                        if (e.touches.length === 0) {
-                            // Could implement logic to restore previous pan mode state
-                        }
-                    }}
-                    connectOnClick={true}  // Allow connections by clicking handles
-                    onPaneContextMenu={handleContextMenu}
-                    onNodeContextMenu={handleContextMenu}
-                    onEdgeContextMenu={handleContextMenu}
-                    onEdgeDoubleClick={onEdgeDoubleClick} // Add this line
-                    isValidConnection={(connection) => {
-                        // Allow all connections between different nodes
-                        return connection.source !== connection.target;
-                    }}
-                >
-
-                    <Controls className="bg-white/95 dark:bg-gray-800/95 rounded-lg shadow-lg backdrop-blur-md p-1" />
-                    <Background color="#aaa" gap={16} />
-                    <MiniMap
-                        nodeStrokeWidth={3}
-                        zoomable
-                        pannable
-                        className="bg-white/95 dark:bg-gray-800/95 rounded-lg shadow-lg backdrop-blur-md"
-                    />
-
-
-                    {/* Panels - Inside ReactFlow for proper positioning */}
-                    <EditorPanelsExtracted
-                        statsPanelOpen={statsPanelOpen}
-                        setStatsPanelOpen={setStatsPanelOpen}
-                        nodes={nodes}
-                        edges={edges}
-                        selectedElements={selectedElements}
-                        propertyPanelOpen={propertyPanelOpen}
-                        propertyPanelMinimized={propertyPanelMinimized}
-                        togglePropertyPanelMinimized={togglePropertyPanelMinimized}
-                        setPropertyPanelOpen={setPropertyPanelOpen}
-                        setPropertyPanelMinimized={setPropertyPanelMinimized}
-                        handleElementPropertyChange={handleElementPropertyChange}
-                        shapeLibraryOpen={shapeLibraryOpen}
-                        setShapeLibraryOpen={setShapeLibraryOpen}
-                        handleShapeSelect={handleShapeSelect}
-                        selectedElementForTechnicalDetails={selectedElementForTechnicalDetails}
-                        technicalDetailsPanelOpen={technicalDetailsPanelOpen}
-                        setTechnicalDetailsPanelOpen={setTechnicalDetailsPanelOpen}
-                        setSelectedElementForTechnicalDetails={setSelectedElementForTechnicalDetails}
-                        panelOffset={panelOffset}
-                        layoutPanelOpen={layoutPanelOpen}
-                        setLayoutPanelOpen={setLayoutPanelOpen}
-                        currentLayoutAlgorithm={currentLayoutAlgorithm}
-                        setCurrentLayoutAlgorithm={setCurrentLayoutAlgorithm}
-                        setNodes={setNodes}
-                    />
-                </ReactFlow>
-            </div>
+            {/* Main Editor Canvas */}
+            <EditorCanvasExtracted
+                reactFlowWrapper={reactFlowWrapper}
+                handleContextMenu={handleContextMenu}
+                nodes={nodes}
+                edges={edges}
+                handleNodesChange={handleNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onConnectStart={onConnectStart}
+                onConnectEnd={onConnectEnd}
+                onSelectionChange={onSelectionChange}
+                onEdgeClick={onEdgeClick}
+                onEdgeUpdate={onEdgeUpdate}
+                onEdgeUpdateStart={onEdgeUpdateStart}
+                onEdgeUpdateEnd={onEdgeUpdateEnd}
+                onNodeDragStop={onNodeDragStop}
+                onEdgeDoubleClick={onEdgeDoubleClick}
+                panMode={panMode}
+                setPanMode={setPanMode}
+                defaultEdgeOptions={defaultEdgeOptions}
+                panelsProps={{
+                    statsPanelOpen,
+                    setStatsPanelOpen,
+                    nodes,
+                    edges,
+                    selectedElements,
+                    propertyPanelOpen,
+                    propertyPanelMinimized,
+                    togglePropertyPanelMinimized,
+                    setPropertyPanelOpen,
+                    setPropertyPanelMinimized,
+                    handleElementPropertyChange,
+                    shapeLibraryOpen,
+                    setShapeLibraryOpen,
+                    handleShapeSelect,
+                    selectedElementForTechnicalDetails,
+                    technicalDetailsPanelOpen,
+                    setTechnicalDetailsPanelOpen,
+                    setSelectedElementForTechnicalDetails,
+                    panelOffset,
+                    layoutPanelOpen,
+                    setLayoutPanelOpen,
+                    currentLayoutAlgorithm,
+                    setCurrentLayoutAlgorithm,
+                    setNodes
+                }}
+            />
 
             {/* Modals - Extracted to separate component */}
             <EditorModalsExtracted
