@@ -116,19 +116,40 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     // Modals converted to Zustand-compatible format
     const promptModal = modals.prompt;
-    const setPromptModal = (value) => typeof value === 'function' ? openModal('prompt', value(promptModal.config)) : openModal('prompt', value);
+    const setPromptModal = (value) => {
+        const config = typeof value === 'function' ? value(promptModal.config) : value;
+        config.isOpen === false ? closeModal('prompt') : openModal('prompt', config);
+    };
     const confirmModal = modals.confirm;
-    const setConfirmModal = (value) => typeof value === 'function' ? openModal('confirm', value(confirmModal.config)) : openModal('confirm', value);
+    const setConfirmModal = (value) => {
+        const config = typeof value === 'function' ? value(confirmModal.config) : value;
+        config.isOpen === false ? closeModal('confirm') : openModal('confirm', config);
+    };
     const containerSelectorModal = modals.containerSelector;
-    const setContainerSelectorModal = (value) => typeof value === 'function' ? openModal('containerSelector', value(containerSelectorModal.config)) : openModal('containerSelector', value);
+    const setContainerSelectorModal = (value) => {
+        const config = typeof value === 'function' ? value(containerSelectorModal.config) : value;
+        config.isOpen === false ? closeModal('containerSelector') : openModal('containerSelector', config);
+    };
     const shapeSelectorModal = modals.shapeSelector;
-    const setShapeSelectorModal = (value) => typeof value === 'function' ? openModal('shapeSelector', value(shapeSelectorModal.config)) : openModal('shapeSelector', value);
+    const setShapeSelectorModal = (value) => {
+        const config = typeof value === 'function' ? value(shapeSelectorModal.config) : value;
+        config.isOpen === false ? closeModal('shapeSelector') : openModal('shapeSelector', config);
+    };
     const jsonPasteModal = modals.jsonPaste;
-    const setJsonPasteModal = (value) => typeof value === 'function' ? openModal('jsonPaste', value(jsonPasteModal.config)) : openModal('jsonPaste', value);
+    const setJsonPasteModal = (value) => {
+        const config = typeof value === 'function' ? value(jsonPasteModal.config) : value;
+        config.isOpen === false ? closeModal('jsonPaste') : openModal('jsonPaste', config);
+    };
     const jsonValidatorModal = modals.jsonValidator;
-    const setJsonValidatorModal = (value) => typeof value === 'function' ? openModal('jsonValidator', value(jsonValidatorModal.config)) : openModal('jsonValidator', value);
+    const setJsonValidatorModal = (value) => {
+        const config = typeof value === 'function' ? value(jsonValidatorModal.config) : value;
+        config.isOpen === false ? closeModal('jsonValidator') : openModal('jsonValidator', config);
+    };
     const exportModal = modals.export;
-    const setExportModal = (value) => typeof value === 'function' ? openModal('export', value(exportModal.config)) : openModal('export', value);
+    const setExportModal = (value) => {
+        const config = typeof value === 'function' ? value(exportModal.config) : value;
+        config.isOpen === false ? closeModal('export') : openModal('export', config);
+    };
 
     const getDiagramBounds = useCallback(() => {
         if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
@@ -303,8 +324,11 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     // Initialize diagram from the provided configuration
     useEffect(() => {
         if (!isInitialized) {
+            console.log('🔧 INITIALIZATION EFFECT RUNNING - isInitialized:', isInitialized);
             const config = initialDiagram || { containers: [], nodes: [], connections: [] };
             const { nodes: initialNodes, edges: initialEdges } = jsonToReactFlow(config);
+            console.log('🔧 Initial config converted:', initialNodes.length, 'nodes');
+
             // Migrate edges to ensure waypoint functionality - now use enhanced edges
             const enhancedEdges = initialEdges.map(edge => ({
                 ...edge,
@@ -312,13 +336,15 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             }));
             // Apply circular layout by default for initial diagrams
             const laidOut = autoLayoutNodes(initialNodes, 'circular');
+            console.log('🔧 Setting initial nodes/edges and marking as initialized');
             setNodes(laidOut);
             setEdges(enhancedEdges);
             pushToHistory({ nodes: laidOut, edges: enhancedEdges });
             laidOut.forEach(n => updateNodeInternals(n.id));
             setIsInitialized(true);
         }
-    }, [isInitialized, jsonToReactFlow, initialDiagram, updateNodeInternals]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isInitialized]); // ONLY depend on isInitialized to prevent re-runs and clearing imported data
     // Helper functions for modals
     const showPromptModal = useCallback((title, message, defaultValue, onConfirm) => {
         setPromptModal({
@@ -1088,6 +1114,9 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             setTimeout(() => {
                 fitView({ padding: 0.2, duration: 300 });
             }, 100);
+
+            console.log('✅ Setting initialized flag...');
+            setIsInitialized(true);
 
             console.log('✅ Saving to history...');
             saveToHistory();

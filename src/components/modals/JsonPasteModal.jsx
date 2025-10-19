@@ -21,6 +21,8 @@ const JsonPasteModal = ({ isOpen, title = 'Paste JSON', onConfirm, onCancel }) =
       setIsImporting(true);
       const data = JSON.parse(value);
       if (onConfirm) await onConfirm(data);
+      // Success - reset state (modal will close via parent)
+      setIsImporting(false);
     } catch (e) {
       setError(e.message || 'Invalid JSON');
       setIsImporting(false);
