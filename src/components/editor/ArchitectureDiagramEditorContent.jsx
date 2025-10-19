@@ -24,6 +24,9 @@ import { autoLayoutNodes } from '../utils/autoLayout';
 import { ServiceFactory } from '../../services/ServiceFactory';
 import enhancedEdgeManager from '../../services/EnhancedEdgeManager';
 
+// Import utilities
+import { getDiagramBounds, migrateEdgesToEnhanced } from '../../utils/diagramHelpers';
+
 // Import Zustand store
 import useDiagramStore from '../../store/diagramStore';
 
@@ -34,6 +37,7 @@ import { useClipboardHandlers } from '../../hooks/useClipboardHandlers';
 import { useLayoutHandlers } from '../../hooks/useLayoutHandlers';
 import { useDiagramConverters } from '../../hooks/useDiagramConverters';
 import { useImportExport } from '../../hooks/useImportExport';
+import { useNodeCreation } from '../../hooks/useNodeCreation';
 
 
 
@@ -115,19 +119,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     const [layoutPanelOpen, setLayoutPanelOpen] = useState(false);
     // currentLayoutAlgorithm now comes from useLayoutHandlers hook
 
-    const getDiagramBounds = useCallback(() => {
-        if (nodes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        nodes.forEach((n) => {
-            const width = n.__rf?.width || n.style?.width || 150;
-            const height = n.__rf?.height || n.style?.height || 80;
-            minX = Math.min(minX, n.position.x);
-            minY = Math.min(minY, n.position.y);
-            maxX = Math.max(maxX, n.position.x + width);
-            maxY = Math.max(maxY, n.position.y + height);
-        });
-        return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-    }, [nodes]);
 
     const updateNodeInternals = useUpdateNodeInternals();
     const { screenToFlowPosition, fitView } = useReactFlow();
@@ -213,26 +204,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     // Migrate edges to use enhanced orthogonal edge functionality
     const migrateEdgesToEnhanced = useCallback((edges) => {
-        return edges.map(edge => {
-            // Ensure all edges use enhanced type for Draw.io-style functionality
-            const migratedEdge = {
-                ...edge,
-                type: 'enhanced',
-                style: {
-                    ...edge.style,
-                    stroke: edge.style?.stroke || '#2563eb',
-                    strokeWidth: edge.style?.strokeWidth || 2
-                },
-                data: {
-                    ...edge.data,
-                    waypoints: edge.data?.waypoints || (edge.data?.control ? [edge.data.control] : []),
-                    intersection: edge.data?.intersection || 'none'
-                }
-            };
-            return migratedEdge;
-        });
-    }, []);
-
     // Import/Export handlers
     const {
         exportJSON,
@@ -262,8 +233,22 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
         applyAutoLayout,
         currentLayoutAlgorithm,
         setIsInitialized,
-        reactFlowWrapper,
-        getDiagramBounds
+        reactFlowWrapper
+    });
+
+    // Node creation handlers
+    const {
+        addContainerNode,
+        addComponentNode,
+        addShapeNode,
+        handleShapeSelect
+    } = useNodeCreation({
+        handleNodeLabelChange,
+        saveToHistory,
+        showPromptModal,
+        showContainerSelectorModal,
+        screenToFlowPosition,
+        reactFlowWrapper
     });
 
     // Handle selection changes - includes edges and technical details panel logic
@@ -404,190 +389,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     // applyAutoLayout now comes from useLayoutHandlers hook (see line 216)
 
     // Add new container node
-    const addContainerNode = useCallback(() => {
-        showPromptModal('Add Container', 'Enter container name:', 'New Container', (name) => {
-            let position = { x: 0, y: 0 };
-            if (reactFlowWrapper.current) {
-                const { left, top, width, height } = reactFlowWrapper.current.getBoundingClientRect();
-                const center = { x: left + width / 2, y: top + height / 2 };
-                position = screenToFlowPosition({ x: center.x, y: center.y });
-            }
-
-            const newNode = {
-                id: `container-${Date.now()}`,
-                type: 'container',
-                position,
-                data: {
-                    label: name,
-                    icon: '📦',
-                    color: '#f5f5f5',
-                    borderColor: '#ddd',
-                    description: '',
-                    onLabelChange: handleNodeLabelChange,
-                },
-                style: {
-                    width: 400,
-                    height: 300,
-                    zIndex: 1,
-                },
-                draggable: true,
-                selectable: true,
-                zIndex: 1
-            };
-
-            setNodes((nds) => [...nds, newNode]);
-            saveToHistory();
-        });
-    }, [nodes, handleNodeLabelChange, saveToHistory, showPromptModal, screenToFlowPosition]);
-
-    // Add new component node
-    const addComponentNode = useCallback(() => {
-        const containerNodes = nodes.filter(node => node.type === 'container');
-
-        if (containerNodes.length > 0) {
-            showContainerSelectorModal(
-                'Select Container',
-                'Choose a container for this component:',
-                containerNodes,
-                (containerId) => {
-                    showPromptModal('Add Component', 'Enter component name:', 'New Component', (name) => {
-                        const container = nodes.find(node => node.id === containerId);
-                        let position = { x: 50, y: 50 };
-
-                        if (container) {
-                            const componentsInContainer = nodes.filter(
-                                node => node.parentNode === containerId
-                            ).length;
-
-                            position = {
-                                x: 50 + (componentsInContainer % 2) * 170,
-                                y: 50 + Math.floor(componentsInContainer / 2) * 100
-                            };
-                        }
-
-                        const newNode = {
-                            id: `component-${Date.now()}`,
-                            type: 'component',
-                            position,
-                            parentNode: containerId,
-                            data: {
-                                label: name,
-                                icon: '🔹',
-                                color: '#E3F2FD',
-                                borderColor: '#90CAF9',
-                                description: '',
-                                onLabelChange: handleNodeLabelChange,
-                            },
-                            style: {
-                                width: 150,
-                                height: 80,
-                                zIndex: 10,
-                            },
-                            draggable: true,
-                            selectable: true,
-                            zIndex: 10
-                        };
-
-                        setNodes((nds) => [...nds, newNode]);
-                        saveToHistory();
-                    });
-                }
-            );
-        } else {
-            showPromptModal('Add Component', 'Enter component name:', 'New Component', (name) => {
-                const newNode = {
-                    id: `component-${Date.now()}`,
-                    type: 'component',
-                    position: { x: Math.random() * 300 + 100, y: Math.random() * 200 + 100 },
-                    data: {
-                        label: name,
-                        icon: '🔹',
-                        color: '#E3F2FD',
-                        borderColor: '#90CAF9',
-                        description: '',
-                        onLabelChange: handleNodeLabelChange,
-                    },
-                    style: {
-                        width: 150,
-                        height: 80,
-                        zIndex: 10,
-                    },
-                    draggable: true,
-                    selectable: true,
-                    zIndex: 10
-                };
-
-                setNodes((nds) => [...nds, newNode]);
-                saveToHistory();
-            });
-        }
-    }, [nodes, handleNodeLabelChange, saveToHistory, showContainerSelectorModal, showPromptModal]);
-
-    // Duplicate a node - Removed unused function to fix ESLint warning
-
-    // Add new shape node
-    const addShapeNode = useCallback((shapeType) => {
-        showPromptModal('Add Shape', 'Enter shape name:', 'New Shape', (name) => {
-            const newNode = {
-                id: `${shapeType}-${Date.now()}`,
-                type: shapeType,
-                position: { x: Math.random() * 300 + 100, y: Math.random() * 200 + 100 },
-                data: {
-                    label: name,
-                    icon: shapeType === 'diamond' ? '♦️' : shapeType === 'circle' ? '⭕' : shapeType === 'triangle' ? '🔺' : '⬢',
-                    color: shapeType === 'diamond' ? '#81D4FA' : shapeType === 'circle' ? '#C5E1A5' : shapeType === 'triangle' ? '#FFD54F' : '#FFCC80',
-                    borderColor: '#ddd',
-                    description: '',
-                    onLabelChange: handleNodeLabelChange,
-                },
-                style: {
-                    width: 100,
-                    height: 100,
-                    zIndex: 15,
-                },
-                draggable: true,
-                selectable: true,
-                zIndex: 15
-            };
-
-            setNodes((nds) => [...nds, newNode]);
-            saveToHistory();
-        });
-    }, [handleNodeLabelChange, saveToHistory, showPromptModal]);
-
-    // Handle shape selection from shape library
-    const handleShapeSelect = useCallback((shapeData) => {
-        let position = { x: 100, y: 100 };
-        
-        // Try to position at viewport center
-        if (reactFlowWrapper.current) {
-            const { left, top, width, height } = reactFlowWrapper.current.getBoundingClientRect();
-            const center = { x: left + width / 2, y: top + height / 2 };
-            position = screenToFlowPosition({ x: center.x, y: center.y });
-        }
-
-        const newNode = {
-            id: `shape-${Date.now()}`,
-            type: shapeData.type,
-            position,
-            data: {
-                ...shapeData,
-                onLabelChange: handleNodeLabelChange
-            },
-            style: {
-                width: shapeData.defaultSize?.width || 100,
-                height: shapeData.defaultSize?.height || 80,
-                zIndex: 15
-            },
-            draggable: true,
-            selectable: true,
-            zIndex: 15
-        };
-
-        setNodes((nds) => [...nds, newNode]);
-        setShapeLibraryOpen(false);
-        saveToHistory();
-    }, [handleNodeLabelChange, saveToHistory, screenToFlowPosition]);
 
     // copySelected, pasteElements, deleteSelected now come from useClipboardHandlers hook (see line 206)
     // Undo/Redo now comes from Zustand (see lines 78-80)
@@ -1027,6 +828,7 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             {/* Technical Details Tooltip - Removed unused component to fix ESLint errors */}
         </div>
     );
+    });
 
 };
 

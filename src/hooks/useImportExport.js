@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import useDiagramStore from '../store/diagramStore';
+import { getDiagramBounds } from '../utils/diagramHelpers';
 
 /**
  * Custom hook for all import/export functionality
@@ -18,8 +19,7 @@ export const useImportExport = ({
     applyAutoLayout,
     currentLayoutAlgorithm,
     setIsInitialized,
-    reactFlowWrapper,
-    getDiagramBounds
+    reactFlowWrapper
 }) => {
     // Get state and actions from Zustand
     const nodes = useDiagramStore(state => state.nodes);
@@ -168,7 +168,7 @@ export const useImportExport = ({
             if (!reactFlowWrapper.current) return;
             const renderer = reactFlowWrapper.current.querySelector('.react-flow__renderer') || reactFlowWrapper.current;
             const isDark = !!reactFlowWrapper.current.closest('.dark');
-            const bounds = getDiagramBounds();
+            const bounds = getDiagramBounds(nodes);
             const margin = 20;
             const width = bounds.width + margin * 2;
             const height = bounds.height + margin * 2;
