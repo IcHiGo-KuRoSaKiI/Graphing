@@ -3,6 +3,7 @@ import { ValidationService } from './ValidationService.js';
 import { LayoutService } from './LayoutService.js';
 import { ExportService } from './ExportService.js';
 import { TechnicalDetailsService } from './TechnicalDetailsService.js';
+import edgeService from './EdgeService.js';
 import { NodeTypePlugin } from '../plugins/NodeTypePlugin.js';
 import { ExportFormatPlugin } from '../plugins/ExportFormatPlugin.js';
 import { DiagramConfig } from '../config/DiagramConfig.js';
@@ -37,6 +38,16 @@ export class ServiceFactory {
             const exportService = new ExportService();
             const technicalDetailsService = new TechnicalDetailsService();
 
+            // Initialize edge service (consolidated edge routing)
+            await edgeService.initialize({
+                enablePerformanceMonitoring: true,
+                enableLayoutAwareRouting: true,
+                enableBatchProcessing: true,
+                virtualBendsEnabled: true,
+                intersectionDetectionEnabled: true,
+                debounceTime: 100
+            });
+
             const diagramService = new DiagramService(
                 validationService,
                 layoutService,
@@ -50,6 +61,7 @@ export class ServiceFactory {
             this.services.set('layout', layoutService);
             this.services.set('export', exportService);
             this.services.set('technicalDetails', technicalDetailsService);
+            this.services.set('edge', edgeService);
 
             this.initialized = true;
             console.log('ServiceFactory initialized successfully');

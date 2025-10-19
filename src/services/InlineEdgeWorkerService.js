@@ -1202,3 +1202,5 @@ const shouldUseWorker = typeof window !== 'undefined' ?
 const inlineEdgeWorkerService = new InlineEdgeWorkerService({ useWorker: shouldUseWorker });
 
 export default inlineEdgeWorkerService;
+
+

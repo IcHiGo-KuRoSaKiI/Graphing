@@ -25,20 +25,9 @@ import UniversalShapeNode from '../nodes/UniversalShapeNode';
 import { DrawIoOrthogonalEdge } from '../edges';
 import OptimizedOrthogonalEdge from '../edges/OptimizedOrthogonalEdge';
 
-// Import modal components
-import PromptModal from '../modals/PromptModal';
-import ConfirmModal from '../modals/ConfirmModal';
-import ContainerSelectorModal from '../modals/ContainerSelectorModal';
-import ShapeSelectorModal from '../modals/ShapeSelectorModal';
-import JsonPasteModal from '../modals/JsonPasteModal';
-import JsonValidatorModal from '../modals/JsonValidatorModal';
-import ExportModal from '../modals/ExportModal';
-
-// Import editor components
-import TailwindPropertyEditor from './TailwindPropertyEditor';
-import TechnicalDetailsPanel from './TechnicalDetailsPanel';
-import ShapeLibraryPanel from './ShapeLibraryPanel';
-import LayoutSettingsPanel from './LayoutSettingsPanel';
+// Import extracted components
+import EditorModalsExtracted from './EditorModalsExtracted';
+import EditorPanelsExtracted from './EditorPanelsExtracted';
 
 import EnhancedMenuBar from './EnhancedMenuBar';
 import { autoLayoutNodes } from '../utils/autoLayout';
@@ -1859,39 +1848,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
     return (
         <div className="architecture-diagram-editor h-full flex flex-col">
 
-            
-            {/* Modals */}
-            <PromptModal
-                isOpen={promptModal.isOpen}
-                title={promptModal.title}
-                message={promptModal.message}
-                defaultValue={promptModal.defaultValue}
-                onConfirm={promptModal.onConfirm}
-                onCancel={() => setPromptModal(prev => ({ ...prev, isOpen: false }))}
-            />
-            <ConfirmModal
-                isOpen={confirmModal.isOpen}
-                title={confirmModal.title}
-                message={confirmModal.message}
-                onConfirm={confirmModal.onConfirm}
-                onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-            />
-            <ContainerSelectorModal
-                isOpen={containerSelectorModal.isOpen}
-                title={containerSelectorModal.title}
-                message={containerSelectorModal.message}
-                containers={containerSelectorModal.containers}
-                onSelect={containerSelectorModal.onSelect}
-                onCancel={() => setContainerSelectorModal(prev => ({ ...prev, isOpen: false }))}
-            />
-            <ShapeSelectorModal
-                isOpen={shapeSelectorModal.isOpen}
-                onSelect={(shapeType) => {
-                    setShapeSelectorModal({ isOpen: false });
-                    addShapeNode(shapeType);
-                }}
-                onCancel={() => setShapeSelectorModal({ isOpen: false })}
-            />
 
             {/* Context Menu Handler - Removed unused code to fix ESLint errors */}
 
@@ -2108,149 +2064,58 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
                     />
 
 
-                    {/* Stats Panel */}
-                    {statsPanelOpen && (
-                        <Panel position="top-right" style={{ top: '110px', right: propertyPanelOpen ? '336px' : '16px' }}>
-                            <div className="bg-white/98 dark:bg-gray-800/98 rounded-lg shadow-lg backdrop-blur-md border border-gray-100 dark:border-gray-700 overflow-hidden">
-                                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600 font-medium text-gray-700 dark:text-gray-200">
-                                    <span>Diagram Statistics</span>
-                                    <button
-                                        className="p-1 hover:bg-white/10 rounded"
-                                        onClick={() => setStatsPanelOpen(false)}
-                                        title="Close"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                </div>
-                                <div className="p-4">
-                                    <div className="flex justify-between items-center mb-2 text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400 font-medium">Containers:</span>
-                                        <span className="font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full text-xs">
-                                            {nodes.filter((node) => node.type === 'container').length}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center mb-2 text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400 font-medium">Components:</span>
-                                        <span className="font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full text-xs">
-                                            {nodes.filter((node) => node.type !== 'container').length}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center mb-2 text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400 font-medium">Connections:</span>
-                                        <span className="font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full text-xs">
-                                            {edges.length}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-500 dark:text-gray-400 font-medium">Selected:</span>
-                                        <span className="font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full text-xs">
-                                            {selectedElements.nodes.length + selectedElements.edges.length}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </Panel>
-                    )}
-
-                    {/* Universal Property Editor Panel */}
-                    {propertyPanelOpen && (
-                        <Panel
-                            position={propertyPanelMinimized ? 'bottom-right' : 'top-right'}
-                            style={propertyPanelMinimized ? { right: '16px', bottom: '16px' } : { top: '110px', right: '16px', bottom: '16px' }}
-                        >
-                            <TailwindPropertyEditor
-                                selectedNode={selectedElements.nodes.length === 1 ? selectedElements.nodes[0] : null}
-                                selectedEdge={selectedElements.edges.length === 1 ? selectedElements.edges[0] : null}
-                                onElementPropertyChange={handleElementPropertyChange}
-                                minimized={propertyPanelMinimized}
-                                onToggleMinimized={togglePropertyPanelMinimized}
-                                onClose={() => { setPropertyPanelOpen(false); setPropertyPanelMinimized(false); }}
-                            />
-                        </Panel>
-                    )}
+                    {/* Panels - Inside ReactFlow for proper positioning */}
+                    <EditorPanelsExtracted
+                        statsPanelOpen={statsPanelOpen}
+                        setStatsPanelOpen={setStatsPanelOpen}
+                        nodes={nodes}
+                        edges={edges}
+                        selectedElements={selectedElements}
+                        propertyPanelOpen={propertyPanelOpen}
+                        propertyPanelMinimized={propertyPanelMinimized}
+                        togglePropertyPanelMinimized={togglePropertyPanelMinimized}
+                        setPropertyPanelOpen={setPropertyPanelOpen}
+                        setPropertyPanelMinimized={setPropertyPanelMinimized}
+                        handleElementPropertyChange={handleElementPropertyChange}
+                        shapeLibraryOpen={shapeLibraryOpen}
+                        setShapeLibraryOpen={setShapeLibraryOpen}
+                        handleShapeSelect={handleShapeSelect}
+                        selectedElementForTechnicalDetails={selectedElementForTechnicalDetails}
+                        technicalDetailsPanelOpen={technicalDetailsPanelOpen}
+                        setTechnicalDetailsPanelOpen={setTechnicalDetailsPanelOpen}
+                        setSelectedElementForTechnicalDetails={setSelectedElementForTechnicalDetails}
+                        panelOffset={panelOffset}
+                        layoutPanelOpen={layoutPanelOpen}
+                        setLayoutPanelOpen={setLayoutPanelOpen}
+                        currentLayoutAlgorithm={currentLayoutAlgorithm}
+                        setCurrentLayoutAlgorithm={setCurrentLayoutAlgorithm}
+                        setNodes={setNodes}
+                    />
                 </ReactFlow>
             </div>
 
-            {/* Modals */}
-            <PromptModal
-                isOpen={promptModal.isOpen}
-                title={promptModal.title}
-                message={promptModal.message}
-                defaultValue={promptModal.defaultValue}
-                onConfirm={promptModal.onConfirm}
-                onCancel={() => setPromptModal(prev => ({ ...prev, isOpen: false }))}
+            {/* Modals - Extracted to separate component */}
+            <EditorModalsExtracted
+                promptModal={promptModal}
+                setPromptModal={setPromptModal}
+                confirmModal={confirmModal}
+                setConfirmModal={setConfirmModal}
+                containerSelectorModal={containerSelectorModal}
+                setContainerSelectorModal={setContainerSelectorModal}
+                shapeSelectorModal={shapeSelectorModal}
+                setShapeSelectorModal={setShapeSelectorModal}
+                addShapeNode={addShapeNode}
+                jsonPasteModal={jsonPasteModal}
+                setJsonPasteModal={setJsonPasteModal}
+                handleJsonPasteImport={handleJsonPasteImport}
+                jsonValidatorModal={jsonValidatorModal}
+                setJsonValidatorModal={setJsonValidatorModal}
+                validateJson={validateJson}
+                exportModal={exportModal}
+                closeExportModal={closeExportModal}
+                getDiagramDataForExport={getDiagramDataForExport}
             />
-            <ConfirmModal
-                isOpen={confirmModal.isOpen}
-                title={confirmModal.title}
-                message={confirmModal.message}
-                onConfirm={confirmModal.onConfirm}
-                onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-            />
-            <ContainerSelectorModal
-                isOpen={containerSelectorModal.isOpen}
-                title={containerSelectorModal.title}
-                message={containerSelectorModal.message}
-                containers={containerSelectorModal.containers}
-                onSelect={containerSelectorModal.onSelect}
-                onCancel={() => setContainerSelectorModal(prev => ({ ...prev, isOpen: false }))}
-            />
-            <ShapeSelectorModal
-                isOpen={shapeSelectorModal.isOpen}
-                onSelect={(shapeType) => {
-                    setShapeSelectorModal({ isOpen: false });
-                    addShapeNode(shapeType);
-                }}
-                onCancel={() => setShapeSelectorModal({ isOpen: false })}
-            />
-            <JsonPasteModal
-                isOpen={jsonPasteModal.isOpen}
-                onConfirm={handleJsonPasteImport}
-                onCancel={() => setJsonPasteModal({ isOpen: false, onConfirm: null })}
-            />
-            <JsonValidatorModal
-                isOpen={jsonValidatorModal.isOpen}
-                onValidate={validateJson}
-                onClose={() => setJsonValidatorModal({ isOpen: false })}
-            />
-            
-            {/* Export Modal */}
-            <ExportModal
-                isOpen={exportModal.isOpen}
-                onClose={closeExportModal}
-                diagramData={getDiagramDataForExport()}
-            />
-            
-            {/* Shape Library Panel */}
-            <ShapeLibraryPanel
-                isOpen={shapeLibraryOpen}
-                onClose={() => setShapeLibraryOpen(false)}
-                onShapeSelect={handleShapeSelect}
-            />
-            
-            {/* Technical Details Panel */}
-            <TechnicalDetailsPanel
-                selectedElement={selectedElementForTechnicalDetails}
-                isOpen={technicalDetailsPanelOpen}
-                onClose={() => {
-                    setTechnicalDetailsPanelOpen(false);
-                    setSelectedElementForTechnicalDetails(null);
-                }}
-                position={panelOffset} // NEW
-            />
-            
-            {/* Layout Settings Panel */}
-            {layoutPanelOpen && (
-                <LayoutSettingsPanel
-                    nodes={nodes}
-                    setNodes={setNodes}
-                    isOpen={layoutPanelOpen}
-                    onClose={() => setLayoutPanelOpen(false)}
-                    currentLayoutAlgorithm={currentLayoutAlgorithm}
-                    onLayoutChange={setCurrentLayoutAlgorithm}
-                />
-            )}
-            
+
             {/* Technical Details Tooltip - Removed unused component to fix ESLint errors */}
         </div>
     );

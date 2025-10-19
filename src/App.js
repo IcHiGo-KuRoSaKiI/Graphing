@@ -2,6 +2,19 @@ import React, { useState } from 'react';
 
 import { ArchitectureDiagramEditor } from './components';
 
+/**
+ * App Component - Main application entry point
+ *
+ * Architecture improvements in place:
+ * - No error suppression (fixed in index.js)
+ * - React StrictMode enabled
+ * - Tests enabled in CI
+ * - Zustand store available
+ * - Service layer available
+ * - Error boundaries available
+ *
+ * UI kept as-is for stability
+ */
 function App() {
   const [mini, setMini] = useState(false);
   const [dark, setDark] = useState(false);

@@ -4,7 +4,28 @@ import ArchitectureDiagramEditorContent from './ArchitectureDiagramEditorContent
 import 'reactflow/dist/style.css';
 import useThemeStore from '../store/themeStore';
 
-const ArchitectureDiagramEditor = ({ diagram, style = {}, className, mode = 'light', showThemeToggle = false, onToggleMini, showMiniToggle = false }) => {
+/**
+ * ArchitectureDiagramEditor - Public API Wrapper
+ *
+ * TEMPORARY: Using original ArchitectureDiagramEditorContent for UI stability
+ * TODO: Gradually migrate to refactored architecture
+ *
+ * ARCHITECTURE IMPROVEMENTS (in place):
+ * - Zustand store available for new code
+ * - ServiceContext available for dependency injection
+ * - Error boundaries available
+ * - No error suppression (fixed in index.js)
+ * - Tests enabled in CI
+ */
+const ArchitectureDiagramEditor = ({
+    diagram,
+    style = {},
+    className,
+    mode = 'light',
+    showThemeToggle = false,
+    onToggleMini,
+    showMiniToggle = false
+}) => {
     const { theme, setTheme, toggleTheme } = useThemeStore();
     const [isFullscreen, setIsFullscreen] = useState(false);
 
