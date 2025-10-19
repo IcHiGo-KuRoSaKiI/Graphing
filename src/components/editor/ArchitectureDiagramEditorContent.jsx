@@ -204,6 +204,12 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
 
     // Migrate edges to use enhanced orthogonal edge functionality
     const migrateEdgesToEnhanced = useCallback((edges) => {
+        return edges.map(edge => ({
+            ...edge,
+            type: 'enhanced'
+        }));
+    }, []);
+
     // Import/Export handlers
     const {
         exportJSON,
@@ -828,8 +834,6 @@ const ArchitectureDiagramEditorContent = ({ initialDiagram, onToggleTheme, showT
             {/* Technical Details Tooltip - Removed unused component to fix ESLint errors */}
         </div>
     );
-    });
-
 };
 
 export default ArchitectureDiagramEditorContent;
